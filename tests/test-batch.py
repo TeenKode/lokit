@@ -30,7 +30,7 @@ try:
    {'name':'два.srt','mimeType':'text/plain','buffer':first},
   ])
   page.locator('#batch-add').click()
-  assert page.locator('.batch-job').count()==2,'Expected 2 queued conversions'
+  page.wait_for_function("() => document.querySelectorAll('.batch-job').length===2",timeout=10000)
   page.locator('#batch-tool').select_option('subtitle-shift')
   page.locator('[name=seconds]').fill('1.5')
   page.locator('#batch-files').set_input_files({'name':'сдвиг.srt','mimeType':'text/plain','buffer':first})
@@ -41,7 +41,7 @@ try:
     {'name':'b.srt','mimeType':'text/plain','buffer':first},
   ])
   page.locator('#batch-add').click()
-  assert page.locator('.batch-job').count()==4,'Expected 4 jobs across 3 different tools'
+  page.wait_for_function("() => document.querySelectorAll('.batch-job').length===4",timeout=10000)
   assert page.locator('.batch-job').filter(has_text='a.srt + b.srt').count()==1,'Pair grouping failed'
   page.locator('#batch-start').click()
   page.wait_for_function("() => document.querySelectorAll('.batch-job[data-status=success]').length===4",timeout=30000)
