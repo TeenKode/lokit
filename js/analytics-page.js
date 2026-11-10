@@ -1,15 +1,11 @@
 import {tools} from './tools.js';
-import {
-  apiUrl,isGlobalConnected,isSharingEnabled,setSharingEnabled,localEvents,recordEvent,
-  clearLocalEvents,exportLocalEvents,summarizeLocal,loadGlobalStats,flushPending,pendingEventCount
-} from './analytics.js';
+import {localEvents,recordEvent,clearLocalEvents,exportLocalEvents,summarizeLocal} from './analytics.js';
 
 const $=selector=>document.querySelector(selector);
 const toolNames=new Map(tools.map(t=>[t.id,t.title]));
 const LABELS={view:'Просмотр сайта',open:'Открытие инструмента',success:'Успешно',error:'Ошибка',cancelled:'Отменено'};
 const nf=new Intl.NumberFormat('ru-RU');
-const globalCacheKey='lokit:analytics:global-snapshot:v1';
-let scope='local',days=30,token=0;
+let days=30;
 const count=(stats,kind)=>Number(stats.kinds?.find(entry=>entry.kind===kind)?.count||0);
 const formatCount=value=>nf.format(Number(value)||0);
 const fmtDuration=value=>{const seconds=Math.round((Number(value)||0)/1000);return seconds<60?`${seconds} с`:seconds<3600?`${Math.floor(seconds/60)} мин ${seconds%60} с`:`${Math.floor(seconds/3600)} ч ${Math.floor(seconds/60)%60} мин`;};
@@ -82,67 +78,22 @@ function renderHistory(){
     body.append(row);
   }
 }
-function showEmptyGlobal(){
-  for(const id of ['#metric-views','#metric-opens','#metric-success','#metric-time','#metric-errors','#metric-bytes'])put(id,'—');
-  put('#metric-success-rate','Данные недоступны');
-  $('#analytics-chart').replaceChildren();$('#analytics-tools').replaceChildren(emptyState('Сервер общей статистики недоступен.'));
+function refresh(){
+  const stats=summarizeLocal(days);
+  renderMetrics(stats);renderChart(stats);renderTools(stats);renderHistory();
+  status(`Личная статистика за ${days} дней. Данные находятся только в этом браузере.`);
 }
-function updateTabs(){
-  for(const [id,value] of [['#scope-local','local'],['#scope-global','global']]){
-    const active=scope===value,button=$(id);
-    button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));
-  }
-  $('#personal-history').classList.toggle('hidden',scope==='global');
-}
-function storeSnapshot(data){try{localStorage.setItem(globalCacheKey,JSON.stringify({savedAt:new Date().toISOString(),days,data}));}catch{}}
-function cachedSnapshot(){try{const item=JSON.parse(localStorage.getItem(globalCacheKey)||'null');return item?.days===days?item:null;}catch{return null;}}
-async function refresh(){
-  const myToken=++token;updateTabs();
-  if(scope==='local'){
-    const stats=summarizeLocal(days);renderMetrics(stats);renderChart(stats);renderTools(stats);renderHistory();
-    status(`Личные данные за ${days} дней. Сохранены только в этом браузере.`);
-    return;
-  }
-  if(!isGlobalConnected()){
-    showEmptyGlobal();status('Общая статистика не подключена. Для её работы настройте Cloudflare Worker по инструкции в README.',true);return;
-  }
-  status('Загружаем общую статистику…');
-  try{
-    const stats=await loadGlobalStats(days);
-    if(token!==myToken)return;
-    storeSnapshot(stats);renderMetrics(stats);renderChart(stats);renderTools(stats);
-    status(`Общая статистика за ${days} дней. Данные получены с сервера.`);
-  }catch(e){
-    if(token!==myToken)return;
-    const saved=cachedSnapshot();
-    if(saved){renderMetrics(saved.data);renderChart(saved.data);renderTools(saved.data);status(`Сервер недоступен. Показана копия данных от ${new Date(saved.savedAt).toLocaleString('ru-RU')}.`,true);}
-    else{showEmptyGlobal();status(e.message||'Не удалось получить общую статистику.',true);}
-  }
-}
-$('#scope-local').addEventListener('click',()=>{scope='local';void refresh();});
-$('#scope-global').addEventListener('click',()=>{scope='global';void refresh();});
 $('#analytics-range').addEventListener('change',e=>{days=Number(e.target.value)||30;void refresh();});
-$('#analytics-refresh').addEventListener('click',()=>{void flushPending().then(()=>refresh());});
+$('#analytics-refresh').addEventListener('click',refresh);
 $('#analytics-export').addEventListener('click',()=>{
   const url=URL.createObjectURL(new Blob([exportLocalEvents()],{type:'application/json;charset=utf-8'}));
   const link=document.createElement('a');link.href=url;link.download='lokit-analytics.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
 });
 $('#analytics-clear').addEventListener('click',()=>{
-  if(!confirm('Удалить всю локальную статистику на этом устройстве? Ранее отправленные агрегированные показатели на сервере не изменятся.'))return;
+  if(!confirm('Удалить всю локальную статистику на этом устройстве?'))return;
   clearLocalEvents();void refresh();
 });
-const share=$('#share-statistics');share.checked=isSharingEnabled();
-function updateSharingStatus(){
-  share.checked=isSharingEnabled();
-  const connected=isGlobalConnected();
-  const pending=pendingEventCount();
-  put('#global-config-status',connected
-    ? `Сервер: ${apiUrl()}. Отправка: ${isSharingEnabled()?'включена':'выключена'}. В очереди: ${pending} событий.`
-    : 'Сервер общей статистики не настроен. Укажите его URL в js/analytics-config.js. Личная статистика сохраняется локально.');
-}
-share.addEventListener('change',e=>setSharingEnabled(e.target.checked));
-window.addEventListener('lokit-analytics-updated',()=>{updateSharingStatus();if(scope==='local')void refresh();});
-updateSharingStatus();
+window.addEventListener('lokit-analytics-updated',refresh);
 recordEvent('view');
 void refresh();
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{}));

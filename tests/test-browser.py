@@ -11,7 +11,7 @@ time.sleep(.5)
 errors=[]
 try:
  with sync_playwright() as p:
-  browser=p.chromium.launch(headless=True,args=['--no-sandbox','--autoplay-policy=no-user-gesture-required','--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream'])
+  browser=p.chromium.launch(headless=True,executable_path=('/usr/bin/chromium' if os.path.exists('/usr/bin/chromium') else None),args=['--no-sandbox','--autoplay-policy=no-user-gesture-required','--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream'])
   context=browser.new_context(accept_downloads=True,viewport={'width':1280,'height':900})
   page=context.new_page()
   page.on('pageerror',lambda e: errors.append(str(e)))
@@ -21,18 +21,29 @@ try:
   page.screenshot(path=str(ARTIFACTS/'lokit-home-reviewed.png'),full_page=True)
   page.locator('.tool-card').filter(has=page.locator('strong',has_text='SRT ⇄ VTT')).first.click()
   page.locator('#tool-content input[type=file]').set_input_files(str(ROOT/'tests/fixtures/sample.srt'))
+  assert page.locator('.studio-shell').count()==1
+  page.locator('.studio-cue-list .studio-cue textarea').first.fill('Изменено в редакторе Lokit')
+  assert page.locator('.studio-sub-preview').count()==1
   page.locator('#tool-content button.primary').click()
   page.wait_for_function("() => document.querySelector('#tool-status').textContent.includes('Готово')",timeout=20000)
   assert page.locator('.progress-panel').get_attribute('data-stage')=='complete'
+  with page.expect_download() as edited:
+   page.locator('.download a').first.click()
+  assert 'Изменено в редакторе Lokit' in Path(edited.value.path()).read_text(encoding='utf-8')
+  page.locator('#close-workspace').click()
+  page.locator('.tool-card').filter(has=page.locator('strong',has_text='Обрезка видео')).first.click()
+  page.locator('#tool-content input[type=file]').set_input_files(str(ROOT/'tests/fixtures/sample.webm'))
+  page.locator('.studio-video-panel:not(.hidden) video').first.wait_for(state='visible',timeout=15000)
+  page.locator('.studio-source-timeline .tt-strip').wait_for(state='visible',timeout=12000)
+  assert page.locator('.studio-player').count()>=1
+  assert page.locator('.studio-trim-controls input[type=range]').count()==2
+  page.locator('#close-workspace').click()
   page.goto(URL+'/analytics.html',wait_until='networkidle')
   assert page.locator('#metric-success').inner_text()=='1',page.locator('#metric-success').inner_text()
   assert int(page.locator('#metric-opens').inner_text())>=1
   assert page.locator('#analytics-tools tr').count()>=1
   assert page.locator('#analytics-history').inner_text().count('SRT ⇄ VTT')>=1
   page.screenshot(path=str(ARTIFACTS/'lokit-analytics-local.png'),full_page=True)
-  page.locator('#scope-global').click()
-  assert 'не подключена' in page.locator('#analytics-message').inner_text().lower()
-  page.locator('#scope-local').click()
   page.locator('#analytics-range').select_option('7')
   assert page.locator('#metric-success').inner_text()=='1'
   with page.expect_download() as d:
@@ -41,13 +52,9 @@ try:
   page.once('dialog',lambda dialog:dialog.accept())
   page.locator('#analytics-clear').click()
   assert page.locator('#metric-success').inner_text()=='0',page.locator('#metric-success').inner_text()
-  page.locator('#share-statistics').uncheck()
-  assert page.locator('#share-statistics').is_checked() is False
-  page.reload(wait_until='networkidle')
-  assert page.locator('#share-statistics').is_checked() is False
   context.set_offline(True)
   page.goto(URL+'/analytics.html',wait_until='domcontentloaded')
-  assert page.locator('#scope-local').count()==1
+  assert page.locator('#scope-global').count()==0
   assert page.locator('#metric-success').inner_text()=='0'
   context.set_offline(False)
   mobile=browser.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True,device_scale_factor=1)
@@ -57,7 +64,7 @@ try:
   assert mobile_page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), (mobile_page.evaluate('document.documentElement.scrollWidth'),mobile_page.evaluate('window.innerWidth'))
   mobile_page.screenshot(path=str(ARTIFACTS/'lokit-analytics-mobile.png'),full_page=True)
   mobile.close()
-  print('PASS: 24 tools, navigation, SRT operation, local statistics, global disconnected state, 7d filter, export, delete, sharing toggle, offline, 390px layout')
+  print('PASS: 24 tools, navigation, SRT operation, local statistics, 7d filter, export, delete, offline, 390px layout')
   print('BROWSER ERRORS:',errors)
   assert not errors,errors
   context.close();browser.close()

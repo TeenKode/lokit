@@ -1,5 +1,6 @@
 import {tools} from './tools.js';
 import {recordEvent,recordOperation} from './analytics.js';
+import {mountEditor} from './editor.js';
 
 const $=selector=>document.querySelector(selector);
 const root=$('#tool-grid');
@@ -12,7 +13,7 @@ const selected={category:'Все',search:''};
 const LAST_TOOL_KEY='lokit:last-tool';
 const categoryNames=['Все','Видео','Аудио','Изображения','Анализ','Запись','Субтитры'];
 const categoryIcons={Все:'◈',Видео:'▣',Аудио:'♪',Изображения:'▧',Анализ:'ⓘ',Запись:'●',Субтитры:'≡'};
-let currentTool=null,controller=null,stopRecording=null,previewUrl=null,downloadUrls=[];
+let currentTool=null,controller=null,stopRecording=null,activeEditor=null,downloadUrls=[];
 
 function escapeText(t){return String(t||'');}
 function formatDuration(seconds){
@@ -98,7 +99,7 @@ function clearResults(){
 }
 function resetWorkspace(){
   controller?.abort();stopRecording?.();stopRecording=null;controller=null;
-  if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=null;
+  activeEditor?.destroy();activeEditor=null;
   clearResults();toolContent.replaceChildren();showStatus();
 }
 
@@ -120,16 +121,6 @@ function makeField(def){
   return label;
 }
 
-function displayPreview(file){
-  const holder=$('#file-preview');holder.replaceChildren();
-  if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=null;
-  if(!file)return;
-  if(file.type.startsWith('video/')){
-    const video=document.createElement('video');video.controls=true;video.preload='metadata';video.playsInline=true;
-    previewUrl=URL.createObjectURL(file);video.src=previewUrl;holder.append(video);
-  }
-}
-
 function openTool(tool){
   resetWorkspace();currentTool=tool;saveLastTool(tool);recordEvent('open',tool.id);
   $('#tool-title').textContent=tool.title;
@@ -137,6 +128,13 @@ function openTool(tool){
   workspace.classList.remove('hidden');
 
   const form=document.createElement('form');form.noValidate=true;
+  form.className='studio-form';
+  const layout=document.createElement('div');layout.className='studio-layout';
+  const previewColumn=document.createElement('div');previewColumn.className='studio-main';
+  const settings=document.createElement('aside');settings.className='studio-settings';
+  settings.setAttribute('aria-label','Настройки инструмента');
+  settings.append(Object.assign(document.createElement('h3'),{textContent:'Настройки'}));
+  layout.append(previewColumn,settings);
   let input;
   if(!tool.isCapture){
     const zone=document.createElement('label');zone.className='dropzone';
@@ -147,9 +145,10 @@ function openTool(tool){
     zone.append(zoneTitle,zoneSubtitle,input);
     const hint=document.createElement('span');hint.className='filehint';hint.textContent='Файлы обрабатываются локально на вашем устройстве';zone.append(hint);
     form.append(zone);
-    const preview=document.createElement('div');preview.id='file-preview';preview.className='preview';form.append(preview);
-
-    input.addEventListener('change',()=>{hint.textContent=Array.from(input.files).map(f=>f.name).join(' · ')||'Файл не выбран';displayPreview(input.files[0]);});
+    input.addEventListener('change',()=>{
+      hint.textContent=Array.from(input.files).map(f=>f.name).join(' · ')||'Файл не выбран';
+      activeEditor?.update(Array.from(input.files));
+    });
     zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('dragover');});
     zone.addEventListener('dragleave',()=>zone.classList.remove('dragover'));
     zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('dragover');const files=e.dataTransfer.files;if(!files?.length)return;
@@ -157,14 +156,21 @@ function openTool(tool){
     });
   }
 
-  if(tool.options?.length){const fields=document.createElement('div');fields.className='field-grid';for(const def of tool.options)fields.append(makeField(def));form.append(fields);}
-  if(tool.note){const info=document.createElement('p');info.className='small subtle';info.textContent=tool.note;form.append(info);}
+  if(tool.options?.length){const fields=document.createElement('div');fields.className='field-grid';for(const def of tool.options)fields.append(makeField(def));settings.append(fields);}
+  if(tool.note){const info=document.createElement('p');info.className='small subtle';info.textContent=tool.note;settings.append(info);}
 
   const actions=document.createElement('div');actions.className='actions';
   const start=document.createElement('button');start.className='primary';start.type='submit';start.textContent=tool.isCapture?'Начать запись':'Выполнить';
   const cancel=document.createElement('button');cancel.className='secondary';cancel.type='button';cancel.textContent='Отмена';cancel.disabled=true;
   const stop=document.createElement('button');stop.className='danger hidden';stop.type='button';stop.textContent='Остановить запись';
-  actions.append(start,cancel,stop);form.append(actions);
+  actions.append(start,cancel,stop);settings.append(actions);
+  if(!tool.options?.length){
+    const hint=document.createElement('p');hint.className='studio-settings-hint';
+    hint.textContent=tool.isCapture?'Выберите источник и начинайте запись.':'Дополнительные настройки не нужны — можно выполнять операцию.';
+    settings.insertBefore(hint,actions);
+  }
+  form.append(layout);
+  activeEditor=mountEditor({host:previewColumn,tool,form});
   const setProgress=setupProgress(form);
 
   stop.addEventListener('click',()=>stopRecording?.());
@@ -173,7 +179,10 @@ function openTool(tool){
   form.addEventListener('submit',async event=>{
     event.preventDefault();
     if(controller)return;
-    const files=tool.isCapture?[]:Array.from(input.files);
+    const originalFiles=tool.isCapture?[]:Array.from(input.files);
+    let files;
+    try{files=tool.isCapture?[]:(await activeEditor?.getFiles(originalFiles))||originalFiles;}
+    catch(error){showStatus(error?.message||'Неверные параметры редактирования.',true);return;}
     if(!tool.isCapture&&files.length<(tool.requiredFiles||1)){showStatus(`Выберите ${tool.requiredFiles||1} файл(а).`,true);return;}
     if(files.length>(tool.maxFiles||1)){showStatus(`Можно выбрать не больше ${tool.maxFiles||1} файла(ов).`,true);return;}
     clearResults();

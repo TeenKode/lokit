@@ -1,9 +1,10 @@
-const CACHE='lokit-v6';
+const CACHE='lokit-v8';
 const FILES=[
   './','./index.html','./analytics.html','./style.css','./manifest.webmanifest',
   './icons/icon.svg','./icons/icon-192.png','./icons/icon-512.png',
   './js/app.js','./js/tools.js','./js/media.js','./js/analytics.js',
-  './js/analytics-config.js','./js/analytics-page.js'
+  './js/analytics-page.js','./js/editor.js',
+  './js/vendor/trim-timeline.js','./js/vendor/subtitle-serializer.js','./js/vendor/waveform-preview.js'
 ];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting()));
@@ -23,8 +24,7 @@ self.addEventListener('fetch',event=>{
   event.respondWith((async()=>{
     const cache=await caches.open(CACHE);
     // Страницы, настройки и скрипты обновляются при наличии сети.
-    const fresh=['navigate','script','style','manifest'].includes(req.destination==='document'?'navigate':req.destination)
-      ||new URL(req.url).pathname.endsWith('/analytics-config.js');
+    const fresh=['navigate','script','style','manifest'].includes(req.destination==='document'?'navigate':req.destination);
     if(fresh){
       try{
         const response=await fetch(req);

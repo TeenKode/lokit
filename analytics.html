@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0f1727">
-  <meta name="description" content="Статистика Lokit: личные события и общая анонимная аналитика использования инструментов.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta name="description" content="Личная статистика использования Lokit на вашем устройстве.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
   <title>Аналитика — Lokit</title>
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -26,13 +26,9 @@
       <section class="analytics-intro">
         <p class="eyebrow">СТАТИСТИКА ИСПОЛЬЗОВАНИЯ</p>
         <h1>Аналитика Lokit</h1>
-        <p>Личная активность на этом устройстве и общие показатели по всем посетителям. Никаких рекламных трекеров, имён файлов или анализа их содержимого.</p>
+        <p>Личные открытия, результаты, ошибки и время обработки. Всё хранится только на этом устройстве.</p>
       </section>
       <section class="analytics-toolbar" aria-label="Параметры статистики">
-        <div class="scope-tabs" role="group" aria-label="Вид статистики">
-          <button type="button" id="scope-local" class="scope-tab active" aria-pressed="true">На этом устройстве</button>
-          <button type="button" id="scope-global" class="scope-tab" aria-pressed="false">Общая статистика</button>
-        </div>
         <div class="range-actions">
           <label class="field inline-field" for="analytics-range">Период
             <select id="analytics-range"><option value="7">7 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option></select>
@@ -64,14 +60,12 @@
         <div class="analytics-bottom-actions"><button type="button" class="secondary" id="analytics-export">Экспорт в JSON</button><button type="button" class="danger" id="analytics-clear">Удалить мою статистику</button></div>
       </section>
       <section class="analytics-panel privacy-panel" aria-labelledby="privacy-heading">
-        <div class="panel-heading"><h2 id="privacy-heading">Приватность и сбор данных</h2></div>
-        <p>Личная история хранится только в браузере и ограничена последними 1200 событиями. Только после вашего согласия в общую статистику отправляются исключительно тип события, идентификатор инструмента, длительность операции и объёмы файлов. Файлы, имена, содержимое и тексты ошибок не отправляются.</p>
-        <label class="analytics-switch"><input id="share-statistics" type="checkbox"><span>Отправлять анонимные события в общую статистику (по моему согласию)</span></label>
-        <p id="global-config-status" class="small subtle"></p>
-        <p class="small subtle">Периоды считаются по календарным дням UTC. Отправка событий выключена до вашего согласия; общие показатели включают только участников сбора. Для общей аналитики нужен отдельный API. Если он не подключён, локальная статистика продолжает работать, а общие показатели не показываются. На сервере события удаляются через 90 дней после получения (после включения задачи очистки).</p>
+        <div class="panel-heading"><h2 id="privacy-heading">Приватность</h2></div>
+        <p>История ограничена 1200 событиями и хранится исключительно в localStorage браузера. Не записываются имена и содержимое файлов, тексты ошибок или поисковые запросы. Никаких запросов к сторонним сервисам аналитики.</p>
+        <p class="small subtle">Можно экспортировать историю в JSON или полностью удалить. Периоды считаются по календарным дням UTC.</p>
       </section>
     </main>
-    <footer class="footer"><span>Lokit · Статистика</span><span>Анонимные счётчики · ваши файлы остаются у вас</span></footer>
+    <footer class="footer"><span>Lokit · Статистика</span><span>Личная статистика · ваши файлы остаются у вас</span></footer>
   </div>
 </body>
 </html>

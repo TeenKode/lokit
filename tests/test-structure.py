@@ -25,11 +25,13 @@ sw=(ROOT/'sw.js').read_text()
 for name in re.findall(r"'\./([^']+)'",sw):
  assert (ROOT/name).exists(),name
 assert re.search(r"lokit-v\d+",sw)
-for name in ['analytics-config.js','analytics.js','analytics-page.js','app.js','media.js','tools.js']:
+for name in ['analytics.js','analytics-page.js','app.js','media.js','tools.js','editor.js']:
  assert (ROOT/'js'/name).exists()
-for name in ['src/index.js','migrations/0001_initial.sql','wrangler.toml']:
- assert (ROOT/'analytics-worker'/name).exists()
+assert not (ROOT/'analytics-worker').exists()
+assert not (ROOT/'js/analytics-config.js').exists()
+for name in ['trim-timeline.js','subtitle-serializer.js','waveform-preview.js']:
+ assert (ROOT/'js'/'vendor'/name).exists(),name
 for forbidden in ['timbrica','тимбрика','utilitarium','утилитарий']:
  for file in ROOT.glob('*.html'):
   assert forbidden not in file.read_text().lower(),(file,forbidden)
-print('Structure tests: HTML links, IDs, frontend selectors, PWA cache assets, backend files, branding — PASS')
+print('Structure tests: HTML links, IDs, frontend selectors, PWA cache assets, local analytics, branding — PASS')

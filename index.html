@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0f1727">
   <meta name="description" content="Небольшие офлайн-инструменты для работы с видео, звуком и субтитрами. Всё выполняется локально в браузере.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
   <title>Lokit — локальные инструменты</title>
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -102,7 +102,7 @@
       <section class="footnote">
         <h2>Что важно знать</h2>
         <p>Для преобразования видео браузер обычно записывает результат в WebM в реальном времени: обработка минутного ролика может занять примерно минуту. Поддерживаемые форматы зависят от браузера и устройства. Во время экспорта не закрывайте вкладку и не переводите устройство в сон.</p>
-        <p>Для записи экрана и камеры нужно разрешение браузера и защищённое соединение (HTTPS). Интернет нужен только для первого открытия сайта и загрузки обновлений; затем сохранённые файлы интерфейса доступны офлайн.</p><p>При подключённой общей аналитике сайт отправляет анонимные счётчики использования — без файлов и их имён. <a href="./analytics.html">Посмотреть статистику и отключить отправку</a>.</p>
+        <p>Для записи экрана и камеры нужно разрешение браузера и защищённое соединение (HTTPS). Интернет нужен только для первого открытия сайта и загрузки обновлений; затем сохранённые файлы интерфейса доступны офлайн.</p><p>Личная статистика сохраняется только в браузере. <a href="./analytics.html">Посмотреть историю использования</a>.</p>
       </section>
     </main>
 
