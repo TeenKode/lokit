@@ -75,14 +75,14 @@ try:
   assert page.locator('.download a').count()==0
   page.locator('#close-workspace').click()
   page.goto(URL+'/analytics.html',wait_until='networkidle')
-  assert page.locator('#metric-success').inner_text()=='1',page.locator('#metric-success').inner_text()
+  assert page.locator('#metric-success').inner_text()=='2',page.locator('#metric-success').inner_text()
   assert 'v0.3.0' in page.locator('.version-pill').inner_text()
   assert int(page.locator('#metric-opens').inner_text())>=1
   assert page.locator('#analytics-tools tr').count()>=1
   assert page.locator('#analytics-history').inner_text().count('SRT ⇄ VTT')>=1
   page.screenshot(path=str(ARTIFACTS/'lokit-analytics-local.png'),full_page=True)
   page.locator('#analytics-range').select_option('7')
-  assert page.locator('#metric-success').inner_text()=='1'
+  assert page.locator('#metric-success').inner_text()=='2'
   with page.expect_download() as d:
    page.locator('#analytics-export').click()
   assert d.value.suggested_filename=='lokit-analytics.json'
