@@ -78,11 +78,11 @@ GitHub Actions выполняет JS/Python тесты и Playwright в Chromium
 ## Выпуски
 
 ```bash
-node scripts/release.mjs 0.5.0 "Краткое описание изменений"
+node scripts/release.mjs 0.9.0 "Краткое описание изменений"
 node scripts/release.mjs --check
 ```
 
-Одна команда синхронизирует `js/version.js`, версии в HTML, `CHANGELOG.md` и `sw.js`. При отправке тега `v0.5.0` GitHub Actions проверит совпадение и подготовит ZIP-релиз. Статический сайт публикуется GitHub Pages из `main`.
+Одна команда синхронизирует `js/version.js`, версии в HTML, `CHANGELOG.md` и `sw.js`. При отправке тега `v0.8.0` GitHub Actions проверит совпадение и подготовит ZIP-релиз. Статический сайт публикуется GitHub Pages из `main`.
 
 ## Развёртывание
 

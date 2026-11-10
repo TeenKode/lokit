@@ -237,7 +237,13 @@ function videoStudio(root,tool,form){
   }
   listen(from,'input',()=>updateTrimmer(from,'start'));
   listen(to,'input',()=>updateTrimmer(to,'end'));
-  listen(form,'input',()=>{updateEffect();updateTrim();});listen(form,'change',event=>{
+  listen(form,'input',event=>{
+    // Не перезаписываем точный таймкод, пока пользователь его вводит.
+    if(event.target.closest?.('.precision-editor'))return;
+    updateEffect();updateTrim();
+  });
+  listen(form,'change',event=>{
+    if(event.target.closest?.('.precision-editor'))return;
     updateEffect();updateTrim();
     if(['start','end'].includes(event.target?.name))recordTrim('');
     if(tool.id==='video-trim')trimWidget?.setKeyframes(findValue(form,'cutMode')==='keyframe'?knownKeyframes:[]);
