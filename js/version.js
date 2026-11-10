@@ -1,5 +1,5 @@
 // Обновляйте эту версию вместе с историей изменений и PWA-кешем.
-export const APP_VERSION='0.6.0';
+export const APP_VERSION='0.7.0';
 export const APP_STAGE = 'beta';
 export const RELEASE_DATE='2026-11-10';
 export function showVersion(){

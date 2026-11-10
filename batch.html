@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0f1727">
   <meta name="description" content="Пакетная обработка Lokit: общая очередь инструментов, прогресс каждого файла и скачивание ZIP без сервера.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https://cdn.jsdelivr.net; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
   <title>Пакетная обработка — Lokit</title>
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -20,7 +20,7 @@
     <header class="header">
       <div class="header-left">
         <a class="brand" href="./" aria-label="На главную Lokit"><span class="brand-icon" aria-hidden="true">✦</span><span class="brand-text"><strong>Lokit</strong><span>локальные инструменты без лишнего</span></span></a>
-        <a class="version-pill" href="./about.html"><span data-app-version>v0.6.0</span><small data-app-stage>beta</small></a>
+        <a class="version-pill" href="./about.html"><span data-app-version>v0.7.0</span><small data-app-stage>beta</small></a>
       </div>
       <nav class="header-right" aria-label="Навигация"><a class="ghost-button" href="./">Инструменты</a><a class="ghost-button" href="./analytics.html">Аналитика</a><span class="nav-active">Пакетная обработка</span></nav>
     </header>
@@ -80,7 +80,7 @@
         <p>Одно задание — один файл. Инструменты, требующие два файла, обрабатывают их парами в выбранном порядке. Запись камеры и экрана остаётся в обычном режиме. Задания выполняются по одному, чтобы несколько кодировщиков не перегружали память браузера. ZIP создаётся без сжатия уже сжатых медиа, поэтому его размер примерно равен сумме результатов; максимальный размер ZIP — 4 ГБ.</p>
       </section>
     </main>
-    <footer class="footer"><span>Lokit · <span data-app-version>v0.6.0</span> · пакетная обработка</span><span><a href="./about.html">Что нового</a> · <a href="./">Инструменты</a></span></footer>
+    <footer class="footer"><span>Lokit · <span data-app-version>v0.7.0</span> · пакетная обработка</span><span><a href="./about.html">Что нового</a> · <a href="./">Инструменты</a></span></footer>
   </div>
 </body>
 </html>

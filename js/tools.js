@@ -9,6 +9,7 @@ const width = {
   ],default:'original',
   hint:'Например, 1920×1080 → 1280×720 при 720p; вертикальное 1080×1920 → 720×1280. Пропорции сохраняются, качество вверх не увеличивается.'
 };
+const engine={key:'engine',label:'Движок экспорта (экспериментально)',type:'select',choices:[['classic','Обычный — работает офлайн (рекомендуется)'],['webcodecs','WebCodecs — быстрее при поддержке кодека'],['ffmpeg','FFmpeg/WASM — программный MP4 (≈31 МБ при первом запуске)']],default:'classic',hint:'Экспериментальные движки загружаются только по вашему выбору. При ошибке Lokit автоматически вернётся к обычному экспорту. Файлы не отправляются на сервер.'};
 const fps = {key:'fps',label:'Частота кадров',type:'select',choices:[['15','15 FPS'],['25','25 FPS'],['30','30 FPS']],default:'25'};
 const asTime=(seconds)=>{const s=Math.max(0,Math.floor(seconds));return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;};
 const videoAccept='video/*,.mkv,.mov,.webm,.mp4';
@@ -43,9 +44,9 @@ export const tools=[
     {key:'blur',label:'Степень размытия',type:'number',default:'5',min:0,max:35,step:1},width]),
   tool('video-watermark','Текст поверх видео','Нанести подпись в правом нижнем углу','T','watermark',[
     {key:'text',label:'Текст',type:'text',default:'Моё видео'},width]),
-  tool('video-converter','Конвертер видео','Перекодировать в формат, доступный браузеру','⇄','convert',[width,fps]),
+  tool('video-converter','Конвертер видео','Перекодировать в формат, доступный браузеру','⇄','convert',[width,fps,engine]),
   tool('video-compressor','Сжатие видео','Уменьшить разрешение и битрейт видеопотока','▤','compress',[
-    {key:'bitrate',label:'Битрейт видео',type:'select',choices:[['300000','300 кбит/с'],['650000','650 кбит/с'],['1000000','1 Мбит/с'],['1800000','1,8 Мбит/с']],default:'650000'},width]),
+    {key:'bitrate',label:'Битрейт видео',type:'select',choices:[['300000','300 кбит/с'],['650000','650 кбит/с'],['1000000','1 Мбит/с'],['1800000','1,8 Мбит/с']],default:'650000'},width,engine]),
   tool('video-volume','Громкость видео','Увеличить или уменьшить громкость звука','♫','volume',[
     {key:'gain',label:'Уровень звука',type:'select',choices:[['0.25','25%'],['0.5','50%'],['1','100%'],['1.5','150%'],['2','200%']],default:'1'},width]),
   tool('video-merge','Склеить видео','Соединить два ролика последовательно','⊕','merge',[width], 'Видео',{maxFiles:2,requiredFiles:2,note:'MP4 одинакового формата и разрешения могут склеиваться мгновенно без перекодирования. Для несовместимых роликов используется обычный экспорт WebM.'}),

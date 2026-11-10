@@ -69,3 +69,11 @@ parser=HTMLChecks();parser.feed(page)
 assert selectors <= parser.ids,('batch.html','missing IDs',selectors-parser.ids)
 assert 'batch.html' in (ROOT/'index.html').read_text()
 print('Batch UI selectors, navigation and PWA cache — PASS')
+
+for path in ['js/experimental-engines.js','js/experimental-ffmpeg-worker.js']:
+ assert (ROOT/path).is_file(),path
+ assert f"'./{path}'" in sw,path
+for page in ['index.html','batch.html']:
+ html=(ROOT/page).read_text()
+ assert 'https://cdn.jsdelivr.net' in html and 'wasm-unsafe-eval' in html
+print('Optional engines, strict opt-in assets and CSP — PASS')

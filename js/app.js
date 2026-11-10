@@ -115,7 +115,7 @@ function addResult(result){
   const container=document.createElement('div');container.className='download';
   const a=document.createElement('a');a.href=url;a.download=result.name;a.textContent='Скачать результат';
   const label=document.createElement('span');label.textContent=result.name;
-  const details=document.createElement('small');details.textContent=`${(result.blob.size/1024/1024).toFixed(2)} МБ · ${result.fast?'без перекодирования':'обработка завершена'} · готово к сохранению`;
+  const details=document.createElement('small');details.textContent=`${(result.blob.size/1024/1024).toFixed(2)} МБ · ${result.fast?'без перекодирования':result.method==='webcodecs'?'WebCodecs':result.method==='ffmpeg-wasm'?'FFmpeg/WASM':'обработка завершена'} · готово к сохранению`;
   container.append(a,label,details);if(result.info){const note=document.createElement('small');note.textContent=result.info;container.append(note);}resultArea.append(container);
 }
 

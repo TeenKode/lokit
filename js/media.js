@@ -1,6 +1,7 @@
 // Браузерный движок обработки пользовательских файлов. Не использует серверные API.
 import {renderVideoFrame,canvasSize} from './render.js';
 import {tryFastMp4} from './mp4-fast.js';
+import {tryExperimental} from './experimental-engines.js';
 const VIDEO_TYPES = [
   'video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus',
   'video/webm;codecs=vp8', 'video/webm', 'video/mp4'
@@ -145,6 +146,9 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
   // Try container surgery first: a compatible MP4 can be edited without decoding.
   const fast=await tryFastMp4({files,mode,options,onProgress,signal});
   if(fast)return fast;
+  // Opt-in accelerated alternatives; errors return null and use the proven path.
+  const alternative=await tryExperimental({files,mode,options,onProgress,signal});
+  if(alternative)return alternative;
   onProgress({stage:'preparing',description:'Чтение метаданных видео для обычного экспорта…'});
   const primary=await openVideo(files[0],signal);
   let secondary=null, audioCtx=null, stream=null, recorderPack=null;

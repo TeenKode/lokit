@@ -5,9 +5,10 @@ function showCapabilities(){
   const data=supportedMediaFeatures();
   const support={
     'MediaRecorder':['Кодирование WebM/MP4',data.mediaRecorder&&data.canvasCapture,'Нужен для создания видео и записи'],
-    'WebCodecs':['Низкоуровневые кодеки',data.webCodecs,'Аппаратный WebCodecs-экспорт сложных эффектов пока не включён; MP4/WebM без перекодирования обрабатываются отдельным контейнерным движком'],
+    'WebCodecs':['Низкоуровневые кодеки',data.webCodecs,'Экспериментальный WebCodecs доступен в конвертере и сжатии по отдельному выбору; при ошибке применяется обычный экспорт'],
     'Video Frame Callback':['Синхронизация кадров',data.frameCallback,'Улучшает плавность предпросмотра и своевременность обработки'],
-    'OffscreenCanvas':['Внеэкранный Canvas',data.offscreenCanvas,'Резерв для будущих фоновых вычислений']
+    'FFmpeg/WASM':['Однопоточный FFmpeg',typeof Worker!=='undefined' && typeof WebAssembly!=='undefined','Опционально в конвертере и сжатии: первое включение загружает около 31 МБ, без передачи исходных файлов'],
+    'OffscreenCanvas':['Внеэкранный Canvas',data.offscreenCanvas,'Резерв для фоновых вычислений']
   };
   for(const [title,[label,ok,detail]] of Object.entries(support)){
     const card=document.createElement('div');card.className='capability-card';
