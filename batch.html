@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0f1727">
+  <meta name="description" content="Пакетная обработка Lokit: общая очередь инструментов, прогресс каждого файла и скачивание ZIP без сервера.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'none'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <title>Пакетная обработка — Lokit</title>
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style-enhancements.css">
+  <link rel="stylesheet" href="./batch.css">
+  <script type="module" src="./js/batch-page.js"></script>
+</head>
+<body>
+  <div class="page-glow" aria-hidden="true"></div>
+  <div class="wrap">
+    <header class="header">
+      <div class="header-left">
+        <a class="brand" href="./" aria-label="На главную Lokit"><span class="brand-icon" aria-hidden="true">✦</span><span class="brand-text"><strong>Lokit</strong><span>локальные инструменты без лишнего</span></span></a>
+        <a class="version-pill" href="./about.html"><span data-app-version>v0.6.0</span><small data-app-stage>beta</small></a>
+      </div>
+      <nav class="header-right" aria-label="Навигация"><a class="ghost-button" href="./">Инструменты</a><a class="ghost-button" href="./analytics.html">Аналитика</a><span class="nav-active">Пакетная обработка</span></nav>
+    </header>
+    <main class="batch-main">
+      <section class="batch-intro">
+        <p class="eyebrow">LOKIT · ПАКЕТНЫЙ РЕЖИМ</p>
+        <h1>Одна очередь для всех файлов</h1>
+        <p class="hero-desc">Выберите инструмент и добавьте несколько файлов. Можно переключить инструмент и продолжить пополнять общую очередь. Обработка идёт последовательно на вашем устройстве, а готовые результаты можно сохранить по отдельности или одним ZIP.</p>
+      </section>
+      <div class="batch-layout">
+        <section class="batch-panel" aria-labelledby="batch-add-title">
+          <div class="batch-heading"><h2 id="batch-add-title">Добавить задания</h2><span class="batch-step">01</span></div>
+          <form id="batch-form" novalidate>
+            <label class="batch-field" for="batch-tool">Инструмент
+              <select id="batch-tool" name="tool" required></select>
+            </label>
+            <p id="batch-tool-hint" class="small subtle" aria-live="polite"></p>
+            <label class="batch-dropzone" id="batch-dropzone">
+              <span class="batch-drop-title">Выбрать файлы или перетащить сюда</span>
+              <span class="small subtle" id="batch-file-hint">Можно добавить несколько файлов</span>
+              <input id="batch-files" type="file" multiple required>
+            </label>
+            <div id="batch-file-list" class="batch-selected" aria-live="polite"></div>
+            <div id="batch-options" class="batch-options"></div>
+            <button type="submit" id="batch-add" class="primary batch-add-button">Добавить в очередь</button>
+            <p id="batch-add-message" class="batch-inline-message" role="status" aria-live="polite"></p>
+          </form>
+          <p class="small subtle batch-private">Без загрузки файлов в сеть. Исходники и результаты хранятся в памяти вкладки и исчезнут после закрытия или обновления страницы.</p>
+        </section>
+        <section class="batch-panel batch-queue-panel" aria-labelledby="batch-queue-title">
+          <div class="batch-heading"><div><h2 id="batch-queue-title">Очередь обработки</h2><p class="small subtle" id="batch-counts">Заданий пока нет</p></div><span class="batch-step">02</span></div>
+          <div class="batch-overall" aria-label="Общий прогресс">
+            <div class="batch-progress-top"><strong id="batch-progress-title">Общий прогресс</strong><strong id="batch-overall-percent" class="batch-value">0%</strong></div>
+            <progress id="batch-overall" value="0" max="100" aria-label="Общий прогресс заданий"></progress>
+            <div class="batch-meta"><span id="batch-elapsed">Прошло: 00:00</span><span id="batch-remaining">Осталось: —</span></div>
+            <p class="small subtle">Прогресс считается по количеству заданий, а не по байтам. При подготовке и финализации процент отдельного задания может быть неизвестен.</p>
+          </div>
+          <div class="batch-actions" role="group" aria-label="Управление очередью">
+            <button id="batch-start" type="button" class="primary">Запустить очередь</button>
+            <button id="batch-pause" type="button" class="secondary" disabled>Пауза после файла</button>
+            <button id="batch-cancel-all" type="button" class="secondary" disabled>Отменить всю очередь</button>
+            <button id="batch-retry" type="button" class="ghost-button" disabled>Повторить ошибки</button>
+            <button id="batch-clear" type="button" class="ghost-button" disabled>Убрать завершённые</button>
+          </div>
+          <div id="batch-items" class="batch-items" aria-label="Список заданий"></div>
+          <div id="batch-empty" class="batch-empty">Очередь пуста. Добавьте файлы с помощью панели слева.</div>
+          <div class="batch-export">
+            <div><h3>Скачать результаты</h3><p class="small subtle" id="batch-ready">Готовых файлов пока нет</p></div>
+            <div class="batch-export-controls"><button id="batch-zip" type="button" class="primary" disabled>Скачать ZIP</button><button id="batch-zip-cancel" type="button" class="secondary hidden">Отменить ZIP</button></div>
+          </div>
+          <progress id="batch-zip-progress" class="hidden" max="100" value="0" aria-label="Создание ZIP"></progress>
+          <p id="batch-export-status" class="batch-inline-message" role="status" aria-live="polite"></p>
+        </section>
+      </div>
+      <section class="batch-help" aria-label="Ограничения пакетного режима">
+        <h2>Как это работает</h2>
+        <p>Одно задание — один файл. Инструменты, требующие два файла, обрабатывают их парами в выбранном порядке. Запись камеры и экрана остаётся в обычном режиме. Задания выполняются по одному, чтобы несколько кодировщиков не перегружали память браузера. ZIP создаётся без сжатия уже сжатых медиа, поэтому его размер примерно равен сумме результатов; максимальный размер ZIP — 4 ГБ.</p>
+      </section>
+    </main>
+    <footer class="footer"><span>Lokit · <span data-app-version>v0.6.0</span> · пакетная обработка</span><span><a href="./about.html">Что нового</a> · <a href="./">Инструменты</a></span></footer>
+  </div>
+</body>
+</html>

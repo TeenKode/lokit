@@ -24,7 +24,7 @@ jobs:
       - name: Assemble standalone GitHub Pages bundle
         run: |
           mkdir -p _site/js/vendor _site/icons
-          cp index.html analytics.html about.html style.css style-enhancements.css sw.js manifest.webmanifest .nojekyll _site/
+          cp index.html analytics.html about.html batch.html style.css style-enhancements.css batch.css sw.js manifest.webmanifest .nojekyll _site/
           cp js/*.js _site/js/
           cp js/vendor/*.js _site/js/vendor/
           cp icons/* _site/icons/

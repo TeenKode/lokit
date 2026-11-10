@@ -97,6 +97,16 @@ jobs:
           else
             python tests/test-cross-browser.py --browser "$BROWSER"
           fi
+      - name: Browser batch processing and ZIP
+        env:
+          BROWSER: ${{ matrix.browser }}
+          MOBILE: ${{ matrix.mobile }}
+        run: |
+          if [ "$MOBILE" = true ]; then
+            python tests/test-batch.py --browser "$BROWSER" --mobile
+          else
+            python tests/test-batch.py --browser "$BROWSER"
+          fi
       - name: Full Chromium integration tests
         if: matrix.browser == 'chromium' && matrix.mobile == false
         run: python tests/test-browser.py

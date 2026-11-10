@@ -12,7 +12,7 @@ class HTMLChecks(HTMLParser):
   for attr in ('src','href'):
    if attr in attrs and attrs[attr].startswith('./'):
     self.links.append(attrs[attr].split('#')[0])
-for page in ['index.html','analytics.html','about.html']:
+for page in ['index.html','analytics.html','about.html','batch.html']:
  parser=HTMLChecks();parser.feed((ROOT/page).read_text())
  for name in parser.links:
   file=ROOT/name.removeprefix('./')
@@ -20,7 +20,7 @@ for page in ['index.html','analytics.html','about.html']:
  if page=='about.html':
   used=set()
  else:
-  code=(ROOT/'js' / ('app.js' if page=='index.html' else 'analytics-page.js')).read_text()
+  code=(ROOT/'js' / ('app.js' if page=='index.html' else 'batch-page.js' if page=='batch.html' else 'analytics-page.js')).read_text()
   used=set(re.findall(r"\$\(['\"]#([a-zA-Z0-9-]+)['\"]\)",code))
   assert used <= parser.ids | ({'file-preview'} if page=='index.html' else set()), (page,'missing ids',used-parser.ids)
  print(page,'valid references',len(parser.links),'IDs',len(parser.ids),'JS references',len(used))
@@ -44,7 +44,7 @@ version=(ROOT/'js/version.js').read_text()
 found=re.search(r"APP_VERSION\s*=\s*['\"](\d+\.\d+\.\d+)['\"]",version)
 assert found,'No APP_VERSION'
 v=found.group(1)
-for page in ['index.html','analytics.html','about.html']:
+for page in ['index.html','analytics.html','about.html','batch.html']:
  html=(ROOT/page).read_text()
  assert 'class="version-pill"' in html
  assert f'v{v}' in html
@@ -57,3 +57,15 @@ for asset in ['js/render.js','js/mp4-fast.js','js/vendor/mp4-track-remux.js','js
  assert "'./"+asset+"'" in sw,asset
 assert not (ROOT/'js/analytics-config.js').exists()
 print('Version, offline cache, shared renderer and settings — PASS')
+
+for asset in ['batch.html','batch.css','js/batch-page.js','js/batch-queue.js','js/zip.js']:
+ assert (ROOT/asset).exists(),asset
+ assert f"'./{asset}'" in sw,asset
+
+from html.parser import HTMLParser
+page=(ROOT/'batch.html').read_text()
+selectors=set(re.findall(r"\$\('([a-z0-9-]+)'\)",(ROOT/'js/batch-page.js').read_text()))
+parser=HTMLChecks();parser.feed(page)
+assert selectors <= parser.ids,('batch.html','missing IDs',selectors-parser.ids)
+assert 'batch.html' in (ROOT/'index.html').read_text()
+print('Batch UI selectors, navigation and PWA cache — PASS')
