@@ -1,7 +1,7 @@
 """End-to-end: mixed-tool queue, real SRT outputs, ZIP bytes/CRC, and offline PWA."""
 from pathlib import Path
 from playwright.sync_api import sync_playwright
-import argparse, subprocess, zipfile, time, os
+import argparse, subprocess, zipfile, time, os, json
 
 ROOT=Path(__file__).resolve().parents[1]
 parser=argparse.ArgumentParser()
@@ -21,7 +21,7 @@ try:
   page.on('pageerror',lambda error:errors.append(str(error)))
   page.goto('http://127.0.0.1:8776/batch.html',wait_until='domcontentloaded')
   page.locator('#batch-tool option').first.wait_for(state='attached',timeout=20000)
-  assert 'v0.6.0' in page.locator('.version-pill').inner_text()
+  assert 'v'+json.loads((ROOT/'package.json').read_text())['version'] in page.locator('.version-pill').inner_text()
   assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),'Horizontal overflow in batch mode'
   page.locator('#batch-tool').select_option('subtitle-converter')
   first=(ROOT/'tests/fixtures/sample.srt').read_bytes()
