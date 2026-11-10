@@ -78,7 +78,7 @@ try:
   page.locator('[data-action=trim-redo]').click()
   assert page.locator('[name=end]').input_value()=='1.875'
   lane.locator('[data-action=frame-next]').click()
-  assert float(page.locator('.studio-player').evaluate('(v)=>v.currentTime'))>=0
+  assert float(page.locator('.studio-player').first.evaluate('(v)=>v.currentTime'))>=0
   page.screenshot(path=str(ARTIFACTS/'lokit-timeline-v080.png'),full_page=True)
   page.locator('[name=start]').fill('1.25')
   page.locator('[name=end]').fill('0.50')
