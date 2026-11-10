@@ -230,7 +230,9 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
     const blob=await done;
     ensure(blob.size>0,'Файл не получился: браузер не выдал записанных данных.');
     onProgress({stage:'complete',percent:100,current:total,total});
-    return {blob,ext:extension(mime),type:mime};
+    const experimentalRequested=options.engine==='webcodecs'||options.engine==='ffmpeg';
+    return {blob,ext:extension(mime),type:mime,method:experimentalRequested?'classic-fallback':'classic',
+      info:experimentalRequested?'Экспериментальный движок недоступен или не поддержал файл; использован проверенный Canvas/MediaRecorder.':''};
   } catch(e){
     if(recorderPack?.recorder.state==='recording'){recorderPack.recorder.stop();await recorderPack.done.catch(()=>{});}
     throw e;

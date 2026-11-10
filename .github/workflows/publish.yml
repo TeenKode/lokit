@@ -113,6 +113,11 @@ jobs:
       - name: Experimental engines fall back when optional CDN is blocked
         if: matrix.browser == 'chromium' && matrix.mobile == false
         run: python tests/test-experimental-browser.py
+      - name: Live optional engines (external CDN, diagnostic)
+        if: matrix.browser == 'chromium' && matrix.mobile == false
+        continue-on-error: true
+        timeout-minutes: 10
+        run: python tests/test-experimental-live.py
       - name: VP8 / H.264 decoding smoke
         if: matrix.browser == 'chromium' && matrix.mobile == false
         run: python tests/test-codecs.py
