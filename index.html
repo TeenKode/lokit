@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0f1727">
+  <meta name="description" content="Небольшие офлайн-инструменты для работы с видео, звуком и субтитрами. Всё выполняется локально в браузере.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <title>Lokit — локальные инструменты</title>
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./js/app.js"></script>
+</head>
+<body>
+  <div class="page-glow" aria-hidden="true"></div>
+  <div class="wrap">
+    <header class="header">
+      <div class="header-left">
+        <a class="brand" href="./" aria-label="На главную">
+          <span class="brand-icon" aria-hidden="true">✦</span>
+          <span class="brand-text">
+            <strong>Lokit</strong>
+            <span>локальные инструменты без лишнего</span>
+          </span>
+        </a>
+      </div>
+      <div class="header-right">
+        <span class="status" id="network-status">Локальная обработка</span>
+        <span class="small subtle">Файлы не покидают устройство</span>
+        <a class="ghost-button" href="./analytics.html">Аналитика</a><button class="ghost-button" id="open-last-tool" type="button">Последний инструмент</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">PWA · ТЁМНАЯ ТЕМА · ОФЛАЙН</p>
+          <h1 id="hero-title">Красивые и простые инструменты, которые работают прямо в браузере</h1>
+          <p class="hero-desc">Обрезайте и изменяйте видео, извлекайте звук, записывайте экран и редактируйте субтитры. Всё делается локально: без сервера, без аккаунта и без рекламы.</p>
+          <div class="hero-actions">
+            <a class="primary-link" href="#tools-title">Открыть каталог</a>
+            <button class="ghost-button" id="hero-last-tool" type="button">Продолжить с последним</button>
+          </div>
+        </div>
+        <div class="hero-panel" aria-label="Преимущества Lokit">
+          <div class="stat-card"><span class="stat-value" id="hero-tool-count">0</span><span class="stat-label">инструментов</span></div>
+          <div class="stat-card"><span class="stat-value">100%</span><span class="stat-label">локальная обработка</span></div>
+          <div class="stat-card"><span class="stat-value">0</span><span class="stat-label">передач файлов на сервер</span></div>
+        </div>
+      </section>
+
+      <section class="toolbar" aria-label="Поиск и фильтрация">
+        <div class="search-row">
+          <label class="search-box" for="search">
+            <span class="search-icon" aria-hidden="true">⌕</span>
+            <input id="search" type="search" autocomplete="off" placeholder="Найти инструмент, например: обрезка видео или субтитры">
+            <button id="clear-search" class="clear-search hidden" type="button" aria-label="Очистить поиск">✕</button>
+          </label>
+          <span id="counter" class="counter"></span>
+        </div>
+        <div id="categories" class="categories" aria-label="Категории"></div>
+      </section>
+
+      <section class="workspace hidden" id="workspace" aria-live="polite" aria-label="Рабочая область">
+        <div class="workspace-heading">
+          <div>
+            <p class="eyebrow">ИНСТРУМЕНТ</p>
+            <h2 id="tool-title"></h2>
+            <p id="tool-description" class="subtle"></p>
+          </div>
+          <button id="close-workspace" class="icon-button" type="button" aria-label="Закрыть">✕</button>
+        </div>
+        <div id="tool-content"></div>
+        <div id="tool-status" class="tool-status" role="status" aria-live="polite"></div>
+        <div id="result-area" class="results"></div>
+      </section>
+
+      <section class="tool-section" aria-labelledby="tools-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="tools-title">Каталог инструментов</h2>
+            <p class="subtle">Выберите нужную задачу и откройте инструмент одним нажатием</p>
+          </div>
+          <span class="subtle small">Работают на вашем устройстве</span>
+        </div>
+        <div id="tool-grid" class="grid"></div>
+        <div class="no-results hidden" id="no-results">Инструменты не найдены. Попробуйте другой запрос или снимите фильтр.</div>
+      </section>
+
+      <section class="benefits" aria-labelledby="benefits-title">
+        <div class="section-heading compact">
+          <h2 id="benefits-title">Почему это удобно</h2>
+        </div>
+        <div class="benefit-grid">
+          <article class="benefit-card"><span class="benefit-icon">⚡</span><h3>Быстрый старт</h3><p>Открыл сайт — выбрал инструмент — загрузил файл — получил результат.</p></article>
+          <article class="benefit-card"><span class="benefit-icon">☾</span><h3>Тёмная тема</h3><p>Интерфейс не режет глаза и одинаково хорошо выглядит на телефоне и компьютере.</p></article>
+          <article class="benefit-card"><span class="benefit-icon">🔒</span><h3>Локальная работа</h3><p>Файлы не загружаются в облако и не требуют регистрации или подключения к сторонним API.</p></article>
+        </div>
+      </section>
+
+      <section class="footnote">
+        <h2>Что важно знать</h2>
+        <p>Для преобразования видео браузер обычно записывает результат в WebM в реальном времени: обработка минутного ролика может занять примерно минуту. Поддерживаемые форматы зависят от браузера и устройства. Во время экспорта не закрывайте вкладку и не переводите устройство в сон.</p>
+        <p>Для записи экрана и камеры нужно разрешение браузера и защищённое соединение (HTTPS). Интернет нужен только для первого открытия сайта и загрузки обновлений; затем сохранённые файлы интерфейса доступны офлайн.</p><p>При подключённой общей аналитике сайт отправляет анонимные счётчики использования — без файлов и их имён. <a href="./analytics.html">Посмотреть статистику и отключить отправку</a>.</p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>Lokit · браузерные офлайн-инструменты</span>
+      <span>Без аккаунта · без рекламы · <a href="./analytics.html">Статистика использования</a></span>
+    </footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0f1727">
+  <meta name="description" content="Статистика Lokit: личные события и общая анонимная аналитика использования инструментов.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <title>Аналитика — Lokit</title>
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./js/analytics-page.js"></script>
+</head>
+<body>
+  <div class="page-glow" aria-hidden="true"></div>
+  <div class="wrap">
+    <header class="header">
+      <a class="brand" href="./" aria-label="На главную Lokit">
+        <span class="brand-icon" aria-hidden="true">✦</span>
+        <span class="brand-text"><strong>Lokit</strong><span>локальные инструменты без лишнего</span></span>
+      </a>
+      <nav class="header-right" aria-label="Навигация"><a class="ghost-button" href="./">← Инструменты</a><span class="nav-active">Аналитика</span></nav>
+    </header>
+    <main class="analytics-main">
+      <section class="analytics-intro">
+        <p class="eyebrow">СТАТИСТИКА ИСПОЛЬЗОВАНИЯ</p>
+        <h1>Аналитика Lokit</h1>
+        <p>Личная активность на этом устройстве и общие показатели по всем посетителям. Никаких рекламных трекеров, имён файлов или анализа их содержимого.</p>
+      </section>
+      <section class="analytics-toolbar" aria-label="Параметры статистики">
+        <div class="scope-tabs" role="group" aria-label="Вид статистики">
+          <button type="button" id="scope-local" class="scope-tab active" aria-pressed="true">На этом устройстве</button>
+          <button type="button" id="scope-global" class="scope-tab" aria-pressed="false">Общая статистика</button>
+        </div>
+        <div class="range-actions">
+          <label class="field inline-field" for="analytics-range">Период
+            <select id="analytics-range"><option value="7">7 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option></select>
+          </label>
+          <button type="button" id="analytics-refresh" class="ghost-button">Обновить</button>
+        </div>
+      </section>
+      <div id="analytics-message" class="analytics-message" role="status" aria-live="polite"></div>
+      <section class="analytics-stats" aria-label="Основные показатели">
+        <article class="metric-card"><span>Просмотры сайта</span><strong id="metric-views">—</strong><small>Открытия страниц, не уникальные посетители</small></article>
+        <article class="metric-card"><span>Открытия инструментов</span><strong id="metric-opens">—</strong><small>Выбор инструментов в каталоге</small></article>
+        <article class="metric-card"><span>Успешные операции</span><strong id="metric-success">—</strong><small id="metric-success-rate">—</small></article>
+        <article class="metric-card"><span>Среднее время</span><strong id="metric-time">—</strong><small>На завершённую операцию</small></article>
+        <article class="metric-card"><span>Ошибки</span><strong id="metric-errors">—</strong><small>Сбой обработки или сохранения</small></article>
+        <article class="metric-card"><span>Обработано данных</span><strong id="metric-bytes">—</strong><small>Объём входных файлов успешных операций</small></article>
+      </section>
+      <section class="analytics-panel" aria-labelledby="activity-heading">
+        <div class="panel-heading"><h2 id="activity-heading">Активность по дням</h2><span class="subtle small" id="activity-caption">Количество событий</span></div>
+        <div class="activity-key"><span><i class="key-success"></i> Успешно</span><span><i class="key-open"></i> Открытия</span><span><i class="key-other"></i> Остальное</span></div>
+        <div id="analytics-chart" class="activity-chart" role="img" aria-label="График событий по дням"></div>
+      </section>
+      <section class="analytics-panel" aria-labelledby="popular-heading">
+        <div class="panel-heading"><h2 id="popular-heading">Использование инструментов</h2><span class="subtle small">По количеству запусков и результатам</span></div>
+        <div class="table-scroll"><table class="analytics-table"><thead><tr><th>Инструмент</th><th>Открытия</th><th>Успешно</th><th>Ошибки</th><th>Отмены</th><th>Среднее время</th></tr></thead><tbody id="analytics-tools"></tbody></table></div>
+      </section>
+      <section class="analytics-panel" id="personal-history" aria-labelledby="history-heading">
+        <div class="panel-heading"><h2 id="history-heading">Последние события</h2><span class="subtle small">Только в этом браузере</span></div>
+        <div class="table-scroll"><table class="analytics-table"><thead><tr><th>Дата</th><th>Событие</th><th>Инструмент</th><th>Длительность</th></tr></thead><tbody id="analytics-history"></tbody></table></div>
+        <div class="analytics-bottom-actions"><button type="button" class="secondary" id="analytics-export">Экспорт в JSON</button><button type="button" class="danger" id="analytics-clear">Удалить мою статистику</button></div>
+      </section>
+      <section class="analytics-panel privacy-panel" aria-labelledby="privacy-heading">
+        <div class="panel-heading"><h2 id="privacy-heading">Приватность и сбор данных</h2></div>
+        <p>Личная история хранится только в браузере и ограничена последними 1200 событиями. Только после вашего согласия в общую статистику отправляются исключительно тип события, идентификатор инструмента, длительность операции и объёмы файлов. Файлы, имена, содержимое и тексты ошибок не отправляются.</p>
+        <label class="analytics-switch"><input id="share-statistics" type="checkbox"><span>Отправлять анонимные события в общую статистику (по моему согласию)</span></label>
+        <p id="global-config-status" class="small subtle"></p>
+        <p class="small subtle">Периоды считаются по календарным дням UTC. Отправка событий выключена до вашего согласия; общие показатели включают только участников сбора. Для общей аналитики нужен отдельный API. Если он не подключён, локальная статистика продолжает работать, а общие показатели не показываются. На сервере события удаляются через 90 дней после получения (после включения задачи очистки).</p>
+      </section>
+    </main>
+    <footer class="footer"><span>Lokit · Статистика</span><span>Анонимные счётчики · ваши файлы остаются у вас</span></footer>
+  </div>
+</body>
+</html>

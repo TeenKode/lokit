@@ -1,0 +1,18 @@
+name = "lokit-analytics"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+workers_dev = true
+
+[vars]
+# Укажите точный origin вашего сайта GitHub Pages (без /lokit/).
+ALLOWED_ORIGIN = "https://teenkode.github.io"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lokit-analytics"
+# Замените UUID на выданный командой wrangler d1 create.
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_UUID"
+
+[triggers]
+# Ежедневная очистка событий старше 90 дней по времени получения.
+crons = ["0 3 * * *"]
