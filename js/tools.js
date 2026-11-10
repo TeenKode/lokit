@@ -1,19 +1,28 @@
 import { transformVideo,frameFromVideo,inspectVideo,extractAudio,recordDevice,outputName } from './media.js';
 
-const width = {key:'width',label:'Размер по длинной стороне, пикс.',type:'select',choices:[['480','480'],['720','720'],['1080','1080'],['1920','1920']],default:'720'};
+const width = {
+  key:'resolution',label:'Разрешение итогового видео',type:'select',
+  choices:[
+    ['original','Как у исходного видео (без уменьшения)'],
+    ['360','360p — компактный файл'],['480','480p — стандартное'],
+    ['720','720p — HD'],['1080','1080p — Full HD'],['2160','2160p — 4K']
+  ],default:'original',
+  hint:'Например, 1920×1080 → 1280×720 при 720p; вертикальное 1080×1920 → 720×1280. Пропорции сохраняются, качество вверх не увеличивается.'
+};
 const fps = {key:'fps',label:'Частота кадров',type:'select',choices:[['15','15 FPS'],['25','25 FPS'],['30','30 FPS']],default:'25'};
 const asTime=(seconds)=>{const s=Math.max(0,Math.floor(seconds));return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;};
 const videoAccept='video/*,.mkv,.mov,.webm,.mp4';
 const tool = (id,title,desc,icon,mode,options=[],category='Видео',extra={})=>({id,title,description:desc,icon,category,accept:videoAccept,options:[...options],async run({files,values,progress,signal}){
   const result=await transformVideo({files,mode,options:values,onProgress:progress,signal});
-  return {blob:result.blob,name:outputName(files[0],id,result.ext)};
+  return {blob:result.blob,name:outputName(files[0],id,result.ext),fast:!!result.fast,method:result.method,info:result.info};
 },...extra});
 
 export const tools=[
   tool('video-trim','Обрезка видео','Оставить нужный отрезок ролика','✂','trim',[
     {key:'start',label:'Начало, сек.',type:'number',default:'0',min:0,step:.01},
-    {key:'end',label:'Конец, сек. (0 — до конца)',type:'number',default:'0',min:0,step:.01},width]),
-  tool('mute-video','Удалить звук','Экспортировать ролик без звуковой дорожки','◌','mute',[width]),
+    {key:'end',label:'Конец, сек. (0 — до конца)',type:'number',default:'0',min:0,step:.01},
+    {key:'cutMode',label:'Точность обрезки',type:'select',choices:[['exact','Точно по маркерам (рекомендуется)'],['keyframe','Быстро по ключевым кадрам (может начаться раньше)']],default:'exact'},width], 'Видео', {note:'MP4 обрезается быстро и без перекодирования; WebM — без перекодирования у ключевых кадров. Если нужна точная обрезка WebM между ключевыми кадрами, используется обычная обработка.'}),
+  tool('mute-video','Удалить звук','Быстро убрать аудиодорожку MP4 без перекодирования','◌','mute',[width], 'Видео', {note:'Для MP4 при исходном разрешении звук удаляется без изменения видеокадров. Для других форматов доступен обычный экспорт.'}),
   tool('video-crop','Кадрирование видео','Убрать одинаковые поля по краям кадра','▣','crop',[
     {key:'crop',label:'Обрезать с каждого края, %',type:'number',default:'10',min:0,max:40,step:1},width]),
   tool('video-flip','Отразить видео','Зеркальное отражение по горизонтали или вертикали','⇆','flip-h',[width], 'Видео', {
@@ -25,7 +34,7 @@ export const tools=[
     async run({files,values,progress,signal}){const {blob,ext}=await transformVideo({files,mode:`rotate-${values.degrees}`,options:values,onProgress:progress,signal});return {blob,name:outputName(files[0],'rotate',ext)};}
   }),
   tool('video-speed','Скорость видео','Замедлить или ускорить воспроизведение','⏩','speed',[
-    {key:'speed',label:'Скорость',type:'select',choices:[['0.5','0,5×'],['0.75','0,75×'],['1.25','1,25×'],['1.5','1,5×'],['2','2×']],default:'1.5'},width]),
+    {key:'speed',label:'Скорость',type:'select',choices:[['0.5','0,5×'],['0.75','0,75×'],['1.25','1,25×'],['1.5','1,5×'],['2','2×']],default:'1.5'},width], 'Видео', {note:'Для MP4 без звука скорость меняется быстро, без перекодирования. Если есть аудио, используется обычный экспорт с обработкой звука.'}),
   tool('video-loop','Повтор видео','Записать ролик с заданным числом повторений','⟳','loop',[
     {key:'loops',label:'Количество повторений',type:'number',default:'2',min:1,max:10,step:1},width]),
   tool('video-filter','Цветовой фильтр','Оттенки серого, сепия, контраст, яркость','◐','filter',[
@@ -39,7 +48,7 @@ export const tools=[
     {key:'bitrate',label:'Битрейт видео',type:'select',choices:[['300000','300 кбит/с'],['650000','650 кбит/с'],['1000000','1 Мбит/с'],['1800000','1,8 Мбит/с']],default:'650000'},width]),
   tool('video-volume','Громкость видео','Увеличить или уменьшить громкость звука','♫','volume',[
     {key:'gain',label:'Уровень звука',type:'select',choices:[['0.25','25%'],['0.5','50%'],['1','100%'],['1.5','150%'],['2','200%']],default:'1'},width]),
-  tool('video-merge','Склеить видео','Соединить два ролика последовательно','⊕','merge',[width], 'Видео',{maxFiles:2,requiredFiles:2,note:'Одинаковая частота и размер не требуются. Оба клипа будут преобразованы в WebM.'}),
+  tool('video-merge','Склеить видео','Соединить два ролика последовательно','⊕','merge',[width], 'Видео',{maxFiles:2,requiredFiles:2,note:'MP4 одинакового формата и разрешения могут склеиваться мгновенно без перекодирования. Для несовместимых роликов используется обычный экспорт WebM.'}),
   tool('split-screen','Разделённый экран','Показать два видео рядом','◫','split',[width],'Видео',{maxFiles:2,requiredFiles:2,note:'Аудио берётся из первого ролика. Ролики запускаются одновременно.'}),
   tool('video-to-vr','Видео рядом с копией','Сделать стереопару для просмотра рядом','▥','vr',[width], 'Видео'),
   {

@@ -1,9 +1,10 @@
 """Portable browser smoke: Firefox/WebKit/Chromium. Does not simulate real Android hardware."""
 from pathlib import Path
 from playwright.sync_api import sync_playwright
-import subprocess, argparse, time
+import subprocess, argparse, time, re
 
 root=Path(__file__).resolve().parents[1]
+APP_VERSION=re.search(r"APP_VERSION\s*=\s*['\"](\d+\.\d+\.\d+)['\"]",(root/'js/version.js').read_text()).group(1)
 parser=argparse.ArgumentParser()
 parser.add_argument('--browser',choices=['chromium','firefox','webkit'],default='chromium')
 parser.add_argument('--mobile',action='store_true')
@@ -23,7 +24,7 @@ try:
   page.goto(url,wait_until='domcontentloaded')
   page.locator('.tool-card').first.wait_for(timeout=20000)
   assert page.locator('.tool-card').count()==24
-  assert 'v0.4.0' in page.locator('.version-pill').inner_text()
+  assert 'v'+APP_VERSION in page.locator('.version-pill').inner_text()
   assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),'Horizontal overflow'
   page.locator('.tool-card').filter(has_text='Обрезка видео').first.click()
   assert page.locator('.studio-shell').count()==1
@@ -48,7 +49,7 @@ try:
   assert page.locator('#metric-success').inner_text()=='1'
   assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth')
   page.goto(url+'about.html',wait_until='domcontentloaded')
-  assert 'v0.4.0' in page.locator('#release-title').inner_text()
+  assert 'v'+APP_VERSION in page.locator('#release-title').inner_text()
   assert not errors,errors
   print(f'PASS: {args.browser}, mobile emulation={args.mobile}, presets, SRT editing/export, local analytics, layout')
   ctx.close();browser.close()

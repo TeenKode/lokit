@@ -1,5 +1,6 @@
 // Браузерный движок обработки пользовательских файлов. Не использует серверные API.
 import {renderVideoFrame,canvasSize} from './render.js';
+import {tryFastMp4} from './mp4-fast.js';
 const VIDEO_TYPES = [
   'video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus',
   'video/webm;codecs=vp8', 'video/webm', 'video/mp4'
@@ -124,7 +125,10 @@ function connectAudio(ctx, videos, stream, gainValue=1) {
   for(const track of destination.stream.getAudioTracks())stream.addTrack(track);
 }
 export async function transformVideo({files, mode='convert', options={}, onProgress=()=>{}, signal}){
-  onProgress({stage:'preparing',description:'Чтение метаданных видео…'});
+  // Try container surgery first: a compatible MP4 can be edited without decoding.
+  const fast=await tryFastMp4({files,mode,options,onProgress,signal});
+  if(fast)return fast;
+  onProgress({stage:'preparing',description:'Чтение метаданных видео для обычного экспорта…'});
   const primary=await openVideo(files[0],signal);
   let secondary=null, audioCtx=null, stream=null, recorderPack=null;
   try {
@@ -134,6 +138,7 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
       ensure(files[1], 'Этот инструмент требует два видеофайла.');secondary=await openVideo(files[1],signal);
     }
     const {width,height}=canvasSize(primary,mode,options);
+    ensure(width*height<=16_000_000,'Слишком большое разрешение для браузерного экспорта. Выберите 1080p или 720p.');
     const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
     const ctx=canvas.getContext('2d',{alpha:false});
     ensure(ctx && typeof canvas.captureStream==='function','Обработка через Canvas недоступна в этом браузере.');

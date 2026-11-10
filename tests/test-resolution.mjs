@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {canvasSize} from '../js/render.js';
+const size=(width,height,resolution,mode='convert')=>canvasSize({width,height},mode,{resolution});
+assert.deepEqual(size(1920,1080,'original'),{width:1920,height:1080});
+assert.deepEqual(size(1920,1080,'720'),{width:1280,height:720});
+assert.deepEqual(size(1080,1920,'720'),{width:720,height:1280});
+assert.deepEqual(size(320,180,'1080'),{width:320,height:180});
+assert.deepEqual(size(1080,1080,'720'),{width:720,height:720});
+assert.deepEqual(size(1920,1080,'720','rotate-90'),{width:720,height:1280});
+assert.deepEqual(size(1920,1080,'720','split'),{width:1280,height:720});
+assert.deepEqual(size(720,1280,'720','vr'),{width:1280,height:720});
+assert.throws(()=>size(1920,1080,'foo'),/разрешение/);
+console.log('Output resolution: landscape, portrait, no upscaling, rotation, composition — PASS');

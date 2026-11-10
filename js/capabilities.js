@@ -5,7 +5,7 @@ function showCapabilities(){
   const data=supportedMediaFeatures();
   const support={
     'MediaRecorder':['Кодирование WebM/MP4',data.mediaRecorder&&data.canvasCapture,'Нужен для создания видео и записи'],
-    'WebCodecs':['Низкоуровневые кодеки',data.webCodecs,'Проверены возможности API, но готового безперекодировочного экспорта пока нет'],
+    'WebCodecs':['Низкоуровневые кодеки',data.webCodecs,'Аппаратный WebCodecs-экспорт сложных эффектов пока не включён; MP4/WebM без перекодирования обрабатываются отдельным контейнерным движком'],
     'Video Frame Callback':['Синхронизация кадров',data.frameCallback,'Улучшает плавность предпросмотра и своевременность обработки'],
     'OffscreenCanvas':['Внеэкранный Canvas',data.offscreenCanvas,'Резерв для будущих фоновых вычислений']
   };

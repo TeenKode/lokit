@@ -52,7 +52,7 @@ for page in ['index.html','analytics.html','about.html']:
 assert f'lokit-v{v}' in sw
 assert "'./about.html'" in sw
 assert "'./js/version.js'" in sw
-for asset in ['js/render.js','js/presets.js','style-enhancements.css']:
+for asset in ['js/render.js','js/mp4-fast.js','js/vendor/mp4-track-remux.js','js/vendor/mp4-flatten.js','js/vendor/mp4-copy-trim.js','js/vendor/webm-copy-trim.js','js/presets.js','style-enhancements.css']:
  assert (ROOT/asset).is_file(),asset
  assert "'./"+asset+"'" in sw,asset
 assert not (ROOT/'js/analytics-config.js').exists()

@@ -115,8 +115,8 @@ function addResult(result){
   const container=document.createElement('div');container.className='download';
   const a=document.createElement('a');a.href=url;a.download=result.name;a.textContent='Скачать результат';
   const label=document.createElement('span');label.textContent=result.name;
-  const details=document.createElement('small');details.textContent=`${(result.blob.size/1024/1024).toFixed(2)} МБ · готово к сохранению`;
-  container.append(a,label,details);resultArea.append(container);
+  const details=document.createElement('small');details.textContent=`${(result.blob.size/1024/1024).toFixed(2)} МБ · ${result.fast?'без перекодирования':'обработка завершена'} · готово к сохранению`;
+  container.append(a,label,details);if(result.info){const note=document.createElement('small');note.textContent=result.info;container.append(note);}resultArea.append(container);
 }
 
 function clearResults(){
@@ -222,7 +222,7 @@ function openTool(tool){
     const features=supportedMediaFeatures();
     const capability=document.createElement('p');capability.className='studio-settings-hint';
     capability.textContent=features.mediaRecorder
-      ?`Экспорт видео: MediaRecorder в реальном времени. ${features.webCodecs?'WebCodecs поддерживается, но быстрый контейнерный экспорт пока не включён.':'WebCodecs недоступен.'}`
+      ?`Для совместимых MP4 доступны быстрые обрезка, склейка, удаление звука и изменение скорости без аудио. WebM обрезается без перекодирования на ключевых кадрах. В остальных случаях используется MediaRecorder. ${features.webCodecs?'WebCodecs доступен.':''}`
       :'Кодирование MediaRecorder недоступно в этом браузере. Инструменты анализа и кадров могут работать.';
     settings.append(capability);
   }

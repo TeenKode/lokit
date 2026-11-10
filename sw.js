@@ -1,9 +1,9 @@
-const CACHE='lokit-v0.4.0';
+const CACHE='lokit-v0.5.0';
 const FILES=[
   './','./index.html','./analytics.html','./about.html','./style.css','./style-enhancements.css','./manifest.webmanifest',
   './icons/icon.svg','./icons/icon-192.png','./icons/icon-512.png',
   './js/app.js','./js/tools.js','./js/media.js','./js/analytics.js',
-  './js/analytics-page.js','./js/editor.js','./js/render.js','./js/presets.js','./js/capabilities.js','./js/version.js',
+  './js/analytics-page.js','./js/editor.js','./js/render.js','./js/mp4-fast.js','./js/vendor/mp4-track-remux.js','./js/vendor/mp4-flatten.js','./js/vendor/mp4-copy-trim.js','./js/vendor/webm-copy-trim.js','./js/presets.js','./js/capabilities.js','./js/version.js',
   './js/vendor/trim-timeline.js','./js/vendor/subtitle-serializer.js','./js/vendor/waveform-preview.js'
 ];
 self.addEventListener('install',event=>{

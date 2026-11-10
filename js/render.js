@@ -35,15 +35,29 @@ export function renderVideoFrame(ctx, a, b, mode, options, outWidth, outHeight) 
     ctx.fillStyle='#fff';ctx.fillText(label,w-22,h-18,w-40);ctx.restore();
   }
 }
-export function canvasSize(info, mode, options) {
-  const target=clamp(Number(options.width)||720,240,1920);
-  let w=info.width,h=info.height;
-  if (mode==='crop') {const p=clamp(Number(options.crop)||10,0,40)/100;w*=1-2*p;h*=1-2*p;}
+/**
+ * Resolutions use the SHORTER source side: 720p landscape = 1280×720,
+ * 720p portrait = 720×1280. Never upscale and keep aspect ratio.
+ * "original" preserves input dimensions (except multi-video composites).
+ */
+export function canvasSize(info, mode, options={}) {
+  let w=Number(info.width),h=Number(info.height);
+  if(!Number.isFinite(w)||!Number.isFinite(h)||w<=0||h<=0)throw new Error('Не удалось определить размер исходного видео.');
+  if(mode==='crop'){
+    const p=clamp(Number(options.crop)||0,0,40)/100;
+    w*=1-2*p;h*=1-2*p;
+  }
   if(['rotate-90','rotate-270'].includes(mode)) [w,h]=[h,w];
-  if(['split','vr'].includes(mode)) {w=16;h=9;}
-  const factor=Math.min(1,target/Math.max(w,h));
-  if(mode==='split'||mode==='vr') return {width:even(target),height:even(target*9/16)};
-  return {width:even(w*factor),height:even(h*factor)};
+  if(mode==='split'||mode==='vr'){
+    // Two frames side by side form a new landscape canvas, not the source size.
+    const side=Math.min(w,h);
+    w=side*16/9;h=side;
+  }
+  const resolution=String(options.resolution ?? options.width ?? 'original');
+  const target=resolution==='original'?null:Number(resolution);
+  if(target!==null&&(!Number.isFinite(target)||target<240||target>2160))throw new Error('Выберите допустимое разрешение: исходное, 360p, 480p, 720p, 1080p или 2160p.');
+  const scale=target===null?1:Math.min(1,target/Math.min(w,h));
+  return {width:even(w*scale),height:even(h*scale)};
 }
 
 // Режим исходного инструмента и экспорт должны использовать одну трансформацию.

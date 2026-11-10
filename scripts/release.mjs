@@ -14,14 +14,14 @@ const version=read(VERSION_FILE).match(VERSION_PATTERN)?.[1];
 const check=process.argv.includes('--check');
 if(!version)throw new Error('APP_VERSION не найден');
 function assert(condition,message){if(!condition)throw new Error(message);}
-function checkProject(){
+function checkProject(expected=version){
  const code=read('sw.js');
- assert(code.includes(`lokit-v${version}`),'Номер PWA-кеша отличается от версии');
- assert(read('CHANGELOG.md').includes(`## v${version}`),'Нет записи о текущей версии в CHANGELOG.md');
- assert(JSON.parse(read('package.json')).version===version,'Версия package.json отличается от приложения');
+ assert(code.includes(`lokit-v${expected}`),'Номер PWA-кеша отличается от версии');
+ assert(read('CHANGELOG.md').includes(`## v${expected}`),'Нет записи о текущей версии в CHANGELOG.md');
+ assert(JSON.parse(read('package.json')).version===expected,'Версия package.json отличается от приложения');
  for(const page of PAGES){
    const html=read(page);
-   assert(html.includes(`v${version}`),`Неверная плашка версии: ${page}`);
+   assert(html.includes(`v${expected}`),`Неверная плашка версии: ${page}`);
    assert(html.includes('./style-enhancements.css'),`Отсутствуют стили редактора: ${page}`);
  }
  for(const path of ['js/media.js','js/editor.js','js/render.js','js/presets.js','style-enhancements.css']){
@@ -30,7 +30,7 @@ function checkProject(){
  for(const asset of ['./js/render.js','./js/presets.js','./js/capabilities.js','./style-enhancements.css']){
    assert(code.includes(asset),`Новый файл не закеширован PWA: ${asset}`);
  }
- console.log(`PASS: version v${version}, changelog, pages, PWA and assets`);
+ console.log(`PASS: version v${expected}, changelog, pages, PWA and assets`);
 }
 if(check){checkProject();process.exit(0);}
 const next=process.argv[2];
@@ -65,5 +65,5 @@ const changelog=read('CHANGELOG.md');
 write('CHANGELOG.md',changelog.startsWith('# ')
   ?changelog.replace(/^(#[^\n]*\n)/,`$1\n## v${next} — ${date}\n\n- ${description}\n`)
   :`## v${next} — ${date}\n\n- ${description}\n\n${changelog}`);
-checkProject();
+checkProject(next);
 console.log(`Готов выпуск v${next}. Зафиксируйте изменения и отправьте тег v${next} для GitHub Release.`);

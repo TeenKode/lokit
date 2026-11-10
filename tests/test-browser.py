@@ -1,8 +1,9 @@
 from pathlib import Path
 from playwright.sync_api import sync_playwright
-import subprocess, time, json, shutil, os
+import subprocess, time, json, shutil, os, re
 
 ROOT=Path(__file__).resolve().parents[1]
+APP_VERSION=re.search(r"APP_VERSION\s*=\s*['\"](\d+\.\d+\.\d+)['\"]",(ROOT/'js/version.js').read_text()).group(1)
 ARTIFACTS=ROOT / '.test-output'
 ARTIFACTS.mkdir(exist_ok=True)
 URL='http://127.0.0.1:8766'
@@ -17,11 +18,11 @@ try:
   page.on('pageerror',lambda e: errors.append(str(e)))
   page.goto(URL,wait_until='networkidle')
   assert page.locator('.tool-card').count()==24, f"Card count {page.locator('.tool-card').count()}"
-  assert 'v0.4.0' in page.locator('.version-pill').inner_text()
+  assert 'v'+APP_VERSION in page.locator('.version-pill').inner_text()
   page.locator('.version-pill').click()
   assert page.url.endswith('/about.html')
   assert 'Версия' in page.locator('#release-title').inner_text()
-  assert 'v0.4.0' in page.locator('#release-title').inner_text()
+  assert 'v'+APP_VERSION in page.locator('#release-title').inner_text()
   page.goto(URL,wait_until='networkidle')
   assert page.locator('a[href="./analytics.html"]').count()>=1
   page.screenshot(path=str(ARTIFACTS/'lokit-home-reviewed.png'),full_page=True)
@@ -80,15 +81,29 @@ try:
   page.locator('[name=start]').fill('0.5')
   assert page.locator('.download a').count()==0, 'Old video result must be removed when settings change'
   page.locator('#close-workspace').click()
+  page.goto(URL,wait_until='networkidle')
+  page.locator('.tool-card').filter(has=page.locator('strong',has_text='Удалить звук')).first.click()
+  assert page.locator('select[name=resolution]').count()==1
+  assert 'Как у исходного' in page.locator('select[name=resolution]').inner_text()
+  assert '1280×720' in page.locator('.field small').filter(has_text='1920×1080').inner_text()
+  page.locator('#tool-content input[type=file]').set_input_files(str(ROOT/'tests/fixtures/sample-audio.mp4'))
+  page.wait_for_function("() => document.querySelector('.studio-resolution')?.textContent.includes('160')",timeout=15000)
+  page.locator('#tool-content button.primary').click()
+  page.wait_for_function("() => document.querySelector('#tool-status')?.textContent.includes('Готово')",timeout=15000)
+  assert 'без перекодирования' in page.locator('.download').inner_text()
+  with page.expect_download() as mp4:
+   page.locator('.download a').first.click()
+  assert mp4.value.suggested_filename.endswith('.mp4')
+  page.locator('#close-workspace').click()
   page.goto(URL+'/analytics.html',wait_until='networkidle')
-  assert page.locator('#metric-success').inner_text()=='2',page.locator('#metric-success').inner_text()
-  assert 'v0.4.0' in page.locator('.version-pill').inner_text()
+  assert page.locator('#metric-success').inner_text()=='3',page.locator('#metric-success').inner_text()
+  assert 'v'+APP_VERSION in page.locator('.version-pill').inner_text()
   assert int(page.locator('#metric-opens').inner_text())>=1
   assert page.locator('#analytics-tools tr').count()>=1
   assert page.locator('#analytics-history').inner_text().count('SRT ⇄ VTT')>=1
   page.screenshot(path=str(ARTIFACTS/'lokit-analytics-local.png'),full_page=True)
   page.locator('#analytics-range').select_option('7')
-  assert page.locator('#metric-success').inner_text()=='2'
+  assert page.locator('#metric-success').inner_text()=='3'
   with page.expect_download() as d:
    page.locator('#analytics-export').click()
   assert d.value.suggested_filename=='lokit-analytics.json'
@@ -100,7 +115,7 @@ try:
   assert page.locator('#scope-global').count()==0
   assert page.locator('#metric-success').inner_text()=='0'
   page.goto(URL+'/about.html',wait_until='domcontentloaded')
-  assert 'v0.4.0' in page.locator('#release-title').inner_text()
+  assert 'v'+APP_VERSION in page.locator('#release-title').inner_text()
   context.set_offline(False)
   mobile=browser.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True,device_scale_factor=1)
   mobile_page=mobile.new_page()

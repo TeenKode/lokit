@@ -67,7 +67,7 @@ function videoStudio(root,tool,form){
   const rangeControls=el('div','studio-trim hidden');
   const sourceTimeline=el('div','studio-source-timeline');
   rangeControls.append(sourceTimeline);
-  let trimWidget=null;
+  let trimWidget=null;let knownKeyframes=[];
   const trimTitle=el('strong','','Выберите отрезок');const trimInputs=el('div','studio-trim-controls');
   const from=el('input');from.type='range';from.min='0';from.max='1000';from.value='0';from.setAttribute('aria-label','Начало отрезка');
   const to=el('input');to.type='range';to.min='0';to.max='1000';to.value='1000';to.setAttribute('aria-label','Конец отрезка');
@@ -125,7 +125,7 @@ function videoStudio(root,tool,form){
       if(renderedCanvas.height!==size.height)renderedCanvas.height=size.height;
       const ctx=renderedCanvas.getContext('2d',{alpha:false});if(!ctx)return;
       renderVideoFrame(ctx,video,second.readyState>=2?second:null,size.mode,size.values,size.width,size.height);
-      resolution.textContent=`${size.exportSize.width} × ${size.exportSize.height} · экспорт`;
+      resolution.textContent=`Результат: ${size.exportSize.width} × ${size.exportSize.height}`;
     }catch(error){console.warn('Предпросмотр Canvas недоступен:',error);canvasActive=false;showCanvasMode();}
   }
   function showCanvasMode(){
@@ -201,7 +201,10 @@ function videoStudio(root,tool,form){
   }
   listen(from,'input',()=>updateTrimmer(from,'start'));
   listen(to,'input',()=>updateTrimmer(to,'end'));
-  listen(form,'input',()=>{updateEffect();updateTrim();});listen(form,'change',()=>{updateEffect();updateTrim();});
+  listen(form,'input',()=>{updateEffect();updateTrim();});listen(form,'change',()=>{
+    updateEffect();updateTrim();
+    if(tool.id==='video-trim')trimWidget?.setKeyframes(findValue(form,'cutMode')==='keyframe'?knownKeyframes:[]);
+  });
   listen(video,'loadedmetadata',()=>{
     if(!Number.isFinite(video.duration)||video.duration<=0){showError('Браузер не может прочитать длительность файла.');return;}
     duration=video.duration;
@@ -217,6 +220,27 @@ function videoStudio(root,tool,form){
         onScrub:point=>seekVideo(video,point)
       });
       trimWidget.load(objectFile,duration);
+      const requestedToken=generation;
+      void (async()=>{
+        try{
+          let api=null;
+          if(/\.(mp4|m4v)$/i.test(objectFile?.name||'')){
+            await import('./vendor/mp4-flatten.js');
+            await import('./vendor/mp4-copy-trim.js');
+            api=globalThis.Mp4CopyTrim;
+          }else if(/\.webm$/i.test(objectFile?.name||'')){
+            await import('./vendor/webm-copy-trim.js');
+            api=globalThis.WebmCopyTrim;
+          }
+          if(!api?.keyframeTimes)return;
+          const points=await api.keyframeTimes(objectFile);
+          if(destroyed||requestedToken!==generation)return;
+          knownKeyframes=points.filter(x=>Number.isFinite(x)&&x>=0&&x<=duration).slice(0,400);
+          trimWidget?.setKeyframes(findValue(form,'cutMode')==='keyframe'?knownKeyframes:[]);
+        }catch{
+          // Unsupported containers continue to offer the ordinary trim markers.
+        }
+      })();
     }
     updateTrim();updateEffect();showCanvasMode();
   });
@@ -235,7 +259,7 @@ function videoStudio(root,tool,form){
     if([' ','ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();if(e.key===' ')play.click();else seekVideo(video,video.currentTime+(e.key==='ArrowRight'?5:-5));}
   });viewport.tabIndex=0;
   function reset(){
-    generation++;duration=0;video.pause();second.pause();stopPreviewLoop();
+    generation++;duration=0;knownKeyframes=[];video.pause();second.pause();stopPreviewLoop();
     trimWidget?.destroy();trimWidget=null;
     video.removeAttribute('src');second.removeAttribute('src');video.load();second.load();
     if(url)URL.revokeObjectURL(url);if(urlB)URL.revokeObjectURL(urlB);
