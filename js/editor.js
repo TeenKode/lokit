@@ -2,6 +2,8 @@ import './vendor/trim-timeline.js';
 import './vendor/subtitle-serializer.js';
 import './vendor/waveform-preview.js';
 import {renderVideoFrame,canvasSize,previewModeFor} from './render.js';
+import {createEditHistory} from './edit-history.js';
+import {mountPrecisionTimeline,stepFrame} from './precision-timeline.js';
 /**
  * Lokit Studio — local, reusable visual editing controls.
  * Handles preview and editable subtitle documents; never uploads user media.
@@ -61,13 +63,44 @@ function videoStudio(root,tool,form){
   const seek=el('input','studio-seek');seek.type='range';seek.min='0';seek.max='1000';seek.step='1';seek.value='0';seek.setAttribute('aria-label','Позиция видео');
   const rangeIndicator=el('div','studio-range hidden');
   const track=el('div','studio-track');track.append(rangeIndicator,seek);timeline.append(frames,track);
-  const tips=el('div','studio-help');tips.append(el('span','','Пробел — пауза · ← и → — по 5 секунд'),el('span','','Предпросмотр кадра использует тот же Canvas-рендерер, что и экспорт · кодирование зависит от браузера'));
+  const tips=el('div','studio-help');tips.append(el('span','','Пробел — пауза · J/K/L — назад/пауза/вперёд · [ и ] — поставить границы · Ctrl+Z — отменить'),el('span','','Предпросмотр кадра использует тот же Canvas-рендерер, что и экспорт · кодирование зависит от браузера'));
   panel.append(viewport,bar,timeline,tips);
   content.append(panel);
   const rangeControls=el('div','studio-trim hidden');
   const sourceTimeline=el('div','studio-source-timeline');
   rangeControls.append(sourceTimeline);
-  let trimWidget=null;let knownKeyframes=[];
+  const preciseHost=el('div','studio-precise-host');rangeControls.append(preciseHost);
+  const historyBar=el('div','studio-history-toolbar');
+  const undoTrim=button('↶ Отменить','studio-mini-button','Отменить изменение границ (Ctrl+Z)');undoTrim.dataset.action='trim-undo';
+  const redoTrim=button('↷ Повторить','studio-mini-button','Повторить изменение границ (Ctrl+Shift+Z)');redoTrim.dataset.action='trim-redo';
+  historyBar.append(undoTrim,redoTrim);rangeControls.append(historyBar);
+  let precisionLane=null,trimWidget=null,knownKeyframes=[],syncGuard=false;
+  const trimHistory=createEditHistory({start:0,end:0});
+  const trimState=()=>({start:Number(findValue(form,'start'))||0,end:Number(findValue(form,'end'))||duration});
+  const updateHistoryButtons=()=>{undoTrim.disabled=!trimHistory.canUndo;redoTrim.disabled=!trimHistory.canRedo;};
+  function recordTrim(mergeKey=''){
+    const state=trimState();
+    if(!syncGuard&&duration>0&&state.start>=0&&state.end<=duration+.001&&state.end>state.start){
+      trimHistory.record(state,{mergeKey});updateHistoryButtons();
+    }
+  }
+  function applyTrimRange(start,end,{mergeKey='',seek=true,record=true}={}){
+    if(!duration||!Number.isFinite(start)||!Number.isFinite(end)||start<0||end>duration+.001||end<=start)return false;
+    syncGuard=true;
+    const startField=form.elements.namedItem('start'),endField=form.elements.namedItem('end');
+    if(!startField||!endField){syncGuard=false;return false;}
+    startField.value=start.toFixed(3);endField.value=end.toFixed(3);
+    startField.dispatchEvent(new Event('change',{bubbles:true}));
+    endField.dispatchEvent(new Event('change',{bubbles:true}));
+    syncGuard=false;
+    updateTrim();
+    if(seek)seekVideo(video,start);
+    if(record)recordTrim(mergeKey);
+    return true;
+  }
+  const restoreTrim=(action)=>{const state=trimHistory[action]();if(state)applyTrimRange(state.start,state.end,{record:false});updateHistoryButtons();};
+  undoTrim.addEventListener('click',()=>restoreTrim('undo'));redoTrim.addEventListener('click',()=>restoreTrim('redo'));
+  updateHistoryButtons();
   const trimTitle=el('strong','','Выберите отрезок');const trimInputs=el('div','studio-trim-controls');
   const from=el('input');from.type='range';from.min='0';from.max='1000';from.value='0';from.setAttribute('aria-label','Начало отрезка');
   const to=el('input');to.type='range';to.min='0';to.max='1000';to.value='1000';to.setAttribute('aria-label','Конец отрезка');
@@ -165,7 +198,7 @@ function videoStudio(root,tool,form){
     if(!Number.isFinite(video.duration))return;
     const t=video.currentTime;time.textContent=`${prettyTime(t)} / ${prettyTime(video.duration)}`;
     seek.value=String(Math.round(t/video.duration*1000)||0);
-    trimWidget?.setPlayhead(t);
+    trimWidget?.setPlayhead(t);precisionLane?.setPlayhead(t);
     if(tool.id==='video-merge'&&second.src){
       // Второй файл показан отдельно: он не воспроизводится автоматически до стадии экспорта.
     }
@@ -191,18 +224,22 @@ function videoStudio(root,tool,form){
     trimReadout.textContent=`${prettyTime(start)} — ${prettyTime(end)}`;
     rangeIndicator.style.left=`${start/duration*100}%`;
     rangeIndicator.style.width=`${Math.max(0,(end-start)/duration*100)}%`;
-    if(trimWidget){const current=trimWidget.getRange();if(Math.abs(current.start-start)>.12||Math.abs(current.end-end)>.12)trimWidget.setRange(start,end);}
+    precisionLane?.setRange(start,end);
+    if(trimWidget&&!syncGuard){const current=trimWidget.getRange();if(Math.abs(current.start-start)>.003||Math.abs(current.end-end)>.003){
+      syncGuard=true;try{trimWidget.setRange(start,end);}finally{syncGuard=false;}
+    }}
   }
   function updateTrimmer(elRange,name){if(!duration)return;
-    const t=Math.round(Number(elRange.value)/1000*duration*10)/10;
+    const t=Math.round(Number(elRange.value)/1000*duration*1000)/1000;
     const other=name==='start'?(Number(findValue(form,'end'))||duration):Number(findValue(form,'start'))||0;
-    const safe=name==='start'?Math.min(t,other-.1):Math.max(t,other+.1);
-    setValue(form,name,cap(safe,0,duration).toFixed(1));seekVideo(video,safe);
+    const safe=name==='start'?Math.min(t,other-.001):Math.max(t,other+.001);
+    setValue(form,name,cap(safe,0,duration).toFixed(3));seekVideo(video,safe);
   }
   listen(from,'input',()=>updateTrimmer(from,'start'));
   listen(to,'input',()=>updateTrimmer(to,'end'));
-  listen(form,'input',()=>{updateEffect();updateTrim();});listen(form,'change',()=>{
+  listen(form,'input',()=>{updateEffect();updateTrim();});listen(form,'change',event=>{
     updateEffect();updateTrim();
+    if(['start','end'].includes(event.target?.name))recordTrim('');
     if(tool.id==='video-trim')trimWidget?.setKeyframes(findValue(form,'cutMode')==='keyframe'?knownKeyframes:[]);
   });
   listen(video,'loadedmetadata',()=>{
@@ -210,12 +247,20 @@ function videoStudio(root,tool,form){
     duration=video.duration;
     time.textContent=`00:00 / ${prettyTime(duration)}`;resolution.textContent=`${video.videoWidth} × ${video.videoHeight}`;
     rangeControls.classList.toggle('hidden',tool.id!=='video-trim');
+    if(tool.id==='video-trim'){
+      precisionLane?.destroy();
+      precisionLane=mountPrecisionTimeline(preciseHost,{duration,
+        onSeek:point=>seekVideo(video,point),
+        onRangeChange:range=>applyTrimRange(range.start,range.end,{mergeKey:'precise'})
+      });
+      const initial=trimState();trimHistory.reset(initial);updateHistoryButtons();
+    }
     if(tool.id==='video-trim' && window.createTrimTimeline){
       trimWidget?.destroy();trimWidget=window.createTrimTimeline(sourceTimeline,{
         labels:{start:'Начало',end:'Конец',keep:'Оставить',setHint:'Поставить маркер'},
         onChange:(start,end)=>{
           // The visual handles are the source of the export settings.
-          setValue(form,'start',start.toFixed(2));setValue(form,'end',end.toFixed(2));
+          if(!syncGuard)applyTrimRange(start,end,{mergeKey:'drag',seek:false});
         },
         onScrub:point=>seekVideo(video,point)
       });
@@ -258,9 +303,26 @@ function videoStudio(root,tool,form){
   listen(viewport,'keydown',e=>{if(e.target instanceof HTMLInputElement)return;
     if([' ','ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();if(e.key===' ')play.click();else seekVideo(video,video.currentTime+(e.key==='ArrowRight'?5:-5));}
   });viewport.tabIndex=0;
+  listen(shell,'keydown',e=>{
+    if(!objectFile||form.getAttribute('aria-busy')==='true')return;
+    const editable=e.target.closest?.('input,select,textarea,[contenteditable]');
+    if(editable)return;
+    const shortcut=e.ctrlKey||e.metaKey;
+    if(shortcut&&e.key.toLowerCase()==='z'&&tool.id==='video-trim'){
+      e.preventDefault();e.stopPropagation();restoreTrim(e.shiftKey?'redo':'undo');return;
+    }
+    if(shortcut&&e.key.toLowerCase()==='y'&&tool.id==='video-trim'){e.preventDefault();e.stopPropagation();restoreTrim('redo');return;}
+    if(shortcut||e.altKey)return;
+    if(['j','k','l','J','K','L'].includes(e.key)){
+      e.preventDefault();if(e.key.toLowerCase()==='k')video.pause();else seekVideo(video,video.currentTime+(e.key.toLowerCase()==='j'?-1:1));
+    }else if(tool.id==='video-trim'&&['[',']'].includes(e.key)){
+      e.preventDefault();e.stopPropagation();const t=Math.round(video.currentTime*1000)/1000;
+      const r=trimState();applyTrimRange(e.key==='['?t:r.start,e.key===']'?t:r.end,{mergeKey:''});
+    }
+  });
   function reset(){
     generation++;duration=0;knownKeyframes=[];video.pause();second.pause();stopPreviewLoop();
-    trimWidget?.destroy();trimWidget=null;
+    trimWidget?.destroy();trimWidget=null;precisionLane?.destroy();precisionLane=null;trimHistory.reset({start:0,end:0});updateHistoryButtons();
     video.removeAttribute('src');second.removeAttribute('src');video.load();second.load();
     if(url)URL.revokeObjectURL(url);if(urlB)URL.revokeObjectURL(urlB);
     url=null;urlB=null;objectFile=null;frames.replaceChildren();seek.value='0';
@@ -296,7 +358,7 @@ function videoStudio(root,tool,form){
   function update(files){
     reset();
     const first=files?.[0];if(!isVideo(first)){
-      placeholder.classList.remove('hidden');panel.classList.add('hidden');badge.textContent='Ожидание файла';return;
+      placeholder.classList.remove('hidden');panel.classList.add('hidden');badge.textContent='Ожидание файла';historyButtons();return;
     }
     objectFile=first;
     placeholder.classList.add('hidden');panel.classList.remove('hidden');badge.textContent='Реальное время';
@@ -351,11 +413,25 @@ function subtitleStudio(root,tool){
   const controls=el('div','studio-sub-controls');
   const info=el('span','studio-hint','Изменения сохраняются только в текущей вкладке');
   const fileTabs=el('div','studio-file-tabs');
-  const add=button('+ Реплика','secondary');controls.append(info,add);
+  const add=button('+ Реплика','secondary');
+  const undo=button('↶ Отменить','studio-mini-button','Отменить изменение субтитров');undo.dataset.action='sub-undo';
+  const redo=button('↷ Повторить','studio-mini-button','Повторить изменение субтитров');redo.dataset.action='sub-redo';
+  controls.append(info,add,undo,redo);
   const preview=el('div','studio-sub-preview');const previewText=el('div','studio-sub-preview-text','Выберите реплику, чтобы увидеть её здесь.');preview.append(previewText);
   const list=el('div','studio-cue-list');panel.append(fileTabs,preview,controls,list);content.append(panel);
   const status=el('div','studio-notice hidden');content.append(status);
   let tracks=[],active=0,revision=0,destroyed=false,loading=Promise.resolve();
+  const notifyEdit=()=>{root.dispatchEvent(new Event('lokit-editor-change',{bubbles:true}));};
+  const historyButtons=()=>{const h=tracks[active]?.history;undo.disabled=!h?.canUndo;redo.disabled=!h?.canRedo;};
+  const recordCue=(mergeKey='')=>{const track=tracks[active];track?.history?.record(track.cues,{mergeKey});historyButtons();notifyEdit();};
+  function restoreCue(action){const track=tracks[active];const state=track?.history?.[action]();if(!state)return;track.cues=state;revision++;buildRows();historyButtons();notifyEdit();}
+  undo.addEventListener('click',()=>restoreCue('undo'));redo.addEventListener('click',()=>restoreCue('redo'));
+  listenSubtitleKeydown();
+  function listenSubtitleKeydown(){shell.addEventListener('keydown',event=>{
+    if(!(event.ctrlKey||event.metaKey)||event.key.toLowerCase()!=='z')return;
+    if(event.target.closest?.('input,textarea,[contenteditable]'))return;
+    event.preventDefault();restoreCue(event.shiftKey?'redo':'undo');
+  });}
   function buildRows(){
     const track=tracks[active];list.replaceChildren();if(!track)return;
     badge.textContent=`${track.cues.length} реплик`;
@@ -369,16 +445,16 @@ function subtitleStudio(root,tool){
       const text=el('textarea');text.rows=2;text.value=cue.text;text.setAttribute('aria-label',`Текст реплики ${i+1}`);
       const remove=button('×','studio-mini-button',`Удалить реплику ${i+1}`);remove.setAttribute('aria-label',`Удалить реплику ${i+1}`);
       const update=()=>{const a=timeFromText(start.value),b=timeFromText(end.value);if(Number.isFinite(a)&&Number.isFinite(b)&&b>a){cue.start=a;cue.end=b;cue.invalid=false;start.classList.remove('invalid');end.classList.remove('invalid');}else{cue.invalid=true;start.classList.add('invalid');end.classList.add('invalid');}
-        cue.text=text.value;previewText.textContent=cue.text||'Пустая реплика';revision++;root.dispatchEvent(new Event('lokit-editor-change',{bubbles:true}));};
+        cue.text=text.value;previewText.textContent=cue.text||'Пустая реплика';revision++;recordCue(document.activeElement===text?'text-'+i:'');};
       start.addEventListener('change',update);end.addEventListener('change',update);text.addEventListener('input',update);
       row.addEventListener('focusin',()=>{previewText.textContent=cue.text||'Пустая реплика';});
-      remove.addEventListener('click',()=>{track.cues.splice(i,1);revision++;buildRows();root.dispatchEvent(new Event('lokit-editor-change',{bubbles:true}));});
+      remove.addEventListener('click',()=>{track.cues.splice(i,1);revision++;recordCue();buildRows();});
       row.append(number,timing,text,remove);list.append(row);
     }
   }
-  function buildTabs(){fileTabs.replaceChildren();tracks.forEach((t,i)=>{const b=button(t.file.name,'studio-file-tab'+(i===active?' active':''));b.setAttribute('aria-pressed',String(i===active));b.addEventListener('click',()=>{active=i;buildTabs();buildRows();});fileTabs.append(b);});}
+  function buildTabs(){fileTabs.replaceChildren();tracks.forEach((t,i)=>{const b=button(t.file.name,'studio-file-tab'+(i===active?' active':''));b.setAttribute('aria-pressed',String(i===active));b.addEventListener('click',()=>{active=i;buildTabs();buildRows();historyButtons();});fileTabs.append(b);});historyButtons();}
   add.addEventListener('click',()=>{const track=tracks[active];if(!track)return;
-    const last=track.cues.at(-1)?.end||0;track.cues.push({start:last,end:last+2,text:'Новая реплика'});revision++;buildRows();root.dispatchEvent(new Event('lokit-editor-change',{bubbles:true}));list.lastElementChild?.querySelector('textarea')?.focus();
+    const last=track.cues.at(-1)?.end||0;track.cues.push({start:last,end:last+2,text:'Новая реплика'});revision++;recordCue();buildRows();list.lastElementChild?.querySelector('textarea')?.focus();
   });
   async function loadFiles(files){
     const marker=++revision;tracks=[];active=0;status.classList.add('hidden');list.replaceChildren();
@@ -387,7 +463,7 @@ function subtitleStudio(root,tool){
       if(!isSubtitle(file))continue;
       try{
         const parsed=decodeSubtitle(await file.text());if(destroyed||marker!==revision)return;
-        if(parsed.cues.length)tracks.push({...parsed,file});
+        if(parsed.cues.length)tracks.push({...parsed,file,history:createEditHistory(parsed.cues)});
       }catch{ /* Показать понятное сообщение вместо падения */ }
     }
     if(destroyed||marker!==revision)return;

@@ -32,6 +32,11 @@ try:
   page.locator('#favorite-tool').click()
   assert page.locator('#favorite-tool').get_attribute('aria-pressed')=='true'
   page.locator('.studio-cue-list .studio-cue textarea').first.fill('Изменено в редакторе Lokit')
+  assert page.locator('[data-action=sub-undo]').is_enabled()
+  page.locator('[data-action=sub-undo]').click()
+  assert page.locator('.studio-cue-list .studio-cue textarea').first.input_value()!='Изменено в редакторе Lokit'
+  page.locator('[data-action=sub-redo]').click()
+  assert page.locator('.studio-cue-list .studio-cue textarea').first.input_value()=='Изменено в редакторе Lokit'
   assert page.locator('.studio-sub-preview').count()==1
   page.locator('#tool-content button.primary').click()
   page.wait_for_function("() => document.querySelector('#tool-status').textContent.includes('Готово')",timeout=20000)
@@ -56,6 +61,25 @@ try:
   assert page.locator('.studio-player').count()>=1
   assert page.locator('.studio-video-surface').evaluate('(el)=>el.classList.contains(\"studio-show-render\")')
   assert page.locator('.studio-trim-controls input[type=range]').count()==2
+  # Zoomed millisecond lane must edit the same form values used for export.
+  lane=page.locator('.precision-editor')
+  assert lane.count()==1
+  assert lane.locator('.precision-zoom').inner_text()=='1×'
+  lane.locator('[data-action=zoom-in]').click()
+  assert lane.locator('.precision-zoom').inner_text()=='2×'
+  lane.locator('[data-trim=start]').fill('00:00:00.375')
+  lane.locator('[data-trim=start]').dispatch_event('change')
+  assert page.locator('[name=start]').input_value()=='0.375'
+  lane.locator('[data-trim=end]').fill('00:00:01.875')
+  lane.locator('[data-trim=end]').dispatch_event('change')
+  assert page.locator('[name=end]').input_value()=='1.875'
+  page.locator('[data-action=trim-undo]').click()
+  assert abs(float(page.locator('[name=end]').input_value())-2.5)<.015
+  page.locator('[data-action=trim-redo]').click()
+  assert page.locator('[name=end]').input_value()=='1.875'
+  lane.locator('[data-action=frame-next]').click()
+  assert float(page.locator('.studio-player').evaluate('(v)=>v.currentTime'))>=0
+  page.screenshot(path=str(ARTIFACTS/'lokit-timeline-v080.png'),full_page=True)
   page.locator('[name=start]').fill('1.25')
   page.locator('[name=end]').fill('0.50')
   page.locator('#tool-content button.primary').click()
@@ -87,8 +111,7 @@ try:
   assert 'Как у исходного' in page.locator('select[name=resolution]').inner_text()
   assert '1280×720' in page.locator('.field small').filter(has_text='1920×1080').inner_text()
   page.locator('#tool-content input[type=file]').set_input_files(str(ROOT/'tests/fixtures/sample-audio.mp4'))
-  # Потоковая браузерная декодировка H.264 не обязательна для быстрой контейнерной операции MP4.
-  # Проверяем результат экспорта, а не готовность видеодекодера для предпросмотра.
+  # Fast MP4 container operations work even if the browser cannot decode H.264 previews.
   assert page.locator('select[name=resolution]').input_value()=='original'
   page.locator('#tool-content button.primary').click()
   page.wait_for_function("() => document.querySelector('#tool-status')?.textContent.includes('Готово')",timeout=15000)
