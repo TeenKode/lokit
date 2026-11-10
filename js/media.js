@@ -1,4 +1,5 @@
 // Браузерный движок обработки пользовательских файлов. Не использует серверные API.
+import {renderVideoFrame,canvasSize} from './render.js';
 const VIDEO_TYPES = [
   'video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus',
   'video/webm;codecs=vp8', 'video/webm', 'video/mp4'
@@ -52,6 +53,37 @@ export async function openVideo(file,signal) {
   } catch (error) { video.remove(); URL.revokeObjectURL(url); throw error; }
 }
 
+export function supportedMediaFeatures(){
+  return {
+    mediaRecorder:typeof MediaRecorder!=='undefined',
+    canvasCapture:typeof HTMLCanvasElement!=='undefined'&&typeof HTMLCanvasElement.prototype.captureStream==='function',
+    webCodecs:typeof VideoEncoder!=='undefined'&&typeof VideoDecoder!=='undefined',
+    frameCallback:typeof HTMLVideoElement!=='undefined'&&'requestVideoFrameCallback' in HTMLVideoElement.prototype,
+    offscreenCanvas:typeof OffscreenCanvas!=='undefined'
+  };
+}
+// Синхронизация с декодированными кадрами вместо бесконечного setInterval.
+// Таймаут оставлен на случай неподвижного кадра или проблемного контейнера.
+function nextVideoFrame(video,fps,signal){
+  return new Promise((resolve,reject)=>{
+    if(signal?.aborted){reject(new DOMException('Отменено','AbortError'));return;}
+    let settled=false,handle=null,timer;
+    const callbackSupported=typeof video?.requestVideoFrameCallback==='function';
+    const done=(error)=>{
+      if(settled)return;settled=true;
+      clearTimeout(timer);
+      signal?.removeEventListener('abort',aborted);
+      if(handle!==null&&callbackSupported&&typeof video.cancelVideoFrameCallback==='function')video.cancelVideoFrameCallback(handle);
+      if(error)reject(error);else resolve();
+    };
+    const aborted=()=>done(new DOMException('Отменено','AbortError'));
+    signal?.addEventListener('abort',aborted,{once:true});
+    // Проверка состояния каждые ~два кадра, без зависания при завершении воспроизведения.
+    timer=setTimeout(()=>done(),callbackSupported?Math.max(90,Math.ceil(2500/fps)):Math.max(25,Math.ceil(1000/fps)));
+    if(callbackSupported)handle=video.requestVideoFrameCallback(()=>done());
+  });
+}
+
 async function seek(video, at, signal) {
   onAbort(signal);
   const same = Math.abs(video.currentTime-at)<.015;
@@ -68,50 +100,6 @@ async function seek(video, at, signal) {
   });
 }
 
-function renderFit(ctx, video, x, y, width, height) {
-  if (!video || video.readyState < 2) return;
-  const scale = Math.min(width/video.videoWidth,height/video.videoHeight);
-  const w=video.videoWidth*scale,h=video.videoHeight*scale;
-  ctx.drawImage(video,x+(width-w)/2,y+(height-h)/2,w,h);
-}
-function render(ctx, a, b, mode, options, outWidth, outHeight) {
-  const w=outWidth,h=outHeight;
-  ctx.save();ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
-  if (mode==='filter') ctx.filter=String(options.filter||'none');
-  if (mode==='blur') ctx.filter=`blur(${clamp(Number(options.blur)||4,0,35)}px)`;
-  switch(mode) {
-    case 'flip-h':ctx.translate(w,0);ctx.scale(-1,1);ctx.drawImage(a,0,0,w,h);break;
-    case 'flip-v':ctx.translate(0,h);ctx.scale(1,-1);ctx.drawImage(a,0,0,w,h);break;
-    case 'rotate-90':ctx.translate(w,0);ctx.rotate(Math.PI/2);ctx.drawImage(a,0,0,h,w);break;
-    case 'rotate-180':ctx.translate(w,h);ctx.rotate(Math.PI);ctx.drawImage(a,0,0,w,h);break;
-    case 'rotate-270':ctx.translate(0,h);ctx.rotate(-Math.PI/2);ctx.drawImage(a,0,0,h,w);break;
-    case 'crop':{
-      const p=clamp(Number(options.crop)||10,0,40)/100;
-      ctx.drawImage(a,a.videoWidth*p,a.videoHeight*p,a.videoWidth*(1-2*p),a.videoHeight*(1-2*p),0,0,w,h);
-      break;
-    }
-    case 'vr':renderFit(ctx,a,0,0,w/2,h);renderFit(ctx,a,w/2,0,w/2,h);break;
-    case 'split':renderFit(ctx,a,0,0,w/2,h);renderFit(ctx,b,w/2,0,w/2,h);break;
-    default: renderFit(ctx,a,0,0,w,h);
-  }
-  ctx.restore();
-  if(mode==='watermark'){
-    const label=String(options.text||'Моё видео').slice(0,80);
-    ctx.save();ctx.font=`700 ${Math.max(14,Math.floor(w/27))}px system-ui,sans-serif`;
-    ctx.textAlign='right';ctx.textBaseline='bottom';ctx.shadowColor='#000';ctx.shadowBlur=6;
-    ctx.fillStyle='#fff';ctx.fillText(label,w-22,h-18,w-40);ctx.restore();
-  }
-}
-function canvasSize(info, mode, options) {
-  const target=clamp(Number(options.width)||720,240,1920);
-  let w=info.width,h=info.height;
-  if (mode==='crop') {const p=clamp(Number(options.crop)||10,0,40)/100;w*=1-2*p;h*=1-2*p;}
-  if(['rotate-90','rotate-270'].includes(mode)) [w,h]=[h,w];
-  if(['split','vr'].includes(mode)) {w=16;h=9;}
-  const factor=Math.min(1,target/Math.max(w,h));
-  if(mode==='split'||mode==='vr') return {width:even(target),height:even(target*9/16)};
-  return {width:even(w*factor),height:even(h*factor)};
-}
 function recorderFor(stream, {videoBitsPerSecond=2500000,audioOnly=false}={}) {
   ensure(typeof MediaRecorder!=='undefined', 'Этот браузер не поддерживает запись MediaRecorder.');
   const mime=mimeChoice(audioOnly?AUDIO_TYPES:stream.getAudioTracks().length?VIDEO_TYPES:VIDEO_SILENT_TYPES);
@@ -175,7 +163,7 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
     recorderPack=recorderFor(stream,{videoBitsPerSecond:bitrate});
     const {recorder,done,mime}=recorderPack;
     onProgress({stage:'preparing',description:'Подготовка видеокодера…'});
-    const draw=(first,second)=>render(ctx,first.video,second?.video,mode,options,width,height);
+    const draw=(first,second)=>renderVideoFrame(ctx,first.video,second?.video,mode,options,width,height);
     await seek(primary.video,start,signal);
     draw(primary,secondary);
     recorder.start(200);
@@ -197,7 +185,7 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
         if(mode==='loop'&&runs+1<loopCount){runs++;current.video.pause();await seek(current.video,start,signal);await play(current);continue;}
         break;
       }
-      await new Promise(resolve=>setTimeout(resolve,Math.max(25,Math.round(1000/fps))));
+      await nextVideoFrame(current.video,fps,signal);
     }
     draw(current,mode==='split'?secondary:null);
     onProgress({stage:'finalizing',description:'Завершение кодирования видео…'});

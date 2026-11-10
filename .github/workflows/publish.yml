@@ -1,20 +1,19 @@
-name: Test and publish Lokit
+name: Lokit quality checks
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: github-pages
-  cancel-in-progress: false
+  group: lokit-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  checks:
+  unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,27 +23,61 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Check JavaScript syntax
+      - name: Static JavaScript checks
         run: |
-          for file in js/*.js js/vendor/*.js sw.js; do node --check "$file"; done
-      - name: Unit and schema tests
-        run: |
-          node tests/test-tools.mjs
-          node tests/test-editor.mjs
-          node tests/test-media.mjs
-          node tests/test-analytics.mjs
-          python tests/test-structure.py
-      - name: Install Playwright Chromium
+          for file in js/*.js js/vendor/*.js sw.js scripts/*.mjs; do node --check "$file"; done
+      - name: Unit, version and structure tests
+        run: npm test
+
+  browser:
+    needs: unit
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chromium
+            mobile: false
+          - browser: chromium
+            mobile: true
+          - browser: firefox
+            mobile: false
+          - browser: webkit
+            mobile: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Playwright browser
+        env:
+          BROWSER: ${{ matrix.browser }}
         run: |
           python -m pip install playwright
-          python -m playwright install --with-deps chromium
-      - name: Browser integration tests
+          python -m playwright install --with-deps "$BROWSER"
+      - name: Cross-browser smoke test
+        env:
+          BROWSER: ${{ matrix.browser }}
+          MOBILE: ${{ matrix.mobile }}
+        run: |
+          if [ "$MOBILE" = true ]; then
+            python tests/test-cross-browser.py --browser "$BROWSER" --mobile
+          else
+            python tests/test-cross-browser.py --browser "$BROWSER"
+          fi
+      - name: Full Chromium integration tests
+        if: matrix.browser == 'chromium' && matrix.mobile == false
         run: python tests/test-browser.py
-      - name: Upload browser screenshots
-        if: always()
+      - name: VP8 / H.264 decoding smoke
+        if: matrix.browser == 'chromium' && matrix.mobile == false
+        run: python tests/test-codecs.py
+      - name: Screenshots on failure
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: lokit-browser-screenshots
+          name: lokit-failure-${{ matrix.browser }}-${{ matrix.mobile }}
           path: .test-output/
           if-no-files-found: ignore
-

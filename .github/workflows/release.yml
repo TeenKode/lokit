@@ -1,0 +1,35 @@
+name: Lokit tagged release
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check tag and project version
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          node scripts/release.mjs --check
+          node -e "import('./js/version.js').then(x=>{if(process.env.REF_NAME!=='v'+x.APP_VERSION)process.exit(1)})"
+          npm test
+      - name: Assemble standalone GitHub Pages bundle
+        run: |
+          mkdir -p _site/js/vendor _site/icons
+          cp index.html analytics.html about.html style.css style-enhancements.css sw.js manifest.webmanifest .nojekyll _site/
+          cp js/*.js _site/js/
+          cp js/vendor/*.js _site/js/vendor/
+          cp icons/* _site/icons/
+          (cd _site && zip -qr ../lokit-${GITHUB_REF_NAME}.zip .)
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "lokit-${GITHUB_REF_NAME}.zip" --title "Lokit $GITHUB_REF_NAME" --generate-notes --verify-tag

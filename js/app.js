@@ -2,6 +2,8 @@ import {tools} from './tools.js';
 import {recordEvent,recordOperation} from './analytics.js';
 import {mountEditor} from './editor.js';
 import './version.js';
+import {applyPreset,savePreset,resetPreset} from './presets.js';
+import {supportedMediaFeatures} from './media.js';
 
 const $=selector=>document.querySelector(selector);
 const root=$('#tool-grid');
@@ -21,10 +23,12 @@ function readFavorites(){
   }catch{return new Set();}
 }
 const favorites=readFavorites();
+function updateFavoritesStore(){
+  try{localStorage.setItem(FAVORITES_KEY,JSON.stringify([...favorites]));}catch{}
+}
 function toggleFavorite(tool){
   if(favorites.has(tool.id))favorites.delete(tool.id);else favorites.add(tool.id);
-  try{localStorage.setItem(FAVORITES_KEY,JSON.stringify([...favorites]));}catch{}
-  updateFilters();renderCards();updateFavoriteButton();
+  updateFavoritesStore();updateFilters();renderCards();updateFavoriteButton();
 }
 function updateFavoriteButton(){
   const btn=$('#favorite-tool');if(!btn)return;
@@ -178,7 +182,17 @@ function openTool(tool){
     });
   }
 
-  if(tool.options?.length){const fields=document.createElement('div');fields.className='field-grid';for(const def of tool.options)fields.append(makeField(def));settings.append(fields);}
+  let resetSettings=null;
+  if(tool.options?.length){
+    const fields=document.createElement('div');fields.className='field-grid';
+    for(const def of tool.options)fields.append(makeField(def));
+    settings.append(fields);
+    const presetHelp=document.createElement('p');presetHelp.className='studio-settings-hint';
+    presetHelp.textContent='Параметры сохраняются только в этом браузере. Файлы не сохраняются.';
+    resetSettings=document.createElement('button');resetSettings.className='secondary studio-reset-settings';
+    resetSettings.type='button';resetSettings.textContent='Сбросить настройки';
+    settings.append(presetHelp,resetSettings);
+  }
   if(tool.note){const info=document.createElement('p');info.className='small subtle';info.textContent=tool.note;settings.append(info);}
 
   const actions=document.createElement('div');actions.className='actions';
@@ -192,26 +206,45 @@ function openTool(tool){
     settings.insertBefore(hint,actions);
   }
   form.append(layout);
+  const restored=applyPreset(tool,form);
   activeEditor=mountEditor({host:previewColumn,tool,form});
+  if(restored){
+    const note=document.createElement('p');note.className='studio-settings-hint';
+    note.textContent='Восстановлены настройки предыдущего сеанса. Выберите файл заново.';
+    settings.prepend(note);
+  }
+  resetSettings?.addEventListener('click',()=>{
+    resetPreset(tool,form);
+    clearResults();form.querySelector('.progress-panel')?.classList.add('hidden');
+    showStatus('Настройки сброшены к значениям по умолчанию.');
+  });
+  if(tool.category==='Видео'||tool.category==='Аудио'||tool.category==='Изображения'){
+    const features=supportedMediaFeatures();
+    const capability=document.createElement('p');capability.className='studio-settings-hint';
+    capability.textContent=features.mediaRecorder
+      ?`Экспорт видео: MediaRecorder в реальном времени. ${features.webCodecs?'WebCodecs поддерживается, но быстрый контейнерный экспорт пока не включён.':'WebCodecs недоступен.'}`
+      :'Кодирование MediaRecorder недоступно в этом браузере. Инструменты анализа и кадров могут работать.';
+    settings.append(capability);
+  }
   const setProgress=setupProgress(form);
-  // Старый результат больше не соответствует новым параметрам.
+  // A result produced with earlier settings is stale after any export-affecting change.
   function settingsChanged(event){
     if(controller)return;
     const target=event.target;
     if(!target.matches?.('input[name], select[name], textarea[name], input[type="file"]')&&!target.closest?.('.studio-cue-list'))return;
-    clearResults();
+    if(target.name&&(tool.options||[]).some(def=>def.key===target.name))savePreset(tool,form);
+    if(downloadUrls.length||resultArea.children.length)clearResults();
     form.querySelector('.progress-panel')?.classList.add('hidden');
     showStatus();
   }
   form.addEventListener('input',settingsChanged);
   form.addEventListener('change',settingsChanged);
-  form.addEventListener('lokit-editor-change',()=>{
-    if(!controller){clearResults();form.querySelector('.progress-panel')?.classList.add('hidden');showStatus();}
-  });
+  form.addEventListener('lokit-editor-change',()=>{if(!controller){clearResults();form.querySelector('.progress-panel')?.classList.add('hidden');showStatus();}});
   function lockSettings(locked){
     for(const control of form.querySelectorAll('input, select, textarea'))control.disabled=locked;
+    if(resetSettings)resetSettings.disabled=locked;
     const preview=form.querySelector('.studio-main');
-    if(preview)preview.inert=locked;
+    if(preview)preview.inert=locked; // Also block keyboard and pointer changes in imported timeline.
     form.setAttribute('aria-busy',String(locked));
   }
 
@@ -221,7 +254,10 @@ function openTool(tool){
   form.addEventListener('submit',async event=>{
     event.preventDefault();
     if(controller)return;
-    if(!form.reportValidity()){showStatus('Проверьте параметры и выбранные файлы.',true);return;}
+    if(!form.reportValidity()){
+      showStatus('Проверьте значения параметров и выбранные файлы.',true);
+      return;
+    }
     const originalFiles=tool.isCapture?[]:Array.from(input.files);
     let files;
     try{files=tool.isCapture?[]:(await activeEditor?.getFiles(originalFiles))||originalFiles;}
@@ -229,10 +265,11 @@ function openTool(tool){
     if(!tool.isCapture&&files.length<(tool.requiredFiles||1)){showStatus(`Выберите ${tool.requiredFiles||1} файл(а).`,true);return;}
     if(files.length>(tool.maxFiles||1)){showStatus(`Можно выбрать не больше ${tool.maxFiles||1} файла(ов).`,true);return;}
     if(currentTool!==tool||!form.isConnected)return;
-    if(tool.id==='video-trim'){
-      const a=Number(form.elements.namedItem('start')?.value||0);
-      const b=Number(form.elements.namedItem('end')?.value||0);
-      if(b>0&&a>=b){showStatus('Конец фрагмента должен быть позже начала.',true);return;}
+    const startValue=Number(form.elements.namedItem('start')?.value||0);
+    const endValue=Number(form.elements.namedItem('end')?.value||0);
+    if(tool.id==='video-trim'&&endValue>0&&startValue>=endValue){
+      showStatus('Конец фрагмента должен быть позже начала.',true);
+      return;
     }
     clearResults();
     const values=Object.fromEntries(new FormData(form));
@@ -315,7 +352,8 @@ function renderCards(){
     const button=document.createElement('button');button.className='tool-card';button.type='button';button.dataset.toolId=t.id;button.setAttribute('aria-label',`${t.title}. ${t.description}`);
     const top=document.createElement('div');top.className='tool-top';
     const symbol=document.createElement('span');symbol.className='tool-symbol';symbol.textContent=t.icon;
-    const badge=document.createElement('span');badge.className='tool-category';badge.textContent=favorites.has(t.id)?`★ ${t.category}`:t.category;
+    const badge=document.createElement('span');badge.className='tool-category';
+    badge.textContent=favorites.has(t.id)?`★ ${t.category}`:t.category;
     top.append(symbol,badge);
 
     const heading=document.createElement('strong');heading.textContent=escapeText(t.title);
@@ -340,17 +378,17 @@ $('#clear-search').addEventListener('click',()=>{
 });
 function closeWorkspace(){
   const focused=workspace.contains(document.activeElement);
-  const id=currentTool?.id;
+  const toolId=currentTool?.id;
   resetWorkspace();workspace.classList.add('hidden');currentTool=null;
   if(focused){
-    const original=[...root.querySelectorAll('.tool-card')].find(card=>card.dataset.toolId===id);
-    (original||$('#search')).focus({preventScroll:true});
+    const target=[...root.querySelectorAll('.tool-card')].find(card=>card.dataset.toolId===toolId);
+    (target||$('#search')).focus({preventScroll:true});
   }
 }
 $('#close-workspace').addEventListener('click',closeWorkspace);
 $('#favorite-tool').addEventListener('click',()=>{if(currentTool)toggleFavorite(currentTool);});
 document.addEventListener('keydown',event=>{
-  if(event.key==='Escape'&&!workspace.classList.contains('hidden')&&!event.target.closest?.('.studio-cue-list')){
+  if(event.key==='Escape'&&!workspace.classList.contains('hidden')&&event.target.closest?.('.studio-cue-list')===null){
     event.preventDefault();closeWorkspace();
   }
 });

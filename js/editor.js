@@ -1,6 +1,7 @@
 import './vendor/trim-timeline.js';
 import './vendor/subtitle-serializer.js';
 import './vendor/waveform-preview.js';
+import {renderVideoFrame,canvasSize,previewModeFor} from './render.js';
 /**
  * Lokit Studio — local, reusable visual editing controls.
  * Handles preview and editable subtitle documents; never uploads user media.
@@ -47,17 +48,20 @@ function videoStudio(root,tool,form){
   const second=el('video','studio-player studio-player-secondary hidden');second.preload='metadata';second.playsInline=true;second.muted=true;
   const watermark=el('span','studio-watermark hidden');
   const cropbox=el('div','studio-crop-box hidden');cropbox.append(el('span','studio-crop-handle tl'),el('span','studio-crop-handle tr'),el('span','studio-crop-handle bl'),el('span','studio-crop-handle br'));
-  surface.append(video,second,watermark,cropbox);viewport.append(surface);
+  const renderedCanvas=el('canvas','studio-rendered-canvas');renderedCanvas.setAttribute('aria-label','Предпросмотр итогового кадра после обработки');
+  surface.append(video,second,renderedCanvas,watermark,cropbox);viewport.append(surface);
   const bar=el('div','studio-controls');
   const back=button('−5с','studio-mini-button','Назад на 5 секунд');const play=button('▶','studio-play','Воспроизвести/пауза');const forward=button('+5с','studio-mini-button','Вперёд на 5 секунд');
   const time=el('span','studio-time','00:00 / 00:00');const resolution=el('span','studio-resolution','');
-  bar.append(back,play,forward,time,resolution);
+  const toggleResult=button('Показать исходник','studio-mini-button','Переключить результат / исходник');
+  toggleResult.setAttribute('aria-pressed','true');
+  bar.append(back,play,forward,time,resolution,toggleResult);
   const timeline=el('div','studio-timeline'+(tool.id==='video-trim'?' hidden':''));
   const frames=el('div','studio-frames');
   const seek=el('input','studio-seek');seek.type='range';seek.min='0';seek.max='1000';seek.step='1';seek.value='0';seek.setAttribute('aria-label','Позиция видео');
   const rangeIndicator=el('div','studio-range hidden');
   const track=el('div','studio-track');track.append(rangeIndicator,seek);timeline.append(frames,track);
-  const tips=el('div','studio-help');tips.append(el('span','','Пробел — пауза · ← и → — по 5 секунд'),el('span','','Предпросмотр ≠ финальный экспорт'));
+  const tips=el('div','studio-help');tips.append(el('span','','Пробел — пауза · ← и → — по 5 секунд'),el('span','','Предпросмотр кадра использует тот же Canvas-рендерер, что и экспорт · кодирование зависит от браузера'));
   panel.append(viewport,bar,timeline,tips);
   content.append(panel);
   const rangeControls=el('div','studio-trim hidden');
@@ -104,6 +108,55 @@ function videoStudio(root,tool,form){
     });
   }
   let url=null,urlB=null,generation=0,destroyed=false,duration=0,objectFile=null,frameObjectUrl=null;
+  let canvasActive=true,previewFrameRequest=null,previewFrameIsVideo=false,lastPaint=0;
+  function getValues(){return Object.fromEntries((tool.options||[]).map(option=>[option.key,findValue(form,option.key)]));}
+  function previewSize(){
+    if(!video.videoWidth||!video.videoHeight)return null;
+    const values=getValues(),mode=previewModeFor(tool.id,values);
+    const size=canvasSize({width:video.videoWidth,height:video.videoHeight},mode,values);
+    const reduction=Math.min(1,900/Math.max(size.width,size.height));
+    return {width:Math.max(2,Math.round(size.width*reduction/2)*2),height:Math.max(2,Math.round(size.height*reduction/2)*2),mode,values,exportSize:size};
+  }
+  function paintPreview(){
+    if(!canvasActive||destroyed||!objectFile||video.readyState<2)return;
+    const size=previewSize();if(!size)return;
+    try{
+      if(renderedCanvas.width!==size.width)renderedCanvas.width=size.width;
+      if(renderedCanvas.height!==size.height)renderedCanvas.height=size.height;
+      const ctx=renderedCanvas.getContext('2d',{alpha:false});if(!ctx)return;
+      renderVideoFrame(ctx,video,second.readyState>=2?second:null,size.mode,size.values,size.width,size.height);
+      resolution.textContent=`${size.exportSize.width} × ${size.exportSize.height} · экспорт`;
+    }catch(error){console.warn('Предпросмотр Canvas недоступен:',error);canvasActive=false;showCanvasMode();}
+  }
+  function showCanvasMode(){
+    surface.classList.toggle('studio-show-render',canvasActive);
+    toggleResult.textContent=canvasActive?'Показать исходник':'Показать результат';
+    toggleResult.setAttribute('aria-pressed',String(canvasActive));
+    if(canvasActive)paintPreview();
+  }
+  function stopPreviewLoop(){
+    if(previewFrameRequest!==null){
+      if(previewFrameIsVideo&&typeof video.cancelVideoFrameCallback==='function')video.cancelVideoFrameCallback(previewFrameRequest);
+      else cancelAnimationFrame(previewFrameRequest);
+    }
+    previewFrameRequest=null;
+  }
+  function loopPreview(){
+    stopPreviewLoop();
+    if(!canvasActive||video.paused||destroyed)return;
+    if(typeof video.requestVideoFrameCallback==='function'){
+      previewFrameIsVideo=true;
+      previewFrameRequest=video.requestVideoFrameCallback(()=>{previewFrameRequest=null;paintPreview();loopPreview();});
+    }else{
+      previewFrameIsVideo=false;
+      previewFrameRequest=requestAnimationFrame(time=>{
+        previewFrameRequest=null;
+        if(time-lastPaint>=95){paintPreview();lastPaint=time;}
+        loopPreview();
+      });
+    }
+  }
+  toggleResult.addEventListener('click',()=>{canvasActive=!canvasActive;showCanvasMode();loopPreview();});
   const listeners=[];
   const listen=(node,type,fn)=>{node.addEventListener(type,fn);listeners.push([node,type,fn]);};
   const showError=text=>{status.classList.remove('hidden');status.textContent=text;};
@@ -119,22 +172,13 @@ function videoStudio(root,tool,form){
   };
   function updateEffect(){
     const mode=tool.id;
-    const filter=mode==='video-filter'?findValue(form,'filter'):'none';
-    video.style.filter=mode==='video-blur'?`blur(${cap(Number(findValue(form,'blur'))||0,0,35)}px)`:(filter||'none');
-    let transforms=[];
-    if(mode==='video-flip')transforms.push(findValue(form,'axis')==='vertical'?'scaleY(-1)':'scaleX(-1)');
-    if(mode==='video-rotate'){
-      const angle=Number(findValue(form,'degrees'))||90;
-      transforms.push(`rotate(${angle}deg)`);
-      if(angle%180!==0&&video.videoWidth&&video.videoHeight){const factor=Math.min(1,video.videoWidth/video.videoHeight,video.videoHeight/video.videoWidth);transforms.push(`scale(${factor})`);}
-    }
-    video.style.transform=transforms.join(' ')||'none';
+    video.style.filter='none';video.style.transform='none';
     if(mode==='video-speed')video.playbackRate=cap(Number(findValue(form,'speed'))||1,.25,4);
+    video.muted=mode==='mute-video';
     if(mode==='video-volume')video.volume=cap(Number(findValue(form,'gain'))||1,0,1);
-    watermark.classList.toggle('hidden',mode!=='video-watermark');watermark.textContent=findValue(form,'text')||'Моё видео';
-    cropbox.classList.toggle('hidden',mode!=='video-crop');
-    if(mode==='video-crop'){const p=cap(Number(findValue(form,'crop'))||0,0,40);cropbox.style.inset=`${p}%`;}else cropbox.style.inset='';
+    watermark.classList.add('hidden');cropbox.classList.add('hidden');
     surface.classList.toggle('studio-split',mode==='split-screen');
+    paintPreview();
   }
   function updateTrim(){
     if(tool.id!=='video-trim'||!duration)return;
@@ -174,10 +218,15 @@ function videoStudio(root,tool,form){
       });
       trimWidget.load(objectFile,duration);
     }
-    updateTrim();updateEffect();
+    updateTrim();updateEffect();showCanvasMode();
   });
-  listen(video,'timeupdate',syncTime);
-  listen(video,'play',()=>play.textContent='Ⅱ');listen(video,'pause',()=>play.textContent='▶');
+  listen(video,'timeupdate',()=>{syncTime();if(!video.requestVideoFrameCallback)paintPreview();});
+  listen(video,'seeked',paintPreview);
+  listen(video,'loadeddata',paintPreview);
+  listen(second,'loadeddata',paintPreview);
+  listen(second,'seeked',paintPreview);
+  listen(video,'play',()=>{play.textContent='Ⅱ';loopPreview();});
+  listen(video,'pause',()=>{play.textContent='▶';stopPreviewLoop();paintPreview();});
   listen(video,'ended',()=>play.textContent='▶');
   listen(play,'click',()=>{if(video.paused)video.play().catch(()=>showError('Не удалось воспроизвести видео.'));else video.pause();});
   listen(back,'click',()=>seekVideo(video,video.currentTime-5));listen(forward,'click',()=>seekVideo(video,video.currentTime+5));
@@ -186,12 +235,12 @@ function videoStudio(root,tool,form){
     if([' ','ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();if(e.key===' ')play.click();else seekVideo(video,video.currentTime+(e.key==='ArrowRight'?5:-5));}
   });viewport.tabIndex=0;
   function reset(){
-    generation++;duration=0;video.pause();second.pause();
+    generation++;duration=0;video.pause();second.pause();stopPreviewLoop();
     trimWidget?.destroy();trimWidget=null;
     video.removeAttribute('src');second.removeAttribute('src');video.load();second.load();
     if(url)URL.revokeObjectURL(url);if(urlB)URL.revokeObjectURL(urlB);
     url=null;urlB=null;objectFile=null;frames.replaceChildren();seek.value='0';
-    resolution.textContent='';time.textContent='00:00 / 00:00';
+    resolution.textContent='';time.textContent='00:00 / 00:00';renderedCanvas.width=0;renderedCanvas.height=0;
     rangeControls.classList.add('hidden');hideError();
   }
   async function createFrames(file,token){
@@ -227,7 +276,7 @@ function videoStudio(root,tool,form){
     }
     objectFile=first;
     placeholder.classList.add('hidden');panel.classList.remove('hidden');badge.textContent='Реальное время';
-    url=URL.createObjectURL(first);video.src=url;video.load();
+    url=URL.createObjectURL(first);video.src=url;video.load();showCanvasMode();
     if(files?.[1]&&isVideo(files[1])){urlB=URL.createObjectURL(files[1]);second.src=urlB;second.classList.toggle('hidden',tool.id!=='split-screen');second.load();}
     else second.classList.add('hidden');
     const token=generation;
