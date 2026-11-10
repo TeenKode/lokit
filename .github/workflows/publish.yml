@@ -29,8 +29,37 @@ jobs:
       - name: Unit, version and structure tests
         run: npm test
 
-  browser:
+  formats:
     needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Ensure FFmpeg and FFprobe
+        run: |
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update && sudo apt-get install -y ffmpeg
+          fi
+          ffmpeg -version | head -n 1
+      - name: Generate representative codec samples and verify decoded outputs
+        run: python tests/test-formats.py
+      - name: Save diagnostic manifest on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lokit-media-fixture-report
+          path: |
+            tests/fixtures/generated/manifest.json
+            tests/fixtures/generated/results.json
+          if-no-files-found: ignore
+
+  browser:
+    needs: [unit, formats]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

@@ -101,6 +101,23 @@ async function seek(video, at, signal) {
   });
 }
 
+/** Detect damaged/stalled decoders without forcing the user to wait forever.
+ * Resets after seeking backwards or switching clips; does not mistake a slow
+ * encoder for a stalled decoder (it watches media time, not wall-clock FPS).
+ */
+export function playbackWatchdog({maxIdleMs=15000,now=()=>performance.now()}={}){
+  let lastTime=null,lastAdvance=now();
+  return position=>{
+    const current=Number(position);
+    if(!Number.isFinite(current))throw new Error('Видеодекодер вернул некорректную позицию воспроизведения.');
+    const tick=now();
+    if(lastTime===null||current>lastTime+.004||current<lastTime-.05){
+      lastTime=current;lastAdvance=tick;return;
+    }
+    if(tick-lastAdvance>maxIdleMs)throw new Error('Воспроизведение остановилось: браузер не может декодировать видео. Попробуйте другой формат или другой браузер.');
+  };
+}
+
 function recorderFor(stream, {videoBitsPerSecond=2500000,audioOnly=false}={}) {
   ensure(typeof MediaRecorder!=='undefined', 'Этот браузер не поддерживает запись MediaRecorder.');
   const mime=mimeChoice(audioOnly?AUDIO_TYPES:stream.getAudioTracks().length?VIDEO_TYPES:VIDEO_SILENT_TYPES);
@@ -146,12 +163,19 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
     stream=canvas.captureStream(fps);
     const videos=secondary&&mode==='merge'?[primary.video,secondary.video]:[primary.video];
     const includeAudio=mode!=='mute' && options.audio!=='off';
-    if(includeAudio && typeof AudioContext!=='undefined'){
+    if(includeAudio){
+      ensure(typeof AudioContext!=='undefined','Этот браузер не поддерживает экспорт со звуком через Web Audio. Для сохранения звука используйте другой браузер.');
       try {
         audioCtx=new AudioContext();
         connectAudio(audioCtx,videos,stream,mode==='volume'?clamp(Number(options.gain)||1,0,3):1);
         await audioCtx.resume();
-      } catch(e){console.warn('Звуковую дорожку добавить не удалось:',e);await audioCtx?.close().catch(()=>{});audioCtx=null;}
+        ensure(audioCtx.state==='running','Браузер не разрешил включить звук при экспорте.');
+        ensure(stream.getAudioTracks().length>0,'Не удалось добавить звуковую дорожку к результату.');
+      } catch(e){
+        await audioCtx?.close().catch(()=>{});
+        audioCtx=null;
+        throw new Error(`Не удалось подготовить экспорт со звуком: ${e.message||e}`);
+      }
     }
     // Для split второй ролик НЕ подключён к AudioContext: глушим его
     // напрямую, иначе его звук может играть через динамики устройства.
@@ -173,12 +197,16 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
     draw(primary,secondary);
     recorder.start(200);
     let runs=0,current=primary,next=secondary;
+    let checkPlayback=playbackWatchdog();
     const play=async item=>{onAbort(signal);try {await item.video.play();} catch(e) {throw new Error('Браузер заблокировал воспроизведение. Нажмите «Запустить» ещё раз либо проверьте формат файла.');}};
     await play(primary);
     if(mode==='split') await play(secondary);
     while(true){
       onAbort(signal);
       draw(current,mode==='split'?secondary:null);
+      // Split-screen finishes after both videos; the longest running clock
+      // should advance even when one of the streams ends before the other.
+      checkPlayback(mode==='split'?Math.max(primary.video.currentTime,secondary.video.currentTime):current.video.currentTime);
       let fraction;
       if(mode==='merge')fraction=(current===primary?primary.video.currentTime:primary.duration+secondary.video.currentTime)/total;
       else if(mode==='split')fraction=Math.max(primary.video.currentTime,secondary.video.currentTime)/total;
@@ -186,8 +214,8 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
       onProgress({stage:'processing',percent:clamp(fraction*100,0,99),current:clamp(fraction,0,1)*total,total});
       const finished=mode==='split'?(primary.video.ended&&secondary.video.ended):current.video.ended||current.video.currentTime>=(mode==='merge'?current.duration:end)-.035;
       if(finished){
-        if(mode==='merge'&&next){current.video.pause();current=next;next=null;await play(current);continue;}
-        if(mode==='loop'&&runs+1<loopCount){runs++;current.video.pause();await seek(current.video,start,signal);await play(current);continue;}
+        if(mode==='merge'&&next){current.video.pause();current=next;next=null;checkPlayback=playbackWatchdog();await play(current);continue;}
+        if(mode==='loop'&&runs+1<loopCount){runs++;current.video.pause();await seek(current.video,start,signal);checkPlayback=playbackWatchdog();await play(current);continue;}
         break;
       }
       await nextVideoFrame(current.video,fps,signal);

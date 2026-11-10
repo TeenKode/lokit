@@ -2,3 +2,7 @@
 node_modules/
 tests/.tmp-modules/
 .DS_Store
+
+# Regenerated locally / in CI; do not publish large test videos
+tests/fixtures/generated/
+.test-output/

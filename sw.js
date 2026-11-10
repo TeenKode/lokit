@@ -1,4 +1,4 @@
-const CACHE='lokit-v0.5.0';
+const CACHE='lokit-v0.5.1';
 const FILES=[
   './','./index.html','./analytics.html','./about.html','./style.css','./style-enhancements.css','./manifest.webmanifest',
   './icons/icon.svg','./icons/icon-192.png','./icons/icon-512.png',
