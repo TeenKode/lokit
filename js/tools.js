@@ -11,8 +11,8 @@ const tool = (id,title,desc,icon,mode,options=[],category='Видео',extra={})
 
 export const tools=[
   tool('video-trim','Обрезка видео','Оставить нужный отрезок ролика','✂','trim',[
-    {key:'start',label:'Начало, сек.',type:'number',default:'0',min:0,step:.1},
-    {key:'end',label:'Конец, сек. (0 — до конца)',type:'number',default:'0',min:0,step:.1},width]),
+    {key:'start',label:'Начало, сек.',type:'number',default:'0',min:0,step:.01},
+    {key:'end',label:'Конец, сек. (0 — до конца)',type:'number',default:'0',min:0,step:.01},width]),
   tool('mute-video','Удалить звук','Экспортировать ролик без звуковой дорожки','◌','mute',[width]),
   tool('video-crop','Кадрирование видео','Убрать одинаковые поля по краям кадра','▣','crop',[
     {key:'crop',label:'Обрезать с каждого края, %',type:'number',default:'10',min:0,max:40,step:1},width]),

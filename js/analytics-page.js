@@ -1,4 +1,5 @@
 import {tools} from './tools.js';
+import './version.js';
 import {localEvents,recordEvent,clearLocalEvents,exportLocalEvents,summarizeLocal} from './analytics.js';
 
 const $=selector=>document.querySelector(selector);

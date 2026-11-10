@@ -24,6 +24,7 @@
             <span>локальные инструменты без лишнего</span>
           </span>
         </a>
+        <a class="version-pill" href="./about.html" title="Версия и история изменений"><span data-app-version>v0.3.0</span><small data-app-stage>beta</small></a>
       </div>
       <div class="header-right">
         <span class="status" id="network-status">Локальная обработка</span>
@@ -66,10 +67,10 @@
         <div class="workspace-heading">
           <div>
             <p class="eyebrow">ИНСТРУМЕНТ</p>
-            <h2 id="tool-title"></h2>
+            <h2 id="tool-title" tabindex="-1"></h2>
             <p id="tool-description" class="subtle"></p>
           </div>
-          <button id="close-workspace" class="icon-button" type="button" aria-label="Закрыть">✕</button>
+          <div class="workspace-buttons"><button id="favorite-tool" class="favorite-button" type="button" aria-pressed="false">☆ В избранное</button><button id="close-workspace" class="icon-button" type="button" aria-label="Закрыть">✕</button></div>
         </div>
         <div id="tool-content"></div>
         <div id="tool-status" class="tool-status" role="status" aria-live="polite"></div>
@@ -107,7 +108,7 @@
     </main>
 
     <footer class="footer">
-      <span>Lokit · браузерные офлайн-инструменты</span>
+      <span>Lokit · браузерные офлайн-инструменты · <a href="./about.html">Что нового</a></span>
       <span>Без аккаунта · без рекламы · <a href="./analytics.html">Статистика использования</a></span>
     </footer>
   </div>

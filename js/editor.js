@@ -141,6 +141,8 @@ function videoStudio(root,tool,form){
     const start=cap(Number(findValue(form,'start'))||0,0,duration);
     const rawEnd=Number(findValue(form,'end'))||duration;
     const end=cap(rawEnd,0,duration);
+    if(rawEnd>0&&end<=start){showError('Конец фрагмента должен быть позже начала.');return;}
+    hideError();
     from.value=String(Math.round(start/duration*1000));to.value=String(Math.round(end/duration*1000));
     trimReadout.textContent=`${prettyTime(start)} — ${prettyTime(end)}`;
     rangeIndicator.style.left=`${start/duration*100}%`;
@@ -294,16 +296,16 @@ function subtitleStudio(root,tool){
       const text=el('textarea');text.rows=2;text.value=cue.text;text.setAttribute('aria-label',`Текст реплики ${i+1}`);
       const remove=button('×','studio-mini-button',`Удалить реплику ${i+1}`);remove.setAttribute('aria-label',`Удалить реплику ${i+1}`);
       const update=()=>{const a=timeFromText(start.value),b=timeFromText(end.value);if(Number.isFinite(a)&&Number.isFinite(b)&&b>a){cue.start=a;cue.end=b;cue.invalid=false;start.classList.remove('invalid');end.classList.remove('invalid');}else{cue.invalid=true;start.classList.add('invalid');end.classList.add('invalid');}
-        cue.text=text.value;previewText.textContent=cue.text||'Пустая реплика';revision++;};
+        cue.text=text.value;previewText.textContent=cue.text||'Пустая реплика';revision++;root.dispatchEvent(new Event('lokit-editor-change',{bubbles:true}));};
       start.addEventListener('change',update);end.addEventListener('change',update);text.addEventListener('input',update);
       row.addEventListener('focusin',()=>{previewText.textContent=cue.text||'Пустая реплика';});
-      remove.addEventListener('click',()=>{track.cues.splice(i,1);revision++;buildRows();});
+      remove.addEventListener('click',()=>{track.cues.splice(i,1);revision++;buildRows();root.dispatchEvent(new Event('lokit-editor-change',{bubbles:true}));});
       row.append(number,timing,text,remove);list.append(row);
     }
   }
   function buildTabs(){fileTabs.replaceChildren();tracks.forEach((t,i)=>{const b=button(t.file.name,'studio-file-tab'+(i===active?' active':''));b.setAttribute('aria-pressed',String(i===active));b.addEventListener('click',()=>{active=i;buildTabs();buildRows();});fileTabs.append(b);});}
   add.addEventListener('click',()=>{const track=tracks[active];if(!track)return;
-    const last=track.cues.at(-1)?.end||0;track.cues.push({start:last,end:last+2,text:'Новая реплика'});revision++;buildRows();list.lastElementChild?.querySelector('textarea')?.focus();
+    const last=track.cues.at(-1)?.end||0;track.cues.push({start:last,end:last+2,text:'Новая реплика'});revision++;buildRows();root.dispatchEvent(new Event('lokit-editor-change',{bubbles:true}));list.lastElementChild?.querySelector('textarea')?.focus();
   });
   async function loadFiles(files){
     const marker=++revision;tracks=[];active=0;status.classList.add('hidden');list.replaceChildren();

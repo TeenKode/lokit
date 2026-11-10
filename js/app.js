@@ -1,6 +1,7 @@
 import {tools} from './tools.js';
 import {recordEvent,recordOperation} from './analytics.js';
 import {mountEditor} from './editor.js';
+import './version.js';
 
 const $=selector=>document.querySelector(selector);
 const root=$('#tool-grid');
@@ -11,8 +12,29 @@ const resultArea=$('#result-area');
 const status=$('#tool-status');
 const selected={category:'Все',search:''};
 const LAST_TOOL_KEY='lokit:last-tool';
-const categoryNames=['Все','Видео','Аудио','Изображения','Анализ','Запись','Субтитры'];
-const categoryIcons={Все:'◈',Видео:'▣',Аудио:'♪',Изображения:'▧',Анализ:'ⓘ',Запись:'●',Субтитры:'≡'};
+const FAVORITES_KEY='lokit:favorites:v1';
+const allowedIds=new Set(tools.map(t=>t.id));
+function readFavorites(){
+  try{
+    const stored=JSON.parse(localStorage.getItem(FAVORITES_KEY)||'[]');
+    return new Set(Array.isArray(stored)?stored.filter(id=>typeof id==='string'&&allowedIds.has(id)):[]);
+  }catch{return new Set();}
+}
+const favorites=readFavorites();
+function toggleFavorite(tool){
+  if(favorites.has(tool.id))favorites.delete(tool.id);else favorites.add(tool.id);
+  try{localStorage.setItem(FAVORITES_KEY,JSON.stringify([...favorites]));}catch{}
+  updateFilters();renderCards();updateFavoriteButton();
+}
+function updateFavoriteButton(){
+  const btn=$('#favorite-tool');if(!btn)return;
+  const saved=Boolean(currentTool&&favorites.has(currentTool.id));
+  btn.textContent=saved?'★ В избранном':'☆ В избранное';
+  btn.setAttribute('aria-pressed',String(saved));
+  btn.setAttribute('aria-label',saved?'Убрать инструмент из избранного':'Добавить инструмент в избранное');
+}
+const categoryNames=['Все','Избранное','Видео','Аудио','Изображения','Анализ','Запись','Субтитры'];
+const categoryIcons={Все:'◈',Избранное:'★',Видео:'▣',Аудио:'♪',Изображения:'▧',Анализ:'ⓘ',Запись:'●',Субтитры:'≡'};
 let currentTool=null,controller=null,stopRecording=null,activeEditor=null,downloadUrls=[];
 
 function escapeText(t){return String(t||'');}
@@ -64,7 +86,7 @@ function setupProgress(form){
   };
 }
 function showStatus(text='',error=false){status.textContent=text;status.classList.toggle('error',error);}
-function categoryCount(category){return category==='Все'?tools.length:tools.filter(t=>t.category===category).length;}
+function categoryCount(category){return category==='Все'?tools.length:category==='Избранное'?favorites.size:tools.filter(t=>t.category===category).length;}
 function findToolById(id){return tools.find(tool=>tool.id===id) || null;}
 function saveLastTool(tool){if(tool?.id){try{localStorage.setItem(LAST_TOOL_KEY,tool.id);}catch{}} updateLastToolButtons();}
 function getLastTool(){try{return findToolById(localStorage.getItem(LAST_TOOL_KEY));}catch{return null;}}
@@ -122,7 +144,7 @@ function makeField(def){
 }
 
 function openTool(tool){
-  resetWorkspace();currentTool=tool;saveLastTool(tool);recordEvent('open',tool.id);
+  resetWorkspace();currentTool=tool;saveLastTool(tool);recordEvent('open',tool.id);updateFavoriteButton();
   $('#tool-title').textContent=tool.title;
   $('#tool-description').textContent=tool.description;
   workspace.classList.remove('hidden');
@@ -172,6 +194,26 @@ function openTool(tool){
   form.append(layout);
   activeEditor=mountEditor({host:previewColumn,tool,form});
   const setProgress=setupProgress(form);
+  // Старый результат больше не соответствует новым параметрам.
+  function settingsChanged(event){
+    if(controller)return;
+    const target=event.target;
+    if(!target.matches?.('input[name], select[name], textarea[name], input[type="file"]')&&!target.closest?.('.studio-cue-list'))return;
+    clearResults();
+    form.querySelector('.progress-panel')?.classList.add('hidden');
+    showStatus();
+  }
+  form.addEventListener('input',settingsChanged);
+  form.addEventListener('change',settingsChanged);
+  form.addEventListener('lokit-editor-change',()=>{
+    if(!controller){clearResults();form.querySelector('.progress-panel')?.classList.add('hidden');showStatus();}
+  });
+  function lockSettings(locked){
+    for(const control of form.querySelectorAll('input, select, textarea'))control.disabled=locked;
+    const preview=form.querySelector('.studio-main');
+    if(preview)preview.inert=locked;
+    form.setAttribute('aria-busy',String(locked));
+  }
 
   stop.addEventListener('click',()=>stopRecording?.());
   cancel.addEventListener('click',()=>controller?.abort());
@@ -179,15 +221,22 @@ function openTool(tool){
   form.addEventListener('submit',async event=>{
     event.preventDefault();
     if(controller)return;
+    if(!form.reportValidity()){showStatus('Проверьте параметры и выбранные файлы.',true);return;}
     const originalFiles=tool.isCapture?[]:Array.from(input.files);
     let files;
     try{files=tool.isCapture?[]:(await activeEditor?.getFiles(originalFiles))||originalFiles;}
     catch(error){showStatus(error?.message||'Неверные параметры редактирования.',true);return;}
     if(!tool.isCapture&&files.length<(tool.requiredFiles||1)){showStatus(`Выберите ${tool.requiredFiles||1} файл(а).`,true);return;}
     if(files.length>(tool.maxFiles||1)){showStatus(`Можно выбрать не больше ${tool.maxFiles||1} файла(ов).`,true);return;}
+    if(currentTool!==tool||!form.isConnected)return;
+    if(tool.id==='video-trim'){
+      const a=Number(form.elements.namedItem('start')?.value||0);
+      const b=Number(form.elements.namedItem('end')?.value||0);
+      if(b>0&&a>=b){showStatus('Конец фрагмента должен быть позже начала.',true);return;}
+    }
     clearResults();
     const values=Object.fromEntries(new FormData(form));
-    const runController=new AbortController();controller=runController;start.disabled=true;cancel.disabled=false;
+    const runController=new AbortController();controller=runController;lockSettings(true);start.disabled=true;cancel.disabled=false;
     const isCurrent=()=>currentTool===tool&&controller===runController;
     const started=performance.now();
     let latestProgress=0;
@@ -233,13 +282,14 @@ function openTool(tool){
         showStatus(wasCancelled?'Операция отменена.':e.message||'Произошла ошибка.',!wasCancelled);
       }
     }
-    finally{active=false;start.disabled=false;cancel.disabled=true;stop.classList.add('hidden');
+    finally{active=false;lockSettings(false);start.disabled=false;cancel.disabled=true;stop.classList.add('hidden');
       if(isCurrent()){stopRecording=null;controller=null;}
     }
   });
 
   toolContent.append(form);
   workspace.scrollIntoView({behavior:'smooth',block:'start'});
+  $('#tool-title').focus({preventScroll:true});
 }
 
 function updateFilters(){
@@ -257,15 +307,15 @@ function updateFilters(){
 }
 
 function renderCards(){
-  const match=tools.filter(t=>(selected.category==='Все'||t.category===selected.category)&&
+  const match=tools.filter(t=>(selected.category==='Все'||(selected.category==='Избранное'?favorites.has(t.id):t.category===selected.category))&&
     `${t.title} ${t.description} ${t.id} ${t.category}`.toLocaleLowerCase('ru').includes(selected.search));
   root.replaceChildren();
 
   for(const t of match){
-    const button=document.createElement('button');button.className='tool-card';button.type='button';button.setAttribute('aria-label',`${t.title}. ${t.description}`);
+    const button=document.createElement('button');button.className='tool-card';button.type='button';button.dataset.toolId=t.id;button.setAttribute('aria-label',`${t.title}. ${t.description}`);
     const top=document.createElement('div');top.className='tool-top';
     const symbol=document.createElement('span');symbol.className='tool-symbol';symbol.textContent=t.icon;
-    const badge=document.createElement('span');badge.className='tool-category';badge.textContent=t.category;
+    const badge=document.createElement('span');badge.className='tool-category';badge.textContent=favorites.has(t.id)?`★ ${t.category}`:t.category;
     top.append(symbol,badge);
 
     const heading=document.createElement('strong');heading.textContent=escapeText(t.title);
@@ -288,7 +338,22 @@ $('#search').addEventListener('input',e=>{
 $('#clear-search').addEventListener('click',()=>{
   const input=$('#search');input.value='';selected.search='';$('#clear-search').classList.add('hidden');renderCards();input.focus();
 });
-$('#close-workspace').addEventListener('click',()=>{resetWorkspace();workspace.classList.add('hidden');currentTool=null;});
+function closeWorkspace(){
+  const focused=workspace.contains(document.activeElement);
+  const id=currentTool?.id;
+  resetWorkspace();workspace.classList.add('hidden');currentTool=null;
+  if(focused){
+    const original=[...root.querySelectorAll('.tool-card')].find(card=>card.dataset.toolId===id);
+    (original||$('#search')).focus({preventScroll:true});
+  }
+}
+$('#close-workspace').addEventListener('click',closeWorkspace);
+$('#favorite-tool').addEventListener('click',()=>{if(currentTool)toggleFavorite(currentTool);});
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&!workspace.classList.contains('hidden')&&!event.target.closest?.('.studio-cue-list')){
+    event.preventDefault();closeWorkspace();
+  }
+});
 
 for(const node of [$('#open-last-tool'),$('#hero-last-tool')]){
   node?.addEventListener('click',()=>{const last=getLastTool();if(last)openTool(last);});

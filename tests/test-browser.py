@@ -17,11 +17,18 @@ try:
   page.on('pageerror',lambda e: errors.append(str(e)))
   page.goto(URL,wait_until='networkidle')
   assert page.locator('.tool-card').count()==24, f"Card count {page.locator('.tool-card').count()}"
+  assert 'v0.3.0' in page.locator('.version-pill').inner_text()
+  page.locator('.version-pill').click()
+  assert page.url.endswith('/about.html')
+  assert 'v0.3.0' in page.locator('#release-title').inner_text()
+  page.goto(URL,wait_until='networkidle')
   assert page.locator('a[href="./analytics.html"]').count()>=1
   page.screenshot(path=str(ARTIFACTS/'lokit-home-reviewed.png'),full_page=True)
   page.locator('.tool-card').filter(has=page.locator('strong',has_text='SRT ⇄ VTT')).first.click()
   page.locator('#tool-content input[type=file]').set_input_files(str(ROOT/'tests/fixtures/sample.srt'))
   assert page.locator('.studio-shell').count()==1
+  page.locator('#favorite-tool').click()
+  assert page.locator('#favorite-tool').get_attribute('aria-pressed')=='true'
   page.locator('.studio-cue-list .studio-cue textarea').first.fill('Изменено в редакторе Lokit')
   assert page.locator('.studio-sub-preview').count()==1
   page.locator('#tool-content button.primary').click()
@@ -30,16 +37,46 @@ try:
   with page.expect_download() as edited:
    page.locator('.download a').first.click()
   assert 'Изменено в редакторе Lokit' in Path(edited.value.path()).read_text(encoding='utf-8')
+  page.locator('.studio-cue-list .studio-cue textarea').first.fill('Обновлённый текст')
+  assert page.locator('.download a').count()==0
   page.locator('#close-workspace').click()
+  page.locator('#categories .chip').filter(has_text='Избранное').click()
+  assert page.locator('.tool-card').count()==1
+  page.reload(wait_until='networkidle')
+  page.locator('#categories .chip').filter(has_text='Избранное').click()
+  assert page.locator('.tool-card').count()==1
+  page.locator('#categories .chip').filter(has_text='Все').click()
   page.locator('.tool-card').filter(has=page.locator('strong',has_text='Обрезка видео')).first.click()
   page.locator('#tool-content input[type=file]').set_input_files(str(ROOT/'tests/fixtures/sample.webm'))
   page.locator('.studio-video-panel:not(.hidden) video').first.wait_for(state='visible',timeout=15000)
   page.locator('.studio-source-timeline .tt-strip').wait_for(state='visible',timeout=12000)
   assert page.locator('.studio-player').count()>=1
   assert page.locator('.studio-trim-controls input[type=range]').count()==2
+  page.locator('[name=start]').fill('1.25')
+  page.locator('[name=end]').fill('0.50')
+  page.locator('#tool-content button.primary').click()
+  assert 'позже начала' in page.locator('#tool-status').inner_text()
+  page.locator('[name=end]').fill('0')
+  page.evaluate("""async () => {
+    const {tools}=await import('./js/tools.js');
+    tools.find(t=>t.id==='video-trim').run=({signal})=>new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>resolve({blob:new Blob(['test'],{type:'video/webm'}),name:'test.webm'}),650);
+      signal.addEventListener('abort',()=>{clearTimeout(timer);reject(new DOMException('Cancelled','AbortError'));},{once:true});
+    });
+  }""")
+  page.locator('#tool-content button.primary').click()
+  page.wait_for_function("() => document.querySelector('.studio-form').getAttribute('aria-busy')==='true'")
+  assert page.locator('#tool-content input[type=file]').is_disabled()
+  assert page.locator('.studio-main').evaluate('(node)=>node.inert') is True
+  page.wait_for_function("() => document.querySelector('#tool-status').textContent.includes('Готово')",timeout=10000)
+  assert not page.locator('#tool-content input[type=file]').is_disabled()
+  assert page.locator('.download a').count()==1
+  page.locator('[name=start]').fill('0.5')
+  assert page.locator('.download a').count()==0
   page.locator('#close-workspace').click()
   page.goto(URL+'/analytics.html',wait_until='networkidle')
   assert page.locator('#metric-success').inner_text()=='1',page.locator('#metric-success').inner_text()
+  assert 'v0.3.0' in page.locator('.version-pill').inner_text()
   assert int(page.locator('#metric-opens').inner_text())>=1
   assert page.locator('#analytics-tools tr').count()>=1
   assert page.locator('#analytics-history').inner_text().count('SRT ⇄ VTT')>=1
@@ -56,6 +93,8 @@ try:
   page.goto(URL+'/analytics.html',wait_until='domcontentloaded')
   assert page.locator('#scope-global').count()==0
   assert page.locator('#metric-success').inner_text()=='0'
+  page.goto(URL+'/about.html',wait_until='domcontentloaded')
+  assert 'v0.3.0' in page.locator('#release-title').inner_text()
   context.set_offline(False)
   mobile=browser.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True,device_scale_factor=1)
   mobile_page=mobile.new_page()
@@ -63,6 +102,9 @@ try:
   mobile_page.goto(URL+'/analytics.html',wait_until='networkidle')
   assert mobile_page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), (mobile_page.evaluate('document.documentElement.scrollWidth'),mobile_page.evaluate('window.innerWidth'))
   mobile_page.screenshot(path=str(ARTIFACTS/'lokit-analytics-mobile.png'),full_page=True)
+  for uri in [URL,URL+'/about.html']:
+   mobile_page.goto(uri,wait_until='networkidle')
+   assert mobile_page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'),uri
   mobile.close()
   print('PASS: 24 tools, navigation, SRT operation, local statistics, 7d filter, export, delete, offline, 390px layout')
   print('BROWSER ERRORS:',errors)
