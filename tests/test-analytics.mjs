@@ -17,7 +17,7 @@ const cryptoDescriptor=Object.getOwnPropertyDescriptor(globalThis,'crypto');
 try{
   Object.defineProperty(globalThis,'crypto',{configurable:true,value:undefined});
   a.recordEvent('view');
-  assert.match(a.localEvents()[0].id,/^local-\\d+-/);
+  assert.match(a.localEvents()[0].id,/^local-\d+-/);
 }finally{
   if(cryptoDescriptor)Object.defineProperty(globalThis,'crypto',cryptoDescriptor);
   else delete globalThis.crypto;
