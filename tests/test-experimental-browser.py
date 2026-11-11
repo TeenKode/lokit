@@ -1,6 +1,7 @@
 """Chromium: missing optional same-origin engines must not break the ordinary export."""
 from pathlib import Path
 from playwright.sync_api import sync_playwright
+from sidebar_nav import click_sidebar_tool
 import subprocess,time
 root=Path(__file__).resolve().parents[1]
 server=subprocess.Popen(['python','-m','http.server','8778','--bind','127.0.0.1','--directory',str(root)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
@@ -14,7 +15,7 @@ try:
   page.on('pageerror',lambda e:errors.append(str(e)))
   page.route('**/assets/codecs/**',lambda route:(remote.append(route.request.url),route.abort()))
   page.goto('http://127.0.0.1:8778/',wait_until='domcontentloaded')
-  page.locator('.tool-card').filter(has_text='Конвертер видео').first.click()
+  click_sidebar_tool(page,'Конвертер видео')
   chooser=page.locator('select[name=engine]')
   assert chooser.count()==1,'Engine select should exist in the converter'
   assert chooser.input_value()=='auto','Automatic offline-safe path must be the default'

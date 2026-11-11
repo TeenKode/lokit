@@ -1,3 +1,4 @@
+// Refresh offline navigation assets; preserve v0.8.5 bundled codec caches.
 const CACHE='lokit-v0.8.5';
 const FILES=[
   './','./index.html','./analytics.html','./about.html','./batch.html','./style.css','./style-enhancements.css','./layout-compact.css','./sidebar.css','./glow.css','./batch.css','./manifest.webmanifest',
