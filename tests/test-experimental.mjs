@@ -45,4 +45,22 @@ try{
  const fallback=await tryExperimental({files:[file],mode:'convert',options:{engine:'webcodecs'},onProgress:()=>{}});
  assert.equal(fallback,null);
 }finally{if(before!==undefined)globalThis.VideoEncoder=before;}
-console.log('Experimental engines: opt-in, dimensions, audio-track guard, progress, FFmpeg worker isolation, cancel, fallback — PASS');
+
+// Auto policy must not fetch optional codecs just to start an export offline.
+const previousEncoder=globalThis.VideoEncoder,previousDecoder=globalThis.VideoDecoder;
+const previousCaches=globalThis.caches;
+try{
+  globalThis.VideoEncoder=class {};
+  globalThis.VideoDecoder=class {};
+  delete globalThis.caches;
+  const eligible=experimentalEligibility({files:[file],mode:'compress',options:{engine:'auto'}});
+  assert.equal(eligible.eligible,true);
+  assert.equal(eligible.engine,'webcodecs');
+  assert.equal(eligible.automatic,true);
+  assert.equal(await tryExperimental({files:[file],mode:'compress',options:{engine:'auto'}}),null);
+}finally{
+  if(previousEncoder===undefined)delete globalThis.VideoEncoder;else globalThis.VideoEncoder=previousEncoder;
+  if(previousDecoder===undefined)delete globalThis.VideoDecoder;else globalThis.VideoDecoder=previousDecoder;
+  if(previousCaches===undefined)delete globalThis.caches;else globalThis.caches=previousCaches;
+}
+console.log('Experimental engines: auto/offline policy, dimensions, audio-track guard, progress, FFmpeg isolation, cancel, fallback — PASS');
