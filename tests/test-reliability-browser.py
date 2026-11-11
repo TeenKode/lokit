@@ -1,6 +1,7 @@
 """Browser recovery: broken input must not poison the next job."""
 from pathlib import Path
 from playwright.sync_api import sync_playwright
+from sidebar_nav import click_sidebar_tool
 import subprocess,time
 ROOT=Path(__file__).resolve().parents[1]
 URL='http://127.0.0.1:8788/'
@@ -14,7 +15,7 @@ try:
   errors=[]
   page.on('pageerror',lambda error:errors.append(str(error)))
   page.goto(URL,wait_until='domcontentloaded')
-  page.locator('.tool-card').filter(has=page.locator('strong',has_text='Информация о видео')).first.click()
+  click_sidebar_tool(page,'Информация о видео')
   chooser=page.locator('.studio-form input[type=file]')
   chooser.set_input_files({'name':'broken.mp4','mimeType':'video/mp4','buffer':bytes([255])*512})
   page.locator('.studio-form button.primary').click()
