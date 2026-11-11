@@ -1,0 +1,96 @@
+/* Lokit soft glow system. All effects are static shadows: no animation, filters or extra assets. */
+:root{
+  --glow-rest:rgba(78,149,232,.10);
+  --glow-edge:rgba(128,195,255,.12);
+  --glow-control:rgba(91,169,248,.12);
+  --glow-hover:rgba(107,187,255,.23);
+  --glow-focus:rgba(130,200,255,.32);
+}
+
+/* The larger surfaces share the same faint halo. Existing depth remains visible. */
+:where(
+  .hero-copy,.hero-panel,.toolbar,.workspace,.benefit-card,.footnote,
+  .tool-sidebar,.analytics-panel,.metric-card,.analytics-toolbar,
+  .batch-panel,.batch-overall,.batch-help,.batch-job,
+  .studio-shell,.studio-settings,.precision-editor,
+  .multi-timeline,.subtitle-lane-wrap,.capability-card,.download
+){
+  box-shadow:0 0 0 1px var(--glow-edge),0 0 16px var(--glow-rest),0 10px 30px rgba(0,0,0,.17);
+}
+/* Smaller nested surfaces: restrained glow, no competing full-size shadow. */
+:where(
+  .stat-card,.sidebar-group,.batch-dropzone,.dropzone,
+  .studio-wave-area,.studio-trim,.batch-empty,.search-box,
+  .batch-export,.no-results
+){
+  box-shadow:inset 0 1px 0 rgba(166,208,255,.045),0 0 10px rgba(80,152,234,.075);
+}
+
+/* All visible controls get a light edge. No blanket * selector, media or text glow. */
+:where(
+  .ghost-button,.secondary,.danger,.icon-button,.clear-search,
+  .version-pill,.favorite-button,.chip,.studio-mini-button,
+  .precision-button,.studio-file-tab,.studio-reset-settings,
+  .sidebar-menu-toggle,.sidebar-close,.sidebar-favorite,
+  .batch-actions button,.batch-export button,.batch-job-actions button,
+  .download a,.scope-tab,.studio-play,.background-control select
+):not(:disabled){
+  box-shadow:0 0 0 1px rgba(128,195,255,.055),0 0 8px var(--glow-control);
+}
+:where(.primary,.primary-link,.studio-play):not(:disabled){
+  box-shadow:0 8px 20px rgba(69,142,223,.17),0 0 12px rgba(100,177,255,.21);
+}
+:where(
+  .field input,.field select,.field textarea,
+  .precision-field input,.precision-field select,
+  .batch-field input,.batch-field select,
+  .search-box input,.studio-cue textarea,.studio-cue-timing input
+){
+  box-shadow:inset 0 0 0 1px rgba(112,181,245,.04),0 0 7px rgba(86,154,233,.06);
+}
+/* The sidebar has many rows: shadows are only rendered when actively needed. */
+.tool-sidebar .sidebar-tool{box-shadow:none}
+.tool-sidebar .sidebar-tool:is(:hover,:focus-visible,.is-active){
+  box-shadow:inset 0 0 0 1px rgba(126,190,255,.11),0 0 8px rgba(80,161,247,.11);
+}
+@media(hover:hover) and (pointer:fine){
+  :where(
+    .ghost-button,.secondary,.danger,.icon-button,.clear-search,
+    .version-pill,.favorite-button,.chip,.studio-mini-button,
+    .precision-button,.studio-file-tab,.studio-reset-settings,
+    .sidebar-menu-toggle,.sidebar-close,.sidebar-favorite,
+    .batch-actions button,.batch-export button,.batch-job-actions button,
+    .download a,.scope-tab,.background-control select
+  ):hover:not(:disabled){
+    box-shadow:0 0 0 1px rgba(134,199,255,.18),0 0 12px var(--glow-hover);
+  }
+  :where(.primary,.primary-link,.studio-play):hover:not(:disabled){
+    box-shadow:0 8px 22px rgba(69,142,223,.23),0 0 15px rgba(109,187,255,.29);
+  }
+  :where(.sidebar-group,.stat-card,.metric-card,.benefit-card):hover{
+    box-shadow:0 0 0 1px rgba(126,193,255,.19),0 0 17px rgba(82,159,245,.12);
+  }
+}
+:where(
+  button,a,input,select,textarea,summary,[tabindex]
+):focus-visible{
+  box-shadow:0 0 0 1px var(--glow-focus),0 0 14px rgba(108,187,255,.25);
+}
+/* Dropzone focus is reflected on its visible parent, including keyboard users. */
+:where(.search-box,.dropzone,.batch-dropzone):focus-within{
+  box-shadow:0 0 0 1px rgba(120,190,255,.22),0 0 14px rgba(106,185,255,.16);
+}
+/* Don't spend rendering resources on a glow for offscreen tool/guide elements. */
+@media(max-width:650px){
+  :root{
+    --glow-rest:rgba(78,149,232,.075);
+    --glow-control:rgba(91,169,248,.09);
+    --glow-hover:rgba(107,187,255,.18);
+  }
+}
+@media(forced-colors:active){
+  :where(.wrap) :is(button,a,input,select,textarea,summary),
+  :where(.hero-copy,.hero-panel,.toolbar,.workspace,.benefit-card,.footnote,.tool-sidebar,.analytics-panel,.metric-card,.batch-panel,.studio-shell,.studio-settings){
+    box-shadow:none!important;
+  }
+}
