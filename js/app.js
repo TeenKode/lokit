@@ -112,9 +112,12 @@ $('#hero-open-tools')?.addEventListener('click',event=>{
 $('#sidebar-close')?.addEventListener('click',()=>setSidebarOpen(false));
 $('#sidebar-backdrop')?.addEventListener('click',()=>setSidebarOpen(false));
 window.matchMedia('(min-width: 901px)').addEventListener('change',event=>{
+  // A desktop sidebar can hold focus when a narrower viewport hides it.
+  const restoreFocus=!event.matches&&sidebar?.contains(document.activeElement);
   document.body.classList.remove('sidebar-open');
   document.body.classList.toggle('sidebar-collapsed',event.matches&&savedSidebarCollapsed());
   syncSidebarToggle();
+  if(restoreFocus)sidebarToggle?.focus({preventScroll:true});
 });
 
 function escapeText(t){return String(t||'');}
@@ -432,7 +435,11 @@ function updateFilters(){
     const count=document.createElement('span');count.className='chip-count';count.textContent=String(categoryCount(category));
     button.append(icon,text,count);
     button.setAttribute('aria-pressed',String(selected.category===category));
-    button.addEventListener('click',()=>{selected.category=category;updateFilters();renderCards();});
+    button.addEventListener('click',()=>{
+      selected.category=category;updateFilters();renderCards();
+      // Replacing category chips must not strand keyboard focus in the document.
+      categories.querySelector('.chip.active')?.focus({preventScroll:true});
+    });
     categories.append(button);
   }
 }
