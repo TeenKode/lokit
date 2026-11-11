@@ -28,6 +28,8 @@ assert.equal(result.method,'webcodecs');assert.equal(result.ext,'mp4');
 assert.equal(Conversion.options.video.width,1280);assert.equal(Conversion.options.video.height,720);
 assert.equal(Conversion.options.video.forceTranscode,undefined,'Plain conversion should use stream copy where possible');
 assert.equal(Conversion.options.video.hardwareAcceleration,'prefer-hardware');
+assert.equal(Conversion.options.video.codec,'avc');
+assert.equal(Conversion.options.audio.codec,'aac');
 assert.equal(seen.some(x=>x.percent===50),true);
 Conversion.utilizedTracks=[{}];
 await assert.rejects(runWebCodecs({file,mode:'convert',options:{},mediabunny:fake}),/дорожки|WebCodecs/);
