@@ -1,6 +1,6 @@
 """Grouped sidebar, favorite actions and responsive tool navigation."""
 from pathlib import Path
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, expect
 import subprocess,time
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -110,12 +110,13 @@ try:
     # Switching to mobile must not leave focus inside an invisible drawer.
     page.locator('#search').focus()
     page.set_viewport_size({'width':800,'height':850})
-    page.wait_for_function("document.activeElement===document.querySelector('#sidebar-toggle')")
+    expect(page.locator('#sidebar-toggle')).to_be_focused(timeout=5000)
     assert not page.locator('#tool-sidebar').is_visible()
     page.locator('#sidebar-toggle').click()
     assert page.locator('#tool-sidebar').get_attribute('aria-modal')=='true'
     page.set_viewport_size({'width':1024,'height':850})
-    page.wait_for_function("!document.querySelector('.header').inert && !document.querySelector('#tool-sidebar').hasAttribute('aria-modal')")
+    expect(page.locator('.header')).not_to_have_attribute('inert','',timeout=5000)
+    expect(page.locator('#tool-sidebar')).not_to_have_attribute('aria-modal','true',timeout=5000)
     assert page.locator('#sidebar-toggle').get_attribute('aria-expanded')=='true'
    assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),width
    page.close()
