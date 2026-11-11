@@ -5,6 +5,17 @@ import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {createZip,safeZipName,uniqueZipEntries} from '../js/zip.js';
 assert.equal(safeZipName('../hack\\file.txt'),'_hack_file.txt');
+assert.equal(safeZipName('report.txt...'),'report.txt');
+assert.equal(safeZipName('file. '),'file');
+assert.equal(safeZipName('CON'),'_CON');
+assert.equal(safeZipName('nul.txt'),'_nul.txt');
+assert.equal(safeZipName('LPT9.csv'),'_LPT9.csv');
+assert.equal(safeZipName('COM0.txt'),'COM0.txt');
+assert.deepEqual(uniqueZipEntries([
+  {name:'report.txt.',blob:new Blob([])},
+  {name:'report.txt',blob:new Blob([])},
+  {name:'NUL.txt',blob:new Blob([])}
+]).map(x=>x.name),['report.txt','report (2).txt','_NUL.txt']);
 const samples=[
   {name:'пример.srt',blob:new Blob(['привет\n'])},
   {name:'пример.srt',blob:new Blob(['вторая запись\n'])},

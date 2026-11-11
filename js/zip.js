@@ -9,8 +9,11 @@ const TABLE=Uint32Array.from({length:256},(_,n)=>{
 const MAX_ZIP_SIZE=0xffffffff;
 const abort=()=>new DOMException('Создание ZIP отменено','AbortError');
 export function safeZipName(name){
-  const cleaned=String(name||'result.bin').replace(/[\\/\x00-\x1f\x7f]/g,'_').replace(/^\.+/,'').trim();
-  return cleaned||'result.bin';
+  // Windows strips trailing dots/spaces and reserves device names even with extensions.
+  // Normalize before deduplication so extracted entries cannot silently overwrite files.
+  const cleaned=String(name||'result.bin').replace(/[\\/\x00-\x1f\x7f]/g,'_').replace(/^\.+/,'').trim().replace(/[. ]+$/g,'');
+  if(!cleaned)return 'result.bin';
+  return /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(cleaned)?`_${cleaned}`:cleaned;
 }
 export function uniqueZipEntries(entries){
   const counts=new Set();
