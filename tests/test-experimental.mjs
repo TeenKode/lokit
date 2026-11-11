@@ -35,7 +35,7 @@ Conversion.utilizedTracks=[{}];
 await assert.rejects(runWebCodecs({file,mode:'convert',options:{},mediabunny:fake}),/дорожки|WebCodecs/);
 const WorkerImpl=class{
  constructor(){this.terminated=false;WorkerImpl.latest=this;}
- postMessage(data){assert.equal(data.mode,'compress');queueMicrotask(()=>this.onmessage({data:{type:'done',data:new Uint8Array([1,2,3,4]).buffer}}));}
+ postMessage(data){assert.equal(data.mode,'compress');queueMicrotask(()=>this.onmessage({data:{type:'done',data:new Uint8Array([0,0,0,24,102,116,121,112,105,115,111,109]).buffer}}));}
  terminate(){this.terminated=true;}
 };
 const workerResult=await runFfmpeg({file,mode:'compress',options:{resolution:'720'},WorkerImpl,loadBlob:async(url)=>{
