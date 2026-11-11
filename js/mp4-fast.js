@@ -67,7 +67,7 @@ function validCopy(source,out,expectedDuration,toleranceMs=160){
 }
 
 export async function tryFastMp4({files,file=files?.[0],mode,options={},onProgress=()=>{},signal}){
-  if(!file?.size||!['mute','speed','trim','merge','loop','volume','crop','blur','compress'].includes(mode))return null;
+  if(!file?.size||!['mute','speed','trim','merge','loop','volume','crop','blur','compress','convert'].includes(mode))return null;
   if(String(options.resolution ?? options.width ?? 'original')!=='original')return null;
   if(mode==='merge' && (!files?.[1]||!validMp4(file)||!validMp4(files[1])))return null;
   // Do not relabel a QuickTime movie as ISO MP4 or mix brands implicitly.
@@ -84,8 +84,31 @@ export async function tryFastMp4({files,file=files?.[0],mode,options={},onProgre
   if(mode==='speed' && (!validMp4(file)||!Number.isFinite(Number(options.speed))||Number(options.speed)<=0))return null;
   if(mode==='mute'&&!validMp4(file))return null;
   if(mode==='trim'&&!validMp4(file)&&!validWebm(file))return null;
+  if(mode==='convert'&&(!/\.(mov|3gp|3g2)$/i.test(file.name||'')
+    ||(options.fps&&options.fps!=='original')
+    ||(options.engine&&!['auto','classic'].includes(options.engine))))return null;
   abortCheck(signal);
   try{
+    if(mode==='convert'){
+      // QuickTime/3GP holding H.264 + AAC can be repackaged directly as MP4.
+      // Reject HEVC, MPEG-4 Part 2, AMR, AC3, etc: relabeling these would
+      // silently create an MP4 many browsers cannot actually play.
+      const track=await tracks();abortCheck(signal);
+      const original=await track.inspect(file);abortCheck(signal);
+      const video=original.tracks.filter(t=>t.handler==='vide');
+      const audio=original.tracks.filter(t=>t.handler==='soun');
+      if(video.length!==1||video[0].codec!=='h264'||audio.length>1
+        ||audio.some(t=>t.codec!=='aac')||!(original.durationSec>0))return null;
+      onProgress({stage:'preparing',description:'Перепаковка MOV/3GP в MP4 без перекодирования H.264/AAC…'});
+      const engine=await mp4Copy();abortCheck(signal);
+      const output=await engine.run(file,0,original.durationSec,{exact:true});
+      abortCheck(signal);
+      if(!output?.size)return null;
+      const meta=await engine.inspect(output);abortCheck(signal);
+      if(!validCopy(await engine.inspect(file),meta,original.durationSec*1000,250))return null;
+      done(onProgress,'Готов совместимый MP4 без перекодирования.');
+      return successful(output,'mp4','lossless-remux');
+    }
     // A no-op still needs a valid container: never label corrupt data a successful copy.
     if(unchanged){
       const isMp4=validMp4(file);
