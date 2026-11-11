@@ -1,5 +1,5 @@
-"""Diagnostic: actually download optional engines and encode short local files in Chromium.
-Does not upload media. The CI step is advisory because third-party CDN may be offline.
+"""Diagnostic: use packaged same-origin optional engines and encode short local files in Chromium.
+Does not upload media. Runs against assets installed during CI; no external runtime requests.
 """
 from pathlib import Path
 from playwright.sync_api import sync_playwright
