@@ -13,6 +13,7 @@ const jobNodes=new Map();
 const reported=new Set();
 let exportAbort=null,exporting=false;
 const fmtMs=ms=>{const secs=Math.floor(Math.max(0,ms)/1000);return `${String(Math.floor(secs/3600)).padStart(2,'0')}:${String(Math.floor(secs/60)%60).padStart(2,'0')}:${String(secs%60).padStart(2,'0')}`;};
+const wordForm=(count,[one,few,many])=>{const n=Math.abs(count)%100,d=n%10;return n>=11&&n<=14?many:d===1?one:d>=2&&d<=4?few:many;};
 const fmtSize=n=>n>=1024**3?`${(n/1024**3).toFixed(2)} ГБ`:n>=1024**2?`${(n/1024**2).toFixed(1)} МБ`:n>=1024?`${(n/1024).toFixed(0)} КБ`:`${n} Б`;
 const setMessage=(id,text,error=false)=>{const e=$(id);e.textContent=text;e.classList.toggle('error',!!error);};
 const toolById=new Map(tools.filter(isBatchTool).map(t=>[t.id,t]));
@@ -48,7 +49,7 @@ function updateFileHint(){
   const count=files.length;
   fileHint.textContent=size===2?'Выбирайте файлы парами в нужном порядке: каждые два файла образуют одно задание.':'Для каждого файла будет создано отдельное задание.';
   if(!count){selectedFiles.textContent='Файлы пока не выбраны';return;}
-  selectedFiles.textContent=`Выбрано ${count} ${count===1?'файл':count<5?'файла':'файлов'} (${fmtSize(files.reduce((sum,file)=>sum+file.size,0))}). ${size===2?'Будет создано '+Math.floor(count/2)+' пар. ':''}`+
+  selectedFiles.textContent=`Выбрано ${count} ${wordForm(count,['файл','файла','файлов'])} (${fmtSize(files.reduce((sum,file)=>sum+file.size,0))}). ${size===2?'Пар: '+Math.floor(count/2)+'. ':''}`+
     files.map(f=>f.name).slice(0,4).join(' · ')+(count>4?' · …':'');
 }
 function showTool(){
@@ -158,7 +159,7 @@ function render(){
   $('batch-elapsed').textContent=`Прошло: ${fmtMs(elapsed)}`;
   const remaining=snapshot.counts.pending+(running?1:0);
   $('batch-remaining').textContent=completed.length&&remaining?`Осталось ≈ ${fmtMs(completedDuration/completed.length*remaining)}`:remaining?'Осталось: считаем…':'Осталось: 00:00:00';
-  $('batch-ready').textContent=snapshot.counts.success?`${snapshot.counts.success} готовых файлов. Их можно скачать по одному или одним ZIP.`:'Пока нет готовых файлов';
+  $('batch-ready').textContent=snapshot.counts.success?`Готовые файлы: ${snapshot.counts.success}. Скачайте по одному или одним ZIP.`:'Пока нет готовых файлов';
   $('batch-zip').disabled=exporting||snapshot.running||!snapshot.counts.success;
   $('batch-zip-cancel').classList.toggle('hidden',!exporting);
 }
@@ -202,7 +203,7 @@ $('batch-zip').addEventListener('click',async()=>{
     }});
     if(controller.signal.aborted)throw new DOMException('Отменено','AbortError');
     safeDownload(blob,`lokit-batch-${new Date().toISOString().slice(0,10)}.zip`);
-    setMessage('batch-export-status',`ZIP готов: ${ready.length} файлов (${fmtSize(blob.size)}). Скачивание началось.`);
+    setMessage('batch-export-status',`ZIP готов. Файлов: ${ready.length}, размер: ${fmtSize(blob.size)}. Скачивание началось.`);
   }catch(error){setMessage('batch-export-status',error?.name==='AbortError'?'Сборка ZIP-архива отменена.':error?.message||'Не получилось собрать ZIP-архив.',error?.name!=='AbortError');}
   finally{exporting=false;exportAbort=null;$('batch-zip-progress').classList.add('hidden');render();}
 });
