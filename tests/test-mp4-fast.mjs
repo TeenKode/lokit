@@ -59,4 +59,19 @@ assert.equal(await tryFastMp4({file:source,mode:'mute',options:{resolution:720}}
 assert.equal(await tryFastMp4({file:source,mode:'crop',options:{resolution:'original'}}),null);
 const ctl=new AbortController();ctl.abort();
 await assert.rejects(()=>tryFastMp4({file:source,mode:'mute',options:{resolution:'original'},signal:ctl.signal}),{name:'AbortError'});
+
+const originalWarn=console.warn;console.warn=()=>{};
+try{
+  const corrupted=[
+    new File([new Uint8Array(128).fill(255)],'corrupt.mp4',{type:'video/mp4'}),
+    new File([readFileSync(join(samples,'sample-audio.mp4')).subarray(0,128)],'truncated.mp4',{type:'video/mp4'}),
+    new File([new Uint8Array(80)],'corrupt.webm',{type:'video/webm'}),
+    new File([readFileSync(join(samples,'sample.webm')).subarray(0,64)],'truncated.webm',{type:'video/webm'}),
+    new File([readFileSync(join(samples,'sample.webm'))],'wrong.mp4',{type:'video/mp4'})
+  ];
+  for(const file of corrupted){
+    const result=await tryFastMp4({file,files:[file],mode:'trim',options:{resolution:'original',start:.1,end:.8,cutMode:'keyframe'}});
+    assert.equal(result,null,'Corrupt or mislabeled media must not be reported as successful');
+  }
+}finally{console.warn=originalWarn;}
 console.log('Lossless MP4/WebM: trim, join, mute, silent retime, keyframe guardrails, abort — PASS');

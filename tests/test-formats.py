@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Real FFmpeg encoder/container regression tests for the lossless JavaScript lane.
 
-No mocked media: 18 short synthetic AV recordings with realistic container and
+No mocked media: 23 short synthetic AV recordings with realistic container and
 codec variations are generated, remuxed by Lokit, then decoded with FFmpeg.
 """
 import json,subprocess,shutil,sys,math

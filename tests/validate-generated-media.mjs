@@ -53,7 +53,7 @@ if(READY.has('h264-silent.mp4')){
   const speed=await execute('h264-silent.mp4','speed',{resolution:'original',speed:1.5});
   assert.ok(speed);
 }
-const doubles=['h264-aac-faststart.mp4','h264-aac-bframes.mp4','h264-aac-2997.mp4','h264-fragmented.mp4'];
+const doubles=['h264-aac-faststart.mp4','h264-aac-bframes.mp4','h264-aac-2997.mp4','h264-fragmented.mp4','h264-aac-60fps.mp4'];
 for(const name of doubles){
   if(!READY.has(name))continue;
   const joined=await execute(name,'merge',{resolution:'original'},[file(name),file(name)]);
