@@ -30,11 +30,11 @@ check(0);time=9000;check(0);
 time=10000;check(0.04);
 time=23000;check(0.04);
 time=25001;
-assert.throws(()=>check(0.04),/остановилось/);
+assert.throws(()=>check(0.04),/перестал воспроизводить/);
 const seekCheck=playbackWatchdog({maxIdleMs:1000,now:()=>time});
 seekCheck(8);time+=700;seekCheck(8.05);time+=700;seekCheck(0.5);
 time+=700;seekCheck(0.5);
-assert.throws(()=>seekCheck(NaN),/некорректную/);
+assert.throws(()=>seekCheck(NaN),/Не удалось определить положение/);
 console.log('Media tests: recording abort, late camera cleanup and stalled-decoder guard — PASS');
 
 const errorWait=new AbortController();
@@ -51,7 +51,7 @@ const a={currentTime:0,ended:false},b={currentTime:0,ended:false};
 checkSplit({primary:a,secondary:b,secondStarted:true});
 tick=600;a.currentTime=.4;checkSplit({primary:a,secondary:b,secondStarted:true});
 tick=1400;a.currentTime=.9;
-assert.throws(()=>checkSplit({primary:a,secondary:b,secondStarted:true}),/остановилось/);
+assert.throws(()=>checkSplit({primary:a,secondary:b,secondStarted:true}),/перестал воспроизводить/);
 const checks={stopped:0};
 const newStream=()=>{const tracks=[{stop(){checks.stopped++;},addEventListener(){}},{stop(){checks.stopped++;},addEventListener(){}}];return {getTracks:()=>tracks,getAudioTracks:()=>[tracks[1]],getVideoTracks:()=>[tracks[0]]};};
 Object.defineProperty(globalThis,'navigator',{configurable:true,value:{mediaDevices:{getUserMedia:async()=>newStream()}}});
@@ -68,7 +68,7 @@ globalThis.MediaRecorder=BrokenRecorder;
 for(const type of ['stop','error']){
   mode=type;let cleared=0;
   await assert.rejects(recordDevice('webcam',{onStream:stream=>{if(stream===null)cleared++;}}),
-    type==='stop'?/неожиданно остановилась/:/Encoder disconnected/);
+    type==='stop'?/Запись прервалась/:/Encoder disconnected/);
   assert.equal(cleared,1,'Camera preview must be cleared after recorder exit');
 }
 assert.equal(checks.stopped,4,'Both media tracks must stop after each recorder failure');
@@ -87,7 +87,7 @@ class BrokenVideo{
 globalThis.document={createElement:()=>new BrokenVideo(),body:{append(){}}};
 URL.createObjectURL=()=> 'blob:broken';
 URL.revokeObjectURL=()=>{released++;};
-await assert.rejects(openVideo(new File([new Uint8Array([0])],'corrupt.mp4')),/Неподдерживаемый|повреждённый/);
+await assert.rejects(openVideo(new File([new Uint8Array([0])],'corrupt.mp4')),/не поддерживает|повреждён/);
 assert.equal(video.paused,true);assert.equal(video.src,'');assert.equal(video.removed,true);assert.equal(released,1);
 URL.createObjectURL=oldCreate;URL.revokeObjectURL=oldRevoke;
 console.log('Media reliability: abort/timeout, split decoder stall, recorder stop/error and video cleanup — PASS');
