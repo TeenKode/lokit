@@ -6,6 +6,7 @@ const base=path.dirname(fileURLToPath(import.meta.url));
 const temp=path.join(base,'.tmp-modules');mkdirSync(temp,{recursive:true});
 writeFileSync(path.join(temp,'render.mjs'),readFileSync(path.join(base,'..','js','render.js')));
 writeFileSync(path.join(temp,'mp4-fast.mjs'),readFileSync(path.join(base,'..','js','mp4-fast.js')).toString().replace("'./vendor/mp4-track-remux.js'","'../vendor/mp4-track-remux.js'"));
+writeFileSync(path.join(temp,'codec-assets.js'),readFileSync(path.join(base,'..','js','codec-assets.js')));
 writeFileSync(path.join(temp,'experimental-engines.mjs'),readFileSync(path.join(base,'..','js','experimental-engines.js')));
 writeFileSync(path.join(temp,'media.mjs'),readFileSync(path.join(base,'..','js','media.js'),'utf8').replace("'./render.js'","'./render.mjs'").replace("'./mp4-fast.js'","'./mp4-fast.mjs'").replace("'./experimental-engines.js'","'./experimental-engines.mjs'"));
 const {recordDevice,playbackWatchdog,awaitMedia,splitPlaybackWatchdog,openVideo}=await import(pathToFileURL(path.join(temp,'media.mjs')).href);
