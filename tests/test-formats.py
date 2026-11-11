@@ -37,6 +37,7 @@ def valid_audio_video(obj):
 
 run([sys.executable,str(ROOT/'generate-media-fixtures.py')])
 run(['node',str(ROOT/'validate-generated-media.mjs')])
+run(['node',str(ROOT/'test-ffmpeg-composite-real.mjs')])
 records=json.loads((DEST/'results.json').read_text())
 assert len(records)>=40, f'Insufficient cases: {len(records)}'
 assert sum(bool(x['fast']) for x in records)>=30, 'Lossless engine regressed'
