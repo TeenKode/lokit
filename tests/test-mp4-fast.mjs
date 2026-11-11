@@ -75,6 +75,17 @@ try{
   }
 }finally{console.warn=originalWarn;}
 
+// Codec/geometry probes work from container atoms, without an HTML decoder.
+const {inspectContainer}=await import('../js/mp4-fast.js');
+const sourceInfo=await inspectContainer(source);
+assert.equal(sourceInfo.videoCodec,'h264');
+assert.equal(sourceInfo.audioCodec,'aac');
+assert.ok(sourceInfo.duration>0 && sourceInfo.width>0 && sourceInfo.height>0);
+const webmInfo=await inspectContainer(webm);
+assert.match(webmInfo.videoCodec,/V_VP[89]/);
+assert.ok(webmInfo.duration>0);
+assert.equal(await inspectContainer(new File([new Uint8Array([1,2,3])],'record.avi')),null);
+
 // Repeat MP4 through the same zero-copy concatenation as merge, preserving audio.
 const repeated=await tryFastMp4({file:source,mode:'loop',options:{resolution:'original',loops:3}});
 assert.equal(repeated.fast,true);
