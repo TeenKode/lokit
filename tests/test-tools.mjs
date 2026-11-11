@@ -12,6 +12,19 @@ const file=new File([original],'caption.srt',{type:'text/plain'});
 const vtt=await get('subtitle-converter').run({files:[file]});
 assert.match(await vtt.blob.text(),/^WEBVTT/);
 assert.match(await vtt.blob.text(),/00:00:01\.100 --> 00:00:03\.500/);
+// Real-world SRT files sometimes omit the leading zero in hour fields.
+// Their converted WebVTT cues must use periods rather than SRT commas.
+for (const [start,end] of [
+  ['0:00:01,100','0:00:03,500'],
+  ['123:00:01,100','123:00:03,500']
+]) {
+  const source=`1\n${start} --> ${end}\nПроверка\n`;
+  const result=await get('subtitle-converter').run({files:[new File([source],'hours.srt')]});
+  const convertedText=await result.blob.text();
+  assert.match(convertedText,/^WEBVTT\n\n/);
+  assert(convertedText.includes(`${start.replace(',','.')} --> ${end.replace(',','.')}`));
+  assert(!convertedText.includes(`${start} --> ${end}`));
+}
 const vttShort='WEBVTT\n\n00:02.000 --> 00:05.000\nТест\n';
 const converted=await get('subtitle-converter').run({files:[new File([vttShort],'test.vtt') ]});
 assert.match(await converted.blob.text(),/00:00:02,000 --> 00:00:05,000/);
