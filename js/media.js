@@ -20,7 +20,6 @@ const clamp = (x, min, max) => Math.min(max, Math.max(min, x));
 export function outputName(file, suffix, ext) {
   return `${filename(file).replace(/\.[^.]+$/, '')}-${suffix}.${ext}`;
 }
-function mimeChoice(types) { return types.find(x => MediaRecorder.isTypeSupported(x)) || ''; }
 
 function releaseVideo(video,url){
   // Removing an element alone does not necessarily release the decoder.
@@ -203,6 +202,7 @@ async function tryOriginalVideoCopy(file,options,signal){
   // or resolution change must never silently return the unmodified source.
   if(!file?.size || String(options.resolution||'original')!=='original'
     ||(options.fps&&options.fps!=='original')
+    ||(options.engine&&!['auto','classic'].includes(options.engine))
     ||!/\.(mp4|m4v|webm)$/i.test(file.name||''))return null;
   let item;
   try{
@@ -247,7 +247,7 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
     const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
     const ctx=canvas.getContext('2d',{alpha:false});
     ensure(ctx && typeof canvas.captureStream==='function','Обработка через Canvas недоступна в этом браузере.');
-    const fps=clamp(Number(options.fps)||25,5,60);
+    const fps=clamp(Number(options.fps)||30,5,60);
     stream=canvas.captureStream(fps);
     const videos=secondary&&mode==='merge'?[primary.video,secondary.video]:[primary.video];
     const includeAudio=mode!=='mute' && options.audio!=='off';
