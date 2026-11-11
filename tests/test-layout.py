@@ -1,6 +1,7 @@
 """Responsive layout regression at real browser widths (GitHub Actions Chromium)."""
 from pathlib import Path
 from playwright.sync_api import sync_playwright
+from sidebar_nav import click_sidebar_tool
 import subprocess, time
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -46,7 +47,7 @@ try:
                 nav=page.locator('.header-right')
                 assert nav.evaluate('(el)=>getComputedStyle(el).overflowX')=='auto'
                 assert page.locator('#tool-sidebar').is_visible()
-            page.locator('.tool-card').filter(has=page.locator('strong',has_text='Обрезка видео')).first.click()
+            click_sidebar_tool(page,'Обрезка видео')
             assert page.locator('.studio-main .dropzone').count()==1
             assert page.locator('.studio-settings').count()==1
             check_columns(page,width)
@@ -61,7 +62,7 @@ try:
             page.screenshot(path=str(OUTPUT/f'layout-trim-{width}.png'))
             page.locator('#close-workspace').click()
             if width<=900:page.locator('#sidebar-toggle').click()
-            page.locator('.tool-card').filter(has=page.locator('strong',has_text='SRT ⇄ VTT')).first.click()
+            click_sidebar_tool(page,'SRT ⇄ VTT')
             page.locator('.studio-form input[type=file]').set_input_files(str(ROOT/'tests/fixtures/sample.srt'))
             page.locator('.subtitle-lane').first.wait_for(state='visible',timeout=8000)
             document_fits(page,f'subtitles {width}')
