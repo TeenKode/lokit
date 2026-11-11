@@ -22,6 +22,20 @@ try:
   page=ctx.new_page()
   page.on('pageerror',lambda error:errors.append(str(error)))
   page.goto(url,wait_until='domcontentloaded')
+  picker=page.locator('#background-choice')
+  picker.wait_for(state='attached',timeout=15000)
+  assert picker.locator('option').count()==11,'Background selector options'
+  for theme in ['aurora','topography','constellations','flow','lenses','geometry','dust','interference','polygons','none']:
+   picker.select_option(theme)
+   assert page.locator('.page-glow').get_attribute('data-background-theme')==theme,theme
+   if theme not in ('none','aurora'):
+    assert page.evaluate("getComputedStyle(document.querySelector('.page-glow'),'::before').backgroundImage.includes('data:image/svg+xml')"),theme
+  picker.select_option('topography')
+  page.reload(wait_until='domcontentloaded')
+  picker=page.locator('#background-choice')
+  assert picker.input_value()=='topography','Background preference did not persist'
+  assert page.locator('.page-glow').get_attribute('data-background-theme')=='topography'
+  assert page.evaluate("getComputedStyle(document.querySelector('.page-glow')).animationName=='none'")
   if args.mobile:page.locator('#sidebar-toggle').click()
   page.locator('.tool-card').first.wait_for(timeout=20000)
   assert page.locator('.tool-card').count()==24
@@ -48,10 +62,15 @@ try:
   page.wait_for_function("() => document.querySelector('#tool-status').textContent.includes('Готово')",timeout=20000)
   with page.expect_download() as download:page.locator('.download a').first.click()
   assert f'Lokit {args.browser}' in Path(download.value.path()).read_text(encoding='utf-8')
+  page.goto(url+'batch.html',wait_until='domcontentloaded')
+  assert page.locator('#background-choice').input_value()=='topography'
+  assert page.locator('.page-glow').get_attribute('data-background-theme')=='topography'
   page.goto(url+'analytics.html',wait_until='domcontentloaded')
+  assert page.locator('#background-choice').input_value()=='topography'
   assert page.locator('#metric-success').inner_text()=='1'
   assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth')
   page.goto(url+'about.html',wait_until='domcontentloaded')
+  assert page.locator('#background-choice').input_value()=='topography'
   assert 'v'+APP_VERSION in page.locator('#release-title').inner_text()
   assert not errors,errors
   print(f'PASS: {args.browser}, mobile emulation={args.mobile}, presets, SRT editing/export, local analytics, layout')
