@@ -144,7 +144,7 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
         run: python tests/test-experimental-live.py
-      - name: Real bundled FFmpeg/WASM: merge, split, watermark, VR
+      - name: "Real bundled FFmpeg/WASM - merge, split, watermark, VR"
         if: matrix.browser == 'chromium' && matrix.mobile == false
         timeout-minutes: 12
         run: python tests/test-ffmpeg-wasm-composite.py
