@@ -26,8 +26,9 @@ export function mountSubtitleTimeline(host,{onSelect=()=>{},onChange=()=>{}}={})
     for(const [index,cue] of cues.entries()){
       const block=document.createElement('div');block.className='subtitle-cue-block'+(index===active?' selected':'');
       block.style.left=`${100*cue.start/duration}%`;block.style.width=`${Math.max(.4,100*(cue.end-cue.start)/duration)}%`;
-      block.tabIndex=0;block.setAttribute('role','group');block.setAttribute('aria-label',`Реплика ${index+1}: ${cue.text.slice(0,70)}`);
-      const label=document.createElement('span');label.textContent=cue.text||`Реплика ${index+1}`;
+      const cueText=typeof cue.text==='string'?cue.text:'';
+      block.tabIndex=0;block.setAttribute('role','group');block.setAttribute('aria-label',`Реплика ${index+1}: ${cueText.slice(0,70)}`);
+      const label=document.createElement('span');label.textContent=cueText||`Реплика ${index+1}`;
       const left=document.createElement('button'),right=document.createElement('button');
       left.type=right.type='button';left.className='subtitle-handle start';right.className='subtitle-handle end';
       left.setAttribute('aria-label',`Переместить начало реплики ${index+1}`);right.setAttribute('aria-label',`Переместить конец реплики ${index+1}`);
