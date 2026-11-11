@@ -47,6 +47,13 @@ try:
    assert 1<=page.locator('.tool-card').count()<24,width
    search.fill('')
    assert page.locator('.tool-card').count()==24,width
+   # Category controls are recreated after filtering; keyboard focus must persist.
+   favorite_chip=page.locator('#categories .chip').filter(has_text='Избранное')
+   favorite_chip.focus()
+   page.keyboard.press('Enter')
+   assert favorite_chip.get_attribute('aria-pressed')=='true',width
+   assert favorite_chip.evaluate('(el)=>document.activeElement===el'),width
+   page.locator('#categories .chip').filter(has_text='Все').click()
    # Star is a sibling button, not nested in the tool opener.
    star=page.locator('[data-favorite-id="video-trim"]')
    if not mobile:page.locator('[data-tool-id="video-trim"].tool-card').hover()
@@ -99,6 +106,17 @@ try:
    page.locator('#sidebar-recent-button').click()
    assert page.locator('.studio-form input[type=file]').evaluate("(el)=>el.files.length===1&&el.files[0].name==='sample.webm'"),width
    assert page.locator('#workspace').is_visible()
+   if width==1024:
+    # Switching to mobile must not leave focus inside an invisible drawer.
+    page.locator('#search').focus()
+    page.set_viewport_size({'width':800,'height':850})
+    page.wait_for_function("document.activeElement===document.querySelector('#sidebar-toggle')")
+    assert not page.locator('#tool-sidebar').is_visible()
+    page.locator('#sidebar-toggle').click()
+    assert page.locator('#tool-sidebar').get_attribute('aria-modal')=='true'
+    page.set_viewport_size({'width':1024,'height':850})
+    page.wait_for_function("!document.querySelector('.header').inert && !document.querySelector('#tool-sidebar').hasAttribute('aria-modal')")
+    assert page.locator('#sidebar-toggle').get_attribute('aria-expanded')=='true'
    assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),width
    page.close()
    print('PASS sidebar',width)
