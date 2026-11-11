@@ -100,6 +100,14 @@ for(const [mode,options] of [
 assert.equal((await tryFastMp4({file:webm,mode:'loop',options:{resolution:'original',loops:1}})).blob,webm);
 assert.equal(await tryFastMp4({file:source,mode:'volume',options:{gain:1,audio:'off'}}),null);
 
+// Avoid re-encoding an already sufficiently small video in the compressor.
+const smallEnough=await tryFastMp4({file:source,mode:'compress',options:{resolution:'original',bitrate:'650000'}});
+assert.equal(smallEnough?.blob,source);
+assert.equal(smallEnough?.method,'copy');
+assert.equal(await tryFastMp4({file:source,mode:'compress',options:{resolution:'original',bitrate:'100'}}),null);
+assert.equal(await tryFastMp4({file:source,mode:'compress',options:{resolution:'720',bitrate:'650000'}}),null);
+assert.equal((await tryFastMp4({file:webm,mode:'compress',options:{resolution:'original',bitrate:'650000'}}))?.blob,webm);
+
 // Preserve AAC without decoding, with a real M4A container and no video tracks.
 const {tryFastExtractAudio}=await import('../js/mp4-fast.js');
 const extracted=await tryFastExtractAudio({file:source});
