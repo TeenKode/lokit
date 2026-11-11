@@ -1,25 +1,32 @@
 /** Optional client-side engines. The ordinary Lokit pipeline never loads these. */
-export const ENGINE_OPTIONS = ['classic','webcodecs','ffmpeg'];
+export const ENGINE_OPTIONS = ['auto','classic','webcodecs','ffmpeg'];
 export const EXPERIMENTAL_MODES = new Set(['convert','compress']);
-import {DEPENDENCIES, fetchCodecBlob} from './codec-assets.js';
+const FFMPEG_MODES = new Set(['convert','compress','trim','mute','speed','loop',
+  'crop','flip-h','flip-v','rotate-90','rotate-180','rotate-270','filter','blur',
+  'volume','extract-audio','frame','merge','split','watermark','vr']);
+// The codec libraries are vendored into the site, not fetched from a CDN.
+import {DEPENDENCIES, fetchCodecBlob, CODEC_CACHE} from './codec-assets.js';
 export {DEPENDENCIES};
+const CACHE=CODEC_CACHE;
 const MAX_FFMPEG_BYTES=90*1024*1024;
 const abortError=()=>new DOMException('Операция отменена','AbortError');
 export function experimentalEligibility({files,mode,options={}}={}){
-  const engine=options.engine||'classic';
+  const engine=options.engine||'auto';
   if(engine==='classic')return {eligible:false,reason:'Обычный способ экспорта'};
   if(!ENGINE_OPTIONS.includes(engine))return {eligible:false,reason:'Неизвестный способ экспорта'};
-  if(!EXPERIMENTAL_MODES.has(mode)||!files?.length||files.length!==1)return {eligible:false,reason:'Этот инструмент нельзя использовать с выбранным способом экспорта'};
-  if(!files[0]?.size)return {eligible:false,reason:'Выбранный файл пуст'};
-  if(engine==='webcodecs'&&(typeof VideoEncoder==='undefined'||typeof VideoDecoder==='undefined'))
+  const expected=engine==='ffmpeg'&&['merge','split'].includes(mode)?2:1;
+  if(!files?.length||files.length!==expected||!(engine==='ffmpeg'?FFMPEG_MODES:EXPERIMENTAL_MODES).has(mode))return {eligible:false,reason:'Инструмент не поддерживается экспериментальным движком'};
+  if(files.some(item=>!item?.size))return {eligible:false,reason:'Один из исходных файлов пуст'};
+  if((engine==='auto'||engine==='webcodecs')&&(typeof VideoEncoder==='undefined'||typeof VideoDecoder==='undefined'))
     return {eligible:false,reason:'Ваш браузер не поддерживает WebCodecs'};
-  if(engine==='ffmpeg'&&files[0].size>MAX_FFMPEG_BYTES)
+  if(engine==='ffmpeg'&&files.reduce((total,f)=>total+f.size,0)>MAX_FFMPEG_BYTES)
     return {eligible:false,reason:'FFmpeg/WASM принимает файлы до 90 МиБ, чтобы не перегружать память'};
-  return {eligible:true,engine};
+  return {eligible:true,engine:engine==='auto'?'webcodecs':engine,automatic:engine==='auto'};
 }
 function aborted(signal){if(signal?.aborted)throw abortError();}
-// Load only same-origin media runtimes and store them for optional offline reuse.
-const cachedBlob = fetchCodecBlob;
+// Only approved same-origin assets may be loaded; the dedicated loader
+// handles Cache Storage, offline availability, errors and abort.
+const cachedBlob=fetchCodecBlob;
 let mediabunnyPromise;
 async function loadMediabunny({signal,onProgress=()=>{}}={}){
   if(globalThis.Mediabunny)return globalThis.Mediabunny;
@@ -69,12 +76,20 @@ export async function runWebCodecs({file,mode,options,signal,onProgress=()=>{},m
     const size=scaledSize(width,height,options.resolution||'original');
     if(size.width*size.height>16_000_000)throw new Error('Для этого режима выберите разрешение не выше 1080p.');
     const output=new Output({format:new Mp4OutputFormat(),target:new BufferTarget()});
-    const video={forceTranscode:true};
+    // Mediabunny can transmux H.264/AAC or AV1/VP9 streams directly from
+    // MOV/MKV/WebM into MP4 when the container accepts them. Never force
+    // transcoding for a plain conversion. Compression, resizing and FPS
+    // overrides will still encode the video as required.
+    // MP4 can *contain* HEVC/VP9/AV1 but many external players cannot decode
+    // those streams. Request the portable AVC/AAC pair; Mediabunny can still
+    // copy existing AVC/AAC packets without touching their bitstreams.
+    const video={codec:'avc',hardwareAcceleration:'prefer-hardware'};
+    if(mode==='compress')video.forceTranscode=true;
     if(size.width!==width||size.height!==height){Object.assign(video,{width:size.width,height:size.height,fit:'contain'});}
     if(mode==='compress'&&Quality)video.quality=new Quality({bitrate:Math.max(200000,Math.min(10000000,Number(options.bitrate)||650000))});
     if(mode==='convert'&&Number(options.fps)>0)video.frameRate=Number(options.fps);
     onProgress({stage:'preparing',description:'Проверяем дорожки и поддержку кодеков…'});
-    conversion=await Conversion.init({input,output,video,tracks:'all'});
+    conversion=await Conversion.init({input,output,video,audio:{codec:'aac'},tracks:'all'});
     if(!conversion.isValid||conversion.discardedTracks.length||conversion.utilizedTracks.length!==videoTracks.length+audioTracks.length)
       throw new Error('WebCodecs не может сохранить все дорожки. Переключаемся на обычный экспорт.');
     aborted(signal);
@@ -95,18 +110,20 @@ export async function runWebCodecs({file,mode,options,signal,onProgress=()=>{},m
     }finally{try{verification.dispose?.();}catch{}}
     aborted(signal);
     onProgress({stage:'complete',percent:100,description:'MP4 готов (WebCodecs).'});
-    return {blob,ext:'mp4',method:'webcodecs',fast:false,info:'Видео и звук сохранены с помощью экспериментального WebCodecs.'};
+    return {blob,ext:'mp4',method:'webcodecs',fast:false,info:mode==='convert'?'Mediabunny: H.264/AAC копируются, когда возможно; прочие кодеки преобразуются в H.264/AAC. Дорожки проверены.':'WebCodecs: видео сжато, исходная аудиодорожка сохранена, когда это возможно.'};
   }finally{
     if(abortHandler)signal?.removeEventListener('abort',abortHandler);
     // In recent Mediabunny releases Input.dispose frees backing decoders and resources.
     try{input.dispose?.();}catch{}
   }
 }
-export async function runFfmpeg({file,mode,options,signal,onProgress=()=>{},WorkerImpl=globalThis.Worker,loadBlob=cachedBlob}={}){
+export async function runFfmpeg({file,files,mode,options={},signal,onProgress=()=>{},WorkerImpl=globalThis.Worker,loadBlob=cachedBlob}={}){
+  files ||= file?[file]:[];
   aborted(signal);
   if(typeof WorkerImpl!=='function')throw new Error('Этот браузер не поддерживает фоновые вычисления Web Workers.');
-  if(file.size>MAX_FFMPEG_BYTES)throw new Error('Файл слишком большой для FFmpeg/WASM (более 90 МиБ). Используем обычный экспорт.');
-  onProgress({stage:'preparing',description:'Загружаем FFmpeg/WASM (около 31 МБ при первом запуске)…'});
+  if(!files.length||files.some(item=>!item?.size)||files.reduce((sum,item)=>sum+item.size,0)>MAX_FFMPEG_BYTES)
+    throw new Error('FFmpeg/WASM: суммарный размер исходников больше 90 МиБ или отсутствует видео.');
+  onProgress({stage:'preparing',description:'Подготавливаем FFmpeg/WASM из файлов сайта (≈31 МБ)…'});
   const coreScript=await loadBlob(DEPENDENCIES.ffmpegCore,{signal});
   const coreWasm=await loadBlob(DEPENDENCIES.ffmpegWasm,{signal});
   aborted(signal);
@@ -116,7 +133,7 @@ export async function runFfmpeg({file,mode,options,signal,onProgress=()=>{},Work
   let timeout,abortHandler;
   try{
     worker=new WorkerImpl(new URL('./experimental-ffmpeg-worker.js',import.meta.url));
-    const bytes=await file.arrayBuffer();aborted(signal);
+    const inputs=await Promise.all(files.map(async file=>({name:file.name,bytes:await file.arrayBuffer()})));aborted(signal);
     return await new Promise((resolve,reject)=>{
       let settled=false;
       const done=(err,result)=>{if(settled)return;settled=true;clearTimeout(timeout);signal?.removeEventListener('abort',abortHandler);if(err)reject(err);else resolve(result);};
@@ -130,27 +147,45 @@ export async function runFfmpeg({file,mode,options,signal,onProgress=()=>{},Work
         if(msg.type==='done'){
           const data=msg.data;
           if(!data?.byteLength){done(new Error('FFmpeg/WASM не создал файл.'));return;}
-          onProgress({stage:'complete',percent:100,description:'MP4 готов (FFmpeg/WASM).'});
-          done(null,{blob:new Blob([data],{type:'video/mp4'}),ext:'mp4',method:'ffmpeg-wasm',fast:false,info:'Видео обработано в экспериментальном режиме FFmpeg/WASM.'});
+          const ext=msg.ext||'mp4';
+          const header=new Uint8Array(data,0,Math.min(12,data.byteLength));
+          const valid=ext==='png'
+            ?header.length>=8&&[137,80,78,71,13,10,26,10].every((byte,i)=>header[i]===byte)
+            :header.length>=12&&String.fromCharCode(...header.subarray(4,8))==='ftyp';
+          if(!valid){done(new Error('FFmpeg/WASM вернул файл с повреждённым заголовком.'));return;}
+          const mime=ext==='m4a'?'audio/mp4':ext==='png'?'image/png':'video/mp4';
+          onProgress({stage:'complete',percent:100,description:'FFmpeg/WASM: '+ext.toUpperCase()+' готов.'});
+          done(null,{blob:new Blob([data],{type:mime}),ext,method:'ffmpeg-wasm',fast:false,info:'Совместимый '+ext.toUpperCase()+' через FFmpeg/WASM, кодирование выполняется локально.'});
         }
       };
       worker.onerror=e=>done(new Error(e.message||'Не удалось запустить обработку через FFmpeg/WASM.'));
-      worker.postMessage({type:'run',coreScriptUrl:scriptUrl,wasmUrl,bytes,mode,resolution:options.resolution||'original',bitrate:Number(options.bitrate)||650000,name:file.name},[bytes]);
+      // Transfer, don't clone, the two video buffers into the worker.
+      const buffers=inputs.map(item=>item.bytes);
+      worker.postMessage({type:'run',coreScriptUrl:scriptUrl,wasmUrl,inputs,mode,options:{...options}},buffers);
       if(signal?.aborted)abortHandler();
     });
   }finally{clearTimeout(timeout);worker?.terminate();URL.revokeObjectURL(scriptUrl);URL.revokeObjectURL(wasmUrl);}
 }
-export async function tryExperimental({files,mode,options={},onProgress=()=>{},signal}={}){
+export async function tryExperimental({files,mode,options={},onProgress=()=>{},signal,strict=false}={}){
   const eligibility=experimentalEligibility({files,mode,options});
   if(!eligibility.eligible){
+    if(strict)throw new Error(eligibility.reason);
     if(options.engine&&options.engine!=='classic')onProgress({stage:'preparing',description:eligibility.reason+' — пробуем обычный экспорт.'});
     return null;
   }
   try{
-    const task={file:files[0],mode,options,signal,onProgress};
+    // Auto selection never downloads optional code. WebCodecs starts
+    // automatically only after the bundled muxer has been cached.
+    if(eligibility.automatic&&!globalThis.Mediabunny){
+      if(typeof caches==='undefined')return null;
+      const cached=await (await caches.open(CACHE)).match(DEPENDENCIES.mediabunny);
+      if(!cached)return null;
+    }
+    aborted(signal);
+    const task={file:files[0],files,mode,options,signal,onProgress};
     return eligibility.engine==='webcodecs'?await runWebCodecs(task):await runFfmpeg(task);
   }catch(e){
-    if(e?.name==='AbortError'||signal?.aborted)throw e;
+    if(e?.name==='AbortError'||signal?.aborted||strict)throw e;
     console.warn('Экспериментальный режим недоступен; переключаемся на обычный экспорт:',e);
     onProgress({stage:'preparing',description:`${eligibility.engine==='ffmpeg'?'FFmpeg/WASM':'WebCodecs'} недоступен: ${e.message||e}. Пробуем обычный экспорт.`});
     return null;

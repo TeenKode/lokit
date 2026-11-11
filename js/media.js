@@ -1,12 +1,15 @@
 // Браузерный движок обработки пользовательских файлов. Не использует серверные API.
 import {renderVideoFrame,canvasSize} from './render.js';
-import {tryFastMp4} from './mp4-fast.js';
+import {tryFastMp4,tryFastExtractAudio,inspectContainer} from './mp4-fast.js';
 import {tryExperimental} from './experimental-engines.js';
 const VIDEO_TYPES = [
+  // Native H.264 may use hardware acceleration. MediaRecorder still decides
+  // whether the encoder is actually available; WebM VP8 is the safe fallback.
+  'video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4',
   'video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus',
   'video/webm;codecs=vp8', 'video/webm', 'video/mp4'
 ];
-const VIDEO_SILENT_TYPES=['video/webm;codecs=vp8','video/webm;codecs=vp9','video/webm','video/mp4'];
+const VIDEO_SILENT_TYPES=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp8','video/webm;codecs=vp9','video/webm'];
 const AUDIO_TYPES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
 
 function ensure(value, message) { if (!value) throw new Error(message); }
@@ -17,7 +20,6 @@ const clamp = (x, min, max) => Math.min(max, Math.max(min, x));
 export function outputName(file, suffix, ext) {
   return `${filename(file).replace(/\.[^.]+$/, '')}-${suffix}.${ext}`;
 }
-function mimeChoice(types) { return types.find(x => MediaRecorder.isTypeSupported(x)) || ''; }
 
 function releaseVideo(video,url){
   // Removing an element alone does not necessarily release the decoder.
@@ -166,9 +168,16 @@ export function splitPlaybackWatchdog({maxIdleMs=15000,now=()=>performance.now()
 
 function recorderFor(stream, {videoBitsPerSecond=2500000,audioOnly=false}={}) {
   ensure(typeof MediaRecorder!=='undefined', 'В этом браузере недоступна запись видео.');
-  const mime=mimeChoice(audioOnly?AUDIO_TYPES:stream.getAudioTracks().length?VIDEO_TYPES:VIDEO_SILENT_TYPES);
-  ensure(mime, 'Браузер не поддерживает сохранение видео или звука в доступный формат.');
-  const recorder=new MediaRecorder(stream, audioOnly?{mimeType:mime}:{mimeType:mime,videoBitsPerSecond});
+  const types=audioOnly?AUDIO_TYPES:stream.getAudioTracks().length?VIDEO_TYPES:VIDEO_SILENT_TYPES;
+  let recorder=null,mime='';
+  for(const candidate of types){
+    if(!MediaRecorder.isTypeSupported(candidate))continue;
+    try{
+      recorder=new MediaRecorder(stream,audioOnly?{mimeType:candidate}:{mimeType:candidate,videoBitsPerSecond});
+      mime=candidate;break;
+    }catch{/* Try the next native encoder if a MIME is advertised but unusable. */}
+  }
+  ensure(recorder, 'Браузер не поддерживает экспорт аудио/видео в доступный формат.');
   const chunks=[];
   recorder.addEventListener('dataavailable',e=>{if(e.data?.size)chunks.push(e.data);});
   const done=new Promise((resolve,reject)=>{
@@ -187,9 +196,90 @@ function connectAudio(ctx, videos, stream, gainValue=1) {
   }
   for(const track of destination.stream.getAudioTracks())stream.addTrack(track);
 }
+async function tryOriginalVideoCopy(file,options,signal){
+  // "Convert" with unchanged resolution and frame rate is already complete
+  // when the original format can be opened by this browser. A requested FPS
+  // or resolution change must never silently return the unmodified source.
+  if(!file?.size || String(options.resolution||'original')!=='original'
+    ||(options.fps&&options.fps!=='original')
+    ||(options.engine&&!['auto','classic'].includes(options.engine))
+    ||!/\.(mp4|m4v|webm)$/i.test(file.name||''))return null;
+  let item;
+  try{
+    item=await openVideo(file,signal);
+    const ext=/\.webm$/i.test(file.name)?'webm':'mp4';
+    const mime=file.type||('video/'+ext);
+    if(typeof item.video.canPlayType!=='function'||!item.video.canPlayType(mime))return null;
+    onAbort(signal);
+    return {blob:file,ext,type:mime,fast:true,method:'copy',info:'Формат уже поддерживается браузером. Исходные видео и звук сохранены без изменений.'};
+  }catch(error){
+    if(error?.name==='AbortError'||signal?.aborted)throw error;
+    return null;
+  }finally{item?.close();}
+}
+async function watermarkBitmap(text,signal){
+  onAbort(signal);
+  const canvas=document.createElement('canvas');canvas.width=1000;canvas.height=160;
+  const ctx=canvas.getContext('2d');
+  ensure(ctx,'Этот браузер не умеет создавать PNG с текстом.');
+  const label=String(text||'Моё видео').slice(0,80);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.font='700 64px system-ui,sans-serif';
+  ctx.textAlign='right';ctx.textBaseline='bottom';
+  ctx.shadowColor='#000';ctx.shadowBlur=10;
+  ctx.fillStyle='#fff';ctx.fillText(label,980,135,960);
+  const png=await awaitMedia(new Promise((resolve,reject)=>
+    canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Не удалось подготовить текстовую подпись.')),'image/png')),
+    {signal,timeoutMs:20000,message:'Не удалось создать текстовую подпись.'});
+  onAbort(signal);
+  ensure(png.size>0&&png.size<2*1024*1024,'Неверный размер подписи PNG.');
+  return png.arrayBuffer();
+}
+async function compatibilityFallback(filesOrFile,mode,options,onProgress,signal,error){
+  if(error?.name==='AbortError'||signal?.aborted)throw error;
+  // A format unsupported by HTMLVideoElement is not necessarily unsupported
+  // by FFmpeg/WASM. Always pass *all* source clips to preserve both timelines.
+  const files=Array.isArray(filesOrFile)?filesOrFile:[filesOrFile];
+  const parameters={...options,engine:'ffmpeg'};
+  if(['merge','split'].includes(mode)){
+    const source=await inspectContainer(files[0],signal);
+    if(source?.width>0&&source?.height>0){
+      parameters.targetWidth=source.width;parameters.targetHeight=source.height;
+    }
+  }
+  if(mode==='watermark')parameters.watermarkPng=await watermarkBitmap(options.text,signal);
+  onProgress({stage:'preparing',description:'Браузер не открыл исходник. Используем совместимый FFmpeg/WASM…'});
+  let converted;
+  try{
+    converted=await tryExperimental({files,mode,options:parameters,onProgress,signal,strict:true});
+  }catch(failure){
+    if(failure?.name==='AbortError'||signal?.aborted)throw failure;
+    throw new Error('FFmpeg/WASM не смог обработать файл: '+String(failure?.message||failure)+
+      '. Исходный браузерный декодер также отказал: '+String(error?.message||error));
+  }
+  if(converted){
+    if(['merge','split'].includes(mode))
+      converted.info+=' Несовместимые источники нормализованы до H.264/AAC; звук и порядок дорожек сохранены.';
+    if(mode==='watermark')converted.info+=' Текст отрисован браузером в PNG, включая кириллицу.';
+    return converted;
+  }
+  const totalSize=files.reduce((total,file)=>total+(file?.size||0),0);
+  const limit=totalSize>90*1024*1024
+    ?' Суммарный размер файлов превышает лимит FFmpeg/WASM 90 МиБ.'
+    :' Для первого использования FFmpeg/WASM может потребоваться интернет.';
+  throw new Error('Браузер не смог декодировать исходный формат или кодек. '+
+    String(error?.message||'')+limit);
+}
 export async function transformVideo({files, mode='convert', options={}, onProgress=()=>{}, signal}){
   // Use the selected clip order in both fast MP4 and ordinary export.
   if(mode==='merge'&&options.clipOrder==='reverse'&&files?.length===2)files=[files[1],files[0]];
+  if(mode==='convert'){
+    const unchanged=await tryOriginalVideoCopy(files?.[0],options,signal);
+    if(unchanged){
+      onProgress({stage:'complete',percent:100,description:'Файл сохранён без перекодирования.'});
+      return unchanged;
+    }
+  }
   // Try container surgery first: a compatible MP4 can be edited without decoding.
   const fast=await tryFastMp4({files,mode,options,onProgress,signal});
   if(fast)return fast;
@@ -197,20 +287,28 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
   const alternative=await tryExperimental({files,mode,options,onProgress,signal});
   if(alternative)return alternative;
   onProgress({stage:'preparing',description:'Читаем данные видео…'});
-  const primary=await openVideo(files[0],signal);
+  let primary;
+  try{primary=await openVideo(files[0],signal);}
+  catch(error){return compatibilityFallback(files,mode,options,onProgress,signal,error);}
   let secondary=null, audioCtx=null, stream=null, recorderPack=null;
   try {
     onAbort(signal);
     if(['merge','split'].includes(mode)) {
       onProgress({stage:'preparing',description:'Загружаем второе видео…'});
-      ensure(files[1], 'Для этого инструмента выберите два видео.');secondary=await openVideo(files[1],signal);
+      ensure(files[1], 'Этот инструмент требует два видеофайла.');
+      try{secondary=await openVideo(files[1],signal);}
+      catch(error){
+        const dimensions={targetWidth:primary.width,targetHeight:primary.height};
+        primary.close(); // release decoder and media bytes before loading WASM
+        return await compatibilityFallback(files,mode,{...options,...dimensions},onProgress,signal,error);
+      }
     }
     const {width,height}=canvasSize(primary,mode,options);
     ensure(width*height<=16_000_000,'Разрешение слишком высокое для обработки в браузере. Попробуйте 1080p или 720p.');
     const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
     const ctx=canvas.getContext('2d',{alpha:false});
     ensure(ctx && typeof canvas.captureStream==='function','Этот браузер не поддерживает выбранный способ обработки видео.');
-    const fps=clamp(Number(options.fps)||25,5,60);
+    const fps=clamp(Number(options.fps)||30,5,60);
     stream=canvas.captureStream(fps);
     const videos=secondary&&mode==='merge'?[primary.video,secondary.video]:[primary.video];
     const includeAudio=mode!=='mute' && options.audio!=='off';
@@ -297,6 +395,15 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
       recorderPack.recorder.stop();
       await awaitMedia(recorderPack.done.catch(()=>{}),{timeoutMs:3000}).catch(()=>{});
     }
+    // A browser may decode a clip but lack Canvas capture, Web Audio or a
+    // compatible MediaRecorder. These composite jobs can still use FFmpeg/WASM.
+    if(['merge','split','watermark','vr'].includes(mode)
+      &&e?.name!=='AbortError'&&!signal?.aborted){
+      for(const track of stream?.getTracks()||[])track.stop();
+      await audioCtx?.close().catch(()=>{});
+      primary.close();secondary?.close();
+      return await compatibilityFallback(files,mode,options,onProgress,signal,e);
+    }
     throw e;
   } finally {
     for(const track of stream?.getTracks()||[])track.stop();
@@ -306,7 +413,9 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
 }
 
 export async function frameFromVideo(file, seconds=0, signal){
-  const item=await openVideo(file,signal);
+  let item;
+  try{item=await openVideo(file,signal);}
+  catch(error){return compatibilityFallback(file,'frame',{seconds},()=>{},signal,error);}
   try {
     onAbort(signal);
     await seek(item.video,clamp(Number(seconds)||0,0,Math.max(0,item.duration-.02)),signal);
@@ -319,13 +428,24 @@ export async function frameFromVideo(file, seconds=0, signal){
   } finally { item.close(); }
 }
 export async function inspectVideo(file,signal){
+  const container=await inspectContainer(file,signal);
+  if(container?.width>0&&container?.height>0&&container?.duration>0)
+    return {name:file.name,type:file.type||container.container,size:file.size,
+      width:container.width,height:container.height,duration:container.duration,
+      videoCodec:container.videoCodec,audioCodec:container.audioCodec,
+      modified:file.lastModified};
   const item=await openVideo(file,signal);
   try {return {name:file.name,type:file.type||'неизвестно',size:file.size,width:item.width,height:item.height,duration:item.duration,modified:file.lastModified};}
   finally {item.close();}
 }
 export async function extractAudio(file,{onProgress=()=>{},signal}={}){
-  onProgress({stage:'preparing',description:'Подготавливаем звуковую дорожку…'});
-  const item=await openVideo(file,signal);let context=null,pack=null;
+  const fast=await tryFastExtractAudio({file,onProgress,signal});
+  if(fast)return fast;
+  onProgress({stage:'preparing',description:'Без потерь извлечь звук нельзя. Подготовка аудиокодера…'});
+  let item;
+  try{item=await openVideo(file,signal);}
+  catch(error){return compatibilityFallback(file,'extract-audio',{},onProgress,signal,error);}
+  let context=null,pack=null;
   try{
     ensure(typeof AudioContext!=='undefined','Этот браузер не поддерживает извлечение звука.');
     item.video.muted=false;

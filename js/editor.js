@@ -14,7 +14,7 @@ const cap=(n,lo,hi)=>Math.min(hi,Math.max(lo,n));
 const prettyTime=sec=>{const s=Math.max(0,Number(sec)||0);const m=Math.floor(s/60),r=Math.floor(s)%60;return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;};
 const el=(tag,className='',text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
 function button(label,cls='',title=label){const e=el('button',cls,label);e.type='button';e.title=title;return e;}
-function isVideo(f){return Boolean(f&&(f.type.startsWith('video/')||/\.(mp4|mov|m4v|webm|ogv|mkv)$/i.test(f.name)));}
+function isVideo(f){return Boolean(f&&(f.type.startsWith('video/')||/\.(mp4|m4v|mov|3gp|3g2|webm|mkv|avi|wmv|flv|mpeg|mpg|ts|mts|m2ts|ogv)$/i.test(f.name)));}
 function isSubtitle(f){return Boolean(f&&(/\.(srt|vtt)$/i.test(f.name)||/^text\//.test(f.type)));}
 function findValue(form,name){return form.elements.namedItem(name)?.value;}
 function setValue(form,name,value){const field=form.elements.namedItem(name);if(!field)return;field.value=String(value);field.dispatchEvent(new Event('input',{bubbles:true}));field.dispatchEvent(new Event('change',{bubbles:true}));}
@@ -399,6 +399,16 @@ function videoStudio(root,tool,form){
     if(event.target?.name==='seconds'&&!syncingFrame&&tool.id==='video-frames')seekVideo(video,Number(findValue(form,'seconds'))||0);
     if(['start','end'].includes(event.target?.name))recordTrim('');
     if(tool.id==='video-trim')trimWidget?.setKeyframes(findValue(form,'cutMode')==='keyframe'?knownKeyframes:[]);
+  });
+  listen(video,'error',()=>{
+    if(!objectFile||destroyed)return;
+    badge.textContent='Резервный экспорт';
+    showError('Этот формат не воспроизводится в браузере. Для обработки можно использовать FFmpeg/WASM (суммарный размер файлов до 90 МиБ).');
+  });
+  listen(second,'error',()=>{
+    if(!secondFile||destroyed)return;
+    badge.textContent='Резервный экспорт';
+    showError('Второй клип не декодируется в браузере. Экспорт попробует FFmpeg/WASM без отправки видео на сервер.');
   });
   listen(video,'loadedmetadata',()=>{
     if(!Number.isFinite(video.duration)||video.duration<=0){showError('Не удалось определить длительность видео. Попробуйте другой формат.');return;}

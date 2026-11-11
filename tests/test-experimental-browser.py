@@ -1,4 +1,4 @@
-"""Chromium: missing local optional engines must not break the ordinary export."""
+"""Chromium: missing optional same-origin engines must not break the ordinary export."""
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 import subprocess,time
@@ -17,7 +17,7 @@ try:
   page.locator('.tool-card').filter(has_text='Конвертер видео').first.click()
   chooser=page.locator('select[name=engine]')
   assert chooser.count()==1,'Engine select should exist in the converter'
-  assert chooser.input_value()=='classic','Ordinary path must be the default'
+  assert chooser.input_value()=='auto','Automatic offline-safe path must be the default'
   assert not remote,'Libraries should not load on page open'
   page.locator('#tool-content input[type=file]').set_input_files(str(root/'tests/fixtures/sample.webm'))
   chooser.select_option('webcodecs')
@@ -27,7 +27,7 @@ try:
   assert 'Готово' in status,f'No fallback: {status}'
   assert page.locator('.download a').count()>0
   assert not errors,errors
-  print('PASS: opt-in selection, blocked optional local codec, automatic traditional encoder fallback')
+  print('PASS: opt-in selection, blocked local codec, automatic traditional encoder fallback')
   context.close();browser.close()
 finally:
  server.terminate();server.wait(timeout=5)

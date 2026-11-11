@@ -37,6 +37,7 @@ def valid_audio_video(obj):
 
 run([sys.executable,str(ROOT/'generate-media-fixtures.py')])
 run(['node',str(ROOT/'validate-generated-media.mjs')])
+run(['node',str(ROOT/'test-ffmpeg-composite-real.mjs')])
 records=json.loads((DEST/'results.json').read_text())
 assert len(records)>=40, f'Insufficient cases: {len(records)}'
 assert sum(bool(x['fast']) for x in records)>=30, 'Lossless engine regressed'
@@ -67,6 +68,13 @@ for case in records:
     elif mode=='merge':
         assert codec(result,'audio')==codec(original,'audio')
         assert abs(duration(result)-duration(original)*2)<.26,f'Merge drift: {output}'
+    elif mode=='loop':
+        assert codec(result,'audio')==codec(original,'audio')
+        assert abs(duration(result)-duration(original)*int(case['options']['loops']))<.26,f'Loop drift: {output}'
+    elif mode=='convert':
+        assert output.suffix=='.mp4',f'QuickTime conversion must create MP4: {output}'
+        assert codec(result,'audio')==codec(original,'audio')
+        assert abs(duration(result)-duration(original))<.22,output
     valid_audio_video(result)
     run(['ffmpeg','-nostdin','-threads','1','-hide_banner','-loglevel','error','-i',str(output),'-map','0:v:0','-f','null','-'])
     if codec(result,'audio'):
