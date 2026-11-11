@@ -3,6 +3,7 @@ Does not upload media. The CI step is advisory because third-party CDN may be of
 """
 from pathlib import Path
 from playwright.sync_api import sync_playwright
+from sidebar_nav import click_sidebar_tool
 import subprocess,time,sys
 root=Path(__file__).resolve().parents[1]
 server=subprocess.Popen([sys.executable,'-m','http.server','8779','--bind','127.0.0.1','--directory',str(root)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
@@ -16,7 +17,7 @@ try:
   page.on('console',lambda x:logs.append(x.text))
   page.on('pageerror',lambda x:errors.append(str(x)))
   page.goto('http://127.0.0.1:8779/',wait_until='domcontentloaded')
-  page.locator('.tool-card').filter(has_text='Конвертер видео').first.click()
+  click_sidebar_tool(page,'Конвертер видео')
   file=str(root/'tests/fixtures/sample-silent.mp4')
   for engine,expected in [('webcodecs','WebCodecs'),('ffmpeg','FFmpeg/WASM')]:
    page.locator('#tool-content input[type=file]').set_input_files(file)
