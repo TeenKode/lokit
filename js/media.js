@@ -143,6 +143,8 @@ function connectAudio(ctx, videos, stream, gainValue=1) {
   for(const track of destination.stream.getAudioTracks())stream.addTrack(track);
 }
 export async function transformVideo({files, mode='convert', options={}, onProgress=()=>{}, signal}){
+  // Use the selected clip order in both fast MP4 and ordinary export.
+  if(mode==='merge'&&options.clipOrder==='reverse'&&files?.length===2)files=[files[1],files[0]];
   // Try container surgery first: a compatible MP4 can be edited without decoding.
   const fast=await tryFastMp4({files,mode,options,onProgress,signal});
   if(fast)return fast;
@@ -191,7 +193,8 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
     const end=mode==='trim'?clamp(Number(options.end)||primary.duration,0,primary.duration):primary.duration;
     ensure(end>start,'Конечное время должно быть больше начального.');
     const loopCount=mode==='loop'?clamp(Math.floor(Number(options.loops)||2),1,10):1;
-    const total=mode==='merge'?primary.duration+secondary.duration:mode==='split'?Math.max(primary.duration,secondary.duration):(end-start)*loopCount;
+    const splitOffset=mode==='split'?clamp(Number(options.offsetSeconds)||0,0,3600):0;
+    const total=mode==='merge'?primary.duration+secondary.duration:mode==='split'?Math.max(primary.duration,splitOffset+secondary.duration):(end-start)*loopCount;
     const bitrate=mode==='compress'?clamp(Number(options.bitrate)||650000,150000,5000000):clamp(Number(options.bitrate)||2500000,200000,15000000);
     recorderPack=recorderFor(stream,{videoBitsPerSecond:bitrate});
     const {recorder,done,mime}=recorderPack;
@@ -204,27 +207,31 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
     let checkPlayback=playbackWatchdog();
     const play=async item=>{onAbort(signal);try {await item.video.play();} catch(e) {throw new Error('Браузер заблокировал воспроизведение. Нажмите «Запустить» ещё раз либо проверьте формат файла.');}};
     await play(primary);
-    if(mode==='split') await play(secondary);
+    const splitStartedAt=performance.now();
+    let secondStarted=false;
+    if(mode==='split'&&splitOffset===0){await play(secondary);secondStarted=true;}
     while(true){
       onAbort(signal);
-      draw(current,mode==='split'?secondary:null);
+      const elapsed=(performance.now()-splitStartedAt)/1000;
+      if(mode==='split'&&!secondStarted&&elapsed>=splitOffset){await play(secondary);secondStarted=true;}
+      draw(current,mode==='split'&&secondStarted?secondary:null);
       // Split-screen finishes after both videos; the longest running clock
       // should advance even when one of the streams ends before the other.
-      checkPlayback(mode==='split'?Math.max(primary.video.currentTime,secondary.video.currentTime):current.video.currentTime);
+      checkPlayback(mode==='split'?Math.max(elapsed,primary.video.currentTime,secondStarted?splitOffset+secondary.video.currentTime:0):current.video.currentTime);
       let fraction;
       if(mode==='merge')fraction=(current===primary?primary.video.currentTime:primary.duration+secondary.video.currentTime)/total;
-      else if(mode==='split')fraction=Math.max(primary.video.currentTime,secondary.video.currentTime)/total;
+      else if(mode==='split')fraction=Math.max(elapsed,primary.video.currentTime,secondStarted?splitOffset+secondary.video.currentTime:0)/total;
       else fraction=(runs*(end-start)+Math.min(end-start,Math.max(0,current.video.currentTime-start)))/total;
       onProgress({stage:'processing',percent:clamp(fraction*100,0,99),current:clamp(fraction,0,1)*total,total});
-      const finished=mode==='split'?(primary.video.ended&&secondary.video.ended):current.video.ended||current.video.currentTime>=(mode==='merge'?current.duration:end)-.035;
+      const finished=mode==='split'?(primary.video.ended&&secondStarted&&secondary.video.ended):current.video.ended||current.video.currentTime>=(mode==='merge'?current.duration:end)-.035;
       if(finished){
         if(mode==='merge'&&next){current.video.pause();current=next;next=null;checkPlayback=playbackWatchdog();await play(current);continue;}
         if(mode==='loop'&&runs+1<loopCount){runs++;current.video.pause();await seek(current.video,start,signal);checkPlayback=playbackWatchdog();await play(current);continue;}
         break;
       }
-      await nextVideoFrame(current.video,fps,signal);
+      await nextVideoFrame(mode==='split'&&primary.video.ended&&secondStarted?secondary.video:current.video,fps,signal);
     }
-    draw(current,mode==='split'?secondary:null);
+    draw(current,mode==='split'&&secondStarted?secondary:null);
     onProgress({stage:'finalizing',description:'Завершение кодирования видео…'});
     recorder.stop();
     const blob=await done;
@@ -307,7 +314,7 @@ async function requestMediaWithAbort(promise,signal){
   });
 }
 
-export async function recordDevice(kind,{onStop=()=>{},onProgress=()=>{},signal}={}){
+export async function recordDevice(kind,{onStop=()=>{},onProgress=()=>{},onStream=()=>{},signal}={}){
   onProgress({stage:'preparing',description:'Ожидание разрешения на запись…'});
   ensure(navigator.mediaDevices,'Запись доступна только на HTTPS или localhost.');
   onAbort(signal);
@@ -321,6 +328,7 @@ export async function recordDevice(kind,{onStop=()=>{},onProgress=()=>{},signal}
   let recorder,ticker=null,started=0;
   try {
     onAbort(signal);
+    onStream(stream);
     const pack=recorderFor(stream,{videoBitsPerSecond:2500000});recorder=pack.recorder;
     let stop;
     const stopPromise=new Promise(resolve=>{stop=resolve;});
@@ -343,5 +351,5 @@ export async function recordDevice(kind,{onStop=()=>{},onProgress=()=>{},signal}
     onAbort(signal);
     ensure(blob.size>0,'Запись не содержит данных.');
     return {blob,ext:extension(pack.mime)};
-  }finally {if(ticker!==null)clearInterval(ticker);if(recorder?.state==='recording')recorder.stop();for(const track of stream.getTracks())track.stop();onStop(null);}
+  }finally {if(ticker!==null)clearInterval(ticker);if(recorder?.state==='recording')recorder.stop();for(const track of stream.getTracks())track.stop();onStream(null);onStop(null);}
 }

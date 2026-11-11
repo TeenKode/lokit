@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {multiTrackLayout,locateMergeTime,globalMergeTime,splitSourceTime} from '../js/multitrack.js';
+import {adjustCue} from '../js/subtitle-timeline.js';
+const normal=multiTrackLayout('merge',[6,4]);
+assert.equal(normal.total,10);
+assert.deepEqual(normal.clips.map(c=>c.source),[0,1]);
+assert.deepEqual(locateMergeTime(normal,6.5),{source:1,time:.5});
+assert.equal(globalMergeTime(normal,1,2),8);
+const reverse=multiTrackLayout('merge',[6,4],{order:'reverse'});
+assert.deepEqual(reverse.clips.map(c=>c.source),[1,0]);
+assert.deepEqual(locateMergeTime(reverse,4.5),{source:0,time:.5});
+const split=multiTrackLayout('split',[6,4],{offset:3});
+assert.equal(split.total,7);
+assert.deepEqual(split.tracks[1][0],{source:1,start:3,end:7});
+assert.equal(splitSourceTime(2,3,4),0);
+assert.equal(splitSourceTime(4,3,4),1);
+assert.equal(multiTrackLayout('loop',[2,0],{loops:3}).total,6);
+assert.equal(multiTrackLayout('speed',[6,0],{speed:1.5}).total,4);
+const cues=[{start:1,end:3,text:'Текст'}];
+assert.deepEqual(adjustCue(cues,0,'start',2),{start:2,end:3,text:'Текст'});
+assert.deepEqual(adjustCue(cues,0,'end',4),{start:1,end:4,text:'Текст'});
+assert.deepEqual(adjustCue(cues,0,'move',6),{start:6,end:8,text:'Текст'});
+assert.equal(adjustCue(cues,0,'start',-2),null);
+const tools=readFileSync(new URL('../js/tools.js',import.meta.url),'utf8');
+const media=readFileSync(new URL('../js/media.js',import.meta.url),'utf8');
+const editor=readFileSync(new URL('../js/editor.js',import.meta.url),'utf8');
+const app=readFileSync(new URL('../js/app.js',import.meta.url),'utf8');
+for(const [text,part] of [[tools,'clipOrder'],[tools,'offsetSeconds'],[tools,'captureStream'],[media,'splitOffset'],[media,"options.clipOrder==='reverse'"],[media,'onStream(stream)'],[editor,'mountSubtitleTimeline'],[editor,'mountMultiTrack'],[editor,"setValue(form,'seconds'"],[app,'captureStream:stream=>']]){
+  assert.ok(text.includes(part),'Missing connected editor/export behavior: '+part);
+}
+console.log('v0.8.1 multi-track timeline, order, delay, cue geometry, capture and export linkage — PASS');

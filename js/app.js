@@ -298,7 +298,7 @@ function openTool(tool){
     };
     const stopHandler=fn=>{if(!isCurrent())return;stopRecording=fn;stop.classList.toggle('hidden',!fn);if(fn)showStatus();};
     try{
-      const result=await tool.run({files,values,signal:runController.signal,stop:stopHandler,progress:handleProgress});
+      const result=await tool.run({files,values,signal:runController.signal,stop:stopHandler,progress:handleProgress,captureStream:stream=>activeEditor?.setStream?.(stream)});
       if(!runController.signal.aborted&&isCurrent()){
         addResult(result);
         recordOperation(tool.id,'success',files,result,(performance.now()-started));

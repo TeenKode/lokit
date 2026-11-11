@@ -25,7 +25,7 @@ export const tools=[
     {key:'cutMode',label:'Точность обрезки',type:'select',choices:[['exact','Точно по маркерам (рекомендуется)'],['keyframe','Быстро по ключевым кадрам (может начаться раньше)']],default:'exact'},width], 'Видео', {note:'MP4 обрезается быстро и без перекодирования; WebM — без перекодирования у ключевых кадров. Если нужна точная обрезка WebM между ключевыми кадрами, используется обычная обработка.'}),
   tool('mute-video','Удалить звук','Быстро убрать аудиодорожку MP4 без перекодирования','◌','mute',[width], 'Видео', {note:'Для MP4 при исходном разрешении звук удаляется без изменения видеокадров. Для других форматов доступен обычный экспорт.'}),
   tool('video-crop','Кадрирование видео','Убрать одинаковые поля по краям кадра','▣','crop',[
-    {key:'crop',label:'Обрезать с каждого края, %',type:'number',default:'10',min:0,max:40,step:1},width]),
+    {key:'crop',label:'Обрезать с каждого края, %',type:'number',default:'10',min:0,max:40,step:1},width], 'Видео', {note:'Нажмите «Показать исходник» и перетащите угловые маркеры кадрирования. Результат и экспорт используют одинаковые проценты.'}),
   tool('video-flip','Отразить видео','Зеркальное отражение по горизонтали или вертикали','⇆','flip-h',[width], 'Видео', {
     async run({files,values,progress,signal}){const mode=values.axis==='vertical'?'flip-v':'flip-h';const {blob,ext}=await transformVideo({files,mode,options:values,onProgress:progress,signal});return {blob,name:outputName(files[0],'flip',ext)};},
     options:[{key:'axis',label:'Направление',type:'select',choices:[['horizontal','Горизонтально'],['vertical','Вертикально']],default:'horizontal'},width]
@@ -49,12 +49,12 @@ export const tools=[
     {key:'bitrate',label:'Битрейт видео',type:'select',choices:[['300000','300 кбит/с'],['650000','650 кбит/с'],['1000000','1 Мбит/с'],['1800000','1,8 Мбит/с']],default:'650000'},width,engine]),
   tool('video-volume','Громкость видео','Увеличить или уменьшить громкость звука','♫','volume',[
     {key:'gain',label:'Уровень звука',type:'select',choices:[['0.25','25%'],['0.5','50%'],['1','100%'],['1.5','150%'],['2','200%']],default:'1'},width]),
-  tool('video-merge','Склеить видео','Соединить два ролика последовательно','⊕','merge',[width], 'Видео',{maxFiles:2,requiredFiles:2,note:'MP4 одинакового формата и разрешения могут склеиваться мгновенно без перекодирования. Для несовместимых роликов используется обычный экспорт WebM.'}),
-  tool('split-screen','Разделённый экран','Показать два видео рядом','◫','split',[width],'Видео',{maxFiles:2,requiredFiles:2,note:'Аудио берётся из первого ролика. Ролики запускаются одновременно.'}),
+  tool('video-merge','Склеить видео','Соединить два ролика последовательно','⊕','merge',[{key:'clipOrder',label:'Порядок клипов',type:'select',choices:[['normal','Сначала первый, затем второй'],['reverse','Сначала второй, затем первый']],default:'normal'},width], 'Видео',{maxFiles:2,requiredFiles:2,note:'Последовательность отражена на таймлайне и применяется при экспорте. MP4 одинакового формата и разрешения могут склеиваться без перекодирования.'}),
+  tool('split-screen','Разделённый экран','Показать два видео рядом','◫','split',[{key:'offsetSeconds',label:'Задержка второго видео, секунд',type:'number',default:'0',min:0,max:3600,step:.1,hint:'Вторая дорожка начнётся позже; пока она не началась, её половина экрана будет чёрной.'},width],'Видео',{maxFiles:2,requiredFiles:2,note:'Две независимые дорожки; звук берётся только из первого ролика. Смещение на таймлайне совпадает с экспортом.'}),
   tool('video-to-vr','Видео рядом с копией','Сделать стереопару для просмотра рядом','▥','vr',[width], 'Видео'),
   {
     id:'video-frames',title:'Кадр из видео',description:'Сохранить выбранный момент как PNG',icon:'▧',category:'Изображения',accept:videoAccept,
-    options:[{key:'seconds',label:'Время кадра, сек.',type:'number',default:'0',min:0,step:.1}],
+    options:[{key:'seconds',label:'Время кадра, сек.',type:'number',default:'0',min:0,step:.001,hint:'Положение видеокурсора связано с экспортируемым PNG.'}],
     async run({files,values,signal}){const {blob}=await frameFromVideo(files[0],values.seconds,signal);return {blob,name:outputName(files[0],'frame','png')};}
   },
   {
@@ -70,11 +70,11 @@ export const tools=[
   },
   {
     id:'screen-recorder',title:'Запись экрана',description:'Сохранить изображение экрана или вкладки',icon:'▣',category:'Запись',isCapture:true,options:[],
-    async run({stop,signal,progress}){const {blob,ext}=await recordDevice('screen',{onStop:stop,onProgress:progress,signal});return {blob,name:`screen-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.${ext}`};}
+    async run({stop,signal,progress,captureStream}){const {blob,ext}=await recordDevice('screen',{onStop:stop,onProgress:progress,onStream:captureStream,signal});return {blob,name:`screen-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.${ext}`};}
   },
   {
     id:'webcam-recorder',title:'Запись камеры',description:'Сохранить видео с камеры и микрофона',icon:'◎',category:'Запись',isCapture:true,options:[],
-    async run({stop,signal,progress}){const {blob,ext}=await recordDevice('webcam',{onStop:stop,onProgress:progress,signal});return {blob,name:`webcam-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.${ext}`};}
+    async run({stop,signal,progress,captureStream}){const {blob,ext}=await recordDevice('webcam',{onStop:stop,onProgress:progress,onStream:captureStream,signal});return {blob,name:`webcam-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.${ext}`};}
   },
   {
     id:'subtitle-converter',title:'SRT ⇄ VTT',description:'Конвертация форматов субтитров',icon:'≡',category:'Субтитры',accept:'.srt,.vtt,text/plain',options:[],
