@@ -13,7 +13,7 @@ export function safeZipName(name){
   // Normalize before deduplication so extracted entries cannot silently overwrite files.
   const cleaned=String(name||'result.bin').replace(/[\\/\x00-\x1f\x7f]/g,'_').replace(/^\.+/,'').trim().replace(/[. ]+$/g,'');
   if(!cleaned)return 'result.bin';
-  return /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\\.|$)/i.test(cleaned)?`_${cleaned}`:cleaned;
+  return /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(cleaned)?`_${cleaned}`:cleaned;
 }
 export function uniqueZipEntries(entries){
   const counts=new Set();
