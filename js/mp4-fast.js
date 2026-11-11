@@ -58,10 +58,10 @@ function validCopy(source,out,expectedDuration,toleranceMs=160){
 }
 
 export async function tryFastMp4({files,file=files?.[0],mode,options={},onProgress=()=>{},signal}){
-  if(!file?.size||!['mute','speed','trim','merge','loop','volume','crop','blur'].includes(mode))return null;
+  if(!file?.size||!['mute','speed','trim','merge','loop','volume','crop','blur','compress'].includes(mode))return null;
   if(String(options.resolution ?? options.width ?? 'original')!=='original')return null;
   if(mode==='merge' && (!files?.[1]||!validMp4(file)||!validMp4(files[1])))return null;
-  if(mode==='loop' && (!validMp4(file)&&!validWebm(file)))return null;
+  if(['loop','compress'].includes(mode) && (!validMp4(file)&&!validWebm(file)))return null;
   const unchanged=(mode==='volume'&&Number(options.gain)===1&&options.audio!=='off')
     ||(mode==='crop'&&Number(options.crop)===0)
     ||(mode==='blur'&&Number(options.blur)===0)
@@ -84,6 +84,22 @@ export async function tryFastMp4({files,file=files?.[0],mode,options={},onProgre
       if(!hasVideo)return null;
       done(onProgress,'Файл не требует изменений — оригинал сохранён без перекодирования.');
       return successful(file,isMp4?'mp4':'webm','copy');
+    }
+    // Compressing an already-below-target source can only increase its size
+    // at the requested bitrate. Keep the original bytes and codec instead.
+    if(mode==='compress'){
+      if(options.engine&&!['auto','classic'].includes(options.engine))return null;
+      const isMp4=validMp4(file);
+      const engine=isMp4?await tracks():await webmCopy();
+      const info=await engine.inspect(file);abortCheck(signal);
+      const duration=isMp4?info.durationSec:info.durationMs/1000;
+      const hasVideo=isMp4?info.tracks.some(t=>t.handler==='vide'):!!info.videoTrack;
+      const target=Number(options.bitrate)||650000;
+      if(!hasVideo||!Number.isFinite(duration)||duration<=0||!Number.isFinite(target)||target<=0)return null;
+      const totalBitrate=file.size*8/duration;
+      if(totalBitrate>target)return null;
+      done(onProgress,'Видео уже имеет битрейт ниже выбранного. Перекодирование не нужно.');
+      return successful(file,isMp4?'mp4':'webm','copy','Исходный битрейт уже ниже выбранного ограничения; качество сохранено.');
     }
     if(mode==='loop'){
       const loops=Math.floor(Number(options.loops)||2);
