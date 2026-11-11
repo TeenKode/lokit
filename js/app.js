@@ -173,6 +173,7 @@ function updateLastToolButtons(){
     recentButton.title=last.description;
     recentButton.setAttribute('aria-label',`Продолжить: ${last.title}`);
   }
+}
 function updateHeroStats(){const el=$('#hero-tool-count');if(el)el.textContent=String(tools.length);}
 
 function addResult(result){
