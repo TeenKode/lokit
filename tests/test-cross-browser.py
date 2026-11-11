@@ -25,8 +25,16 @@ try:
   page.goto(url,wait_until='domcontentloaded')
   # Shared glow layer must be applied after compact/sidebar styles, without animation.
   assert page.locator('link[href="./glow.css"]').count()==1
-  assert page.evaluate("getComputedStyle(document.querySelector('.hero-copy')).boxShadow != 'none'"),'Hero glow missing'
-  assert page.evaluate("getComputedStyle(document.querySelector('.header .ghost-button')).boxShadow != 'none'"),'Button glow missing'
+  # Compare the computed glow COLOR, not just boxShadow != none: old CSS already had shadows.
+  def assert_soft_glow(selector):
+   shadow=page.locator(selector).first.evaluate('(element) => getComputedStyle(element).boxShadow')
+   assert '128, 195, 255' in shadow,(selector,'Expected blue halo, got:',shadow)
+  assert_soft_glow('.hero-copy')
+  assert_soft_glow('.hero-panel')
+  assert_soft_glow('.tool-sidebar')
+  assert_soft_glow('.header .ghost-button')
+  radius=page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--glow-radius').trim()")
+  assert radius==('8px' if args.mobile else '13px'),('Unexpected glow blur radius',radius)
   assert page.evaluate("getComputedStyle(document.querySelector('.page-glow')).animationName == 'none'"),'Background unexpectedly animates'
   picker=page.locator('#background-choice')
   picker.wait_for(state='attached',timeout=15000)
@@ -49,12 +57,14 @@ try:
   assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),'Horizontal overflow'
   click_sidebar_tool(page,'Обрезка видео')
   assert page.locator('.studio-shell').count()==1
+  assert_soft_glow('.studio-shell')
+  assert_soft_glow('.studio-settings')
   assert page.locator('.studio-reset-settings').count()==1
   page.locator('[name=start]').fill('2.25')
   page.locator('[name=start]').blur()
   page.reload(wait_until='domcontentloaded')
   if args.mobile:page.locator('#sidebar-toggle').click()
-  page.locator('.tool-card').filter(has_text='Обрезка видео').first.click()
+  click_sidebar_tool(page,'Обрезка видео')
   assert page.locator('[name=start]').input_value()=='2.25','Settings not restored'
   page.locator('.studio-reset-settings').click()
   assert page.locator('[name=start]').input_value()=='0'
@@ -69,16 +79,16 @@ try:
   with page.expect_download() as download:page.locator('.download a').first.click()
   assert f'Lokit {args.browser}' in Path(download.value.path()).read_text(encoding='utf-8')
   page.goto(url+'batch.html',wait_until='domcontentloaded')
-  assert page.evaluate("getComputedStyle(document.querySelector('.batch-panel')).boxShadow != 'none'"),'Batch panel glow missing'
+  assert_soft_glow('.batch-panel')
   assert page.locator('#background-choice').input_value()=='topography'
   assert page.locator('.page-glow').get_attribute('data-background-theme')=='topography'
   page.goto(url+'analytics.html',wait_until='domcontentloaded')
-  assert page.evaluate("getComputedStyle(document.querySelector('.metric-card')).boxShadow != 'none'"),'Analytics card glow missing'
+  assert_soft_glow('.metric-card')
   assert page.locator('#background-choice').input_value()=='topography'
   assert page.locator('#metric-success').inner_text()=='1'
   assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth')
   page.goto(url+'about.html',wait_until='domcontentloaded')
-  assert page.evaluate("getComputedStyle(document.querySelector('.analytics-panel')).boxShadow != 'none'"),'About panel glow missing'
+  assert_soft_glow('.analytics-panel')
   assert page.locator('#background-choice').input_value()=='topography'
   assert 'v'+APP_VERSION in page.locator('#release-title').inner_text()
   assert not errors,errors
