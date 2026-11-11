@@ -5,20 +5,23 @@
   --glow-control:rgba(91,169,248,.12);
   --glow-hover:rgba(107,187,255,.23);
   --glow-focus:rgba(130,200,255,.32);
+  --glow-radius:13px;
+  --glow-depth:var(--shadow,0 12px 30px rgba(0,0,0,.2));
 }
 
-/* The larger surfaces share the same faint halo. Existing depth remains visible. */
-:where(
+/* Specificity 0-1-0 beats earlier single-class box-shadow rules.
+   Keep the original elevation as the first layer and add a restrained halo. */
+:is(
   .hero-copy,.hero-panel,.toolbar,.workspace,.benefit-card,.footnote,
   .tool-sidebar,.analytics-panel,.metric-card,.analytics-toolbar,
   .batch-panel,.batch-overall,.batch-help,.batch-job,
   .studio-shell,.studio-settings,.precision-editor,
   .multi-timeline,.subtitle-lane-wrap,.capability-card,.download
 ){
-  box-shadow:0 0 0 1px var(--glow-edge),0 0 16px var(--glow-rest),0 10px 30px rgba(0,0,0,.17);
+  box-shadow:var(--glow-depth),0 0 0 1px var(--glow-edge),0 0 var(--glow-radius) var(--glow-rest);
 }
-/* Smaller nested surfaces: restrained glow, no competing full-size shadow. */
-:where(
+/* Specificity matches prior one-class styles; keep small surfaces lightweight. */
+:is(
   .stat-card,.sidebar-group,.batch-dropzone,.dropzone,
   .studio-wave-area,.studio-trim,.batch-empty,.search-box,
   .batch-export,.no-results
@@ -80,12 +83,17 @@
 :where(.search-box,.dropzone,.batch-dropzone):focus-within{
   box-shadow:0 0 0 1px rgba(120,190,255,.22),0 0 14px rgba(106,185,255,.16);
 }
-/* Don't spend rendering resources on a glow for offscreen tool/guide elements. */
+/* Fewer large blurred surfaces on narrow viewports and low-power phones. */
 @media(max-width:650px){
   :root{
     --glow-rest:rgba(78,149,232,.075);
     --glow-control:rgba(91,169,248,.09);
     --glow-hover:rgba(107,187,255,.18);
+    --glow-radius:8px;
+    --glow-depth:0 7px 18px rgba(0,0,0,.16);
+  }
+  :is(.batch-job,.sidebar-group,.studio-wave-area,.studio-trim,.batch-empty,.batch-export){
+    box-shadow:inset 0 1px 0 rgba(166,208,255,.04),0 0 6px rgba(80,152,234,.055);
   }
 }
 @media(forced-colors:active){
