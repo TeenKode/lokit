@@ -2,6 +2,7 @@
 from pathlib import Path
 import os, shutil, subprocess, tempfile, time
 from playwright.sync_api import sync_playwright
+from sidebar_nav import click_sidebar_tool
 ROOT=Path(__file__).resolve().parents[1]
 if not shutil.which('ffmpeg'):
  print('SKIPPED codec generation: ffmpeg not installed')
@@ -28,7 +29,7 @@ with tempfile.TemporaryDirectory() as temp:
    page.goto('http://127.0.0.1:8768/',wait_until='domcontentloaded')
    page.locator('.tool-card').first.wait_for(timeout=15000)
    for file in valid:
-    page.locator('.tool-card').filter(has_text='Информация о видео').first.click()
+    click_sidebar_tool(page,'Информация о видео')
     page.locator('#tool-content input[type=file]').set_input_files(str(file))
     page.locator('#tool-content button.primary').click()
     page.wait_for_function("() => document.querySelector('#tool-status').textContent.includes('Готово') || document.querySelector('#tool-status').classList.contains('error')",timeout=30000)
