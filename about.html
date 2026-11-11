@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0f1727">
   <meta name="description" content="Обновления Lokit, возможности браузера и ограничения инструментов.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https://cdn.jsdelivr.net; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
   <title>Что нового — Lokit</title>
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="./glow.css">
   <script type="module" src="./js/background.js"></script>
   <script type="module" src="./js/capabilities.js"></script>
+  <script type="module" src="./js/offline-codecs-page.js"></script>
 </head>
 <body>
   <div class="page-glow" aria-hidden="true"></div>
@@ -22,7 +23,7 @@
     <header class="header">
       <div class="header-left">
         <a class="brand" href="./" aria-label="На главную Lokit"><span class="brand-icon" aria-hidden="true">✦</span><span class="brand-text"><strong>Lokit</strong><span>обработка файлов в браузере</span></span></a>
-        <a class="version-pill" href="./about.html" aria-current="page"><span data-app-version>v0.8.4</span><small data-app-stage>beta</small></a>
+        <a class="version-pill" href="./about.html" aria-current="page"><span data-app-version>v0.8.5</span><small data-app-stage>beta</small></a>
       </div>
       <nav class="header-right" aria-label="Навигация"><div data-background-control></div><a class="ghost-button" href="./">← Инструменты</a><a class="ghost-button" href="./batch.html">Пакетная обработка</a><a class="ghost-button" href="./analytics.html">Статистика</a></nav>
     </header>
@@ -31,8 +32,8 @@
       <h1>Что нового в Lokit</h1>
       <p class="hero-desc">Lokit помогает редактировать видео, звук и субтитры без отправки файлов на сервер. Здесь собраны обновления и сведения о совместимости.</p>
       <section class="analytics-panel" aria-labelledby="release-title">
-        <div class="panel-heading"><h2 id="release-title">Версия <span data-app-version>v0.8.4</span> · предварительная</h2><span class="subtle small">11 ноября 2026 г.</span></div>
-        <ul class="release-list"><li>Добавлены группы и поиск в боковом меню, избранные инструменты и удобная навигация на телефоне.</li></ul>
+        <div class="panel-heading"><h2 id="release-title">Версия <span data-app-version>v0.8.5</span> · предварительная</h2><span class="subtle small">11 ноября 2026 г.</span></div>
+        <ul class="release-list"><li>Автономные FFmpeg/WASM и Mediabunny, офлайн-загрузка движков без сторонних CDN.</li></ul>
       </section>
       <section class="analytics-panel" aria-labelledby="older-title">
         <div class="panel-heading"><h2 id="older-title">Предыдущие изменения</h2></div>
@@ -44,14 +45,26 @@
         <p>Здесь показаны технологии, доступные в вашем браузере. Не каждый браузер поддерживает ускоренное кодирование; при сбое экспериментального режима Lokit попробует обычный экспорт. FFmpeg/WASM загружается только при его выборе. Проверка выполняется на устройстве.</p>
         <div id="capability-grid" class="capability-grid" aria-live="polite"></div>
       </section>
+      <section class="analytics-panel" id="offline-codecs" aria-labelledby="offline-codecs-heading">
+        <div class="panel-heading"><h2 id="offline-codecs-heading">Движки для работы офлайн</h2></div>
+        <p>FFmpeg/WASM и Mediabunny загружаются с самого Lokit и только по запросу. Сохраните их один раз, чтобы конвертер и сжатие могли использовать дополнительные движки без интернета. На обычную загрузку сайта они не влияют.</p>
+        <p class="small subtle" id="offline-codecs-size">Определяем объём загрузки…</p>
+        <p id="offline-codecs-status" role="status" aria-live="polite">Проверяем локальный кеш…</p>
+        <progress id="offline-codecs-progress" max="3" value="0" hidden style="width:100%;margin:6px 0 12px"></progress>
+        <div class="actions">
+          <button class="primary" id="offline-codecs-download" type="button">Скачать все движки для офлайна</button>
+          <button class="secondary" id="offline-codecs-remove" type="button">Удалить скачанные движки</button>
+        </div>
+        <p class="small subtle">Модули хранятся только в данных этого браузера. Браузер может удалить их при нехватке места или очистке данных сайта; исходные файлы не загружаются на сервер.</p>
+      </section>
       <section class="analytics-panel" aria-labelledby="limits-title">
         <div class="panel-heading"><h2 id="limits-title">Ограничения и совместимость</h2></div>
         <p>Совместимые MP4 можно обрезать, объединять и освобождать от звука без перекодирования. Для MP4 без звуковой дорожки также доступно быстрое изменение скорости. WebM обрезается без перекодирования по ключевым кадрам. Другие операции обычно создают WebM в реальном времени. Поддержка форматов и записи зависит от браузера и устройства: не все сочетания проверены. В пакетном режиме задания выполняются по очереди; общий ZIP ограничен 4 ГБ.</p>
-        <p>После первого открытия основные инструменты доступны без сети. Для первой загрузки отдельных экспериментальных движков интернет может потребоваться снова. История, избранное и недавний инструмент хранятся в браузере и не синхронизируются между устройствами.</p>
+        <p>После первого открытия основные инструменты доступны без сети. Дополнительные движки можно заранее сохранить для работы без сети в разделе выше. История, избранное и недавний инструмент хранятся в браузере и не синхронизируются между устройствами.</p>
         <p><a class="ghost-button about-link" href="https://github.com/TeenKode/lokit/issues" rel="noopener noreferrer" target="_blank">Сообщить о проблеме</a></p>
       </section>
     </main>
-    <footer class="footer"><span>Lokit · <span data-app-version>v0.8.4</span> · beta</span><span><a href="./">Инструменты</a> · <a href="./analytics.html">Моя статистика</a></span></footer>
+    <footer class="footer"><span>Lokit · <span data-app-version>v0.8.5</span> · beta</span><span><a href="./">Инструменты</a> · <a href="./analytics.html">Моя статистика</a></span></footer>
   </div>
 </body>
 </html>

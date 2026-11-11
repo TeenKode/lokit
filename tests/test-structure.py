@@ -76,7 +76,7 @@ for path in ['js/experimental-engines.js','js/experimental-ffmpeg-worker.js']:
  assert f"'./{path}'" in sw,path
 for page in ['index.html','batch.html']:
  html=(ROOT/page).read_text()
- assert 'https://cdn.jsdelivr.net' in html and 'wasm-unsafe-eval' in html
+ assert 'https://cdn.jsdelivr.net' not in html and 'wasm-unsafe-eval' in html
 print('Optional engines, strict opt-in assets and CSP — PASS')
 
 # The grouped tool menu must be a first-class offline asset.
