@@ -297,3 +297,34 @@ export async function tryFastExtractAudio({file,onProgress=()=>{},signal}={}){
     return null;
   }
 }
+
+/** Read codec and geometry from container headers even without browser decoders.
+ * Works with MP4, MOV, 3GP, WebM; unknown formats return null.
+ */
+export async function inspectContainer(file,signal){
+  if(!validMp4(file)&&!validWebm(file))return null;
+  abortCheck(signal);
+  try{
+    if(validMp4(file)){
+      const engine=await tracks();abortCheck(signal);
+      const data=await engine.inspect(file);abortCheck(signal);
+      const video=data.tracks.find(t=>t.handler==='vide');
+      const audio=data.tracks.filter(t=>t.handler==='soun');
+      if(!video||!(data.durationSec>0))return null;
+      return {width:video.width,height:video.height,duration:data.durationSec,
+        videoCodec:video.codec,audioCodec:audio.map(t=>t.codec).join(', ')||'нет',
+        container:originalExt(file).toUpperCase()};
+    }
+    const engine=await webmCopy();abortCheck(signal);
+    const data=await engine.inspect(file);abortCheck(signal);
+    const video=data.tracks.find(t=>t.type===1);
+    const audio=data.tracks.filter(t=>t.type===2);
+    if(!video||!(data.durationMs>0))return null;
+    return {width:video.width,height:video.height,duration:data.durationMs/1000,
+      videoCodec:video.codec,audioCodec:audio.map(t=>t.codec).join(', ')||'нет',
+      container:'WebM'};
+  }catch(error){
+    if(error?.name==='AbortError'||signal?.aborted)throw error;
+    return null;
+  }
+}
