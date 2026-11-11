@@ -19,6 +19,38 @@ export function outputName(file, suffix, ext) {
 }
 function mimeChoice(types) { return types.find(x => MediaRecorder.isTypeSupported(x)) || ''; }
 
+function releaseVideo(video,url){
+  // Removing an element alone does not necessarily release the decoder.
+  try{video.pause();}catch{}
+  try{video.removeAttribute('src');video.load();}catch{}
+  try{video.remove();}catch{}
+  URL.revokeObjectURL(url);
+}
+export function awaitMedia(promise,{signal,timeoutMs=18000,message='Операция с медиафайлом не отвечает.'}={}){
+  return new Promise((resolve,reject)=>{
+    let settled=false;
+    const abort=()=>finish(new DOMException('Отменено','AbortError'));
+    const timer=setTimeout(()=>finish(new Error(message)),timeoutMs);
+    function finish(error,value){
+      if(settled)return;
+      settled=true;clearTimeout(timer);signal?.removeEventListener('abort',abort);
+      if(error)reject(error);else resolve(value);
+    }
+    // Always handle the source promise, including late errors after cancellation.
+    Promise.resolve(promise).then(value=>finish(null,value),error=>finish(error));
+    signal?.addEventListener('abort',abort,{once:true});
+    if(signal?.aborted)abort();
+  });
+}
+function abortableDelay(milliseconds,signal){
+  return new Promise((resolve,reject)=>{
+    if(signal?.aborted){reject(new DOMException('Отменено','AbortError'));return;}
+    const abort=()=>{clearTimeout(timer);signal?.removeEventListener('abort',abort);reject(new DOMException('Отменено','AbortError'));};
+    const timer=setTimeout(()=>{signal?.removeEventListener('abort',abort);resolve();},milliseconds);
+    signal?.addEventListener('abort',abort,{once:true});
+  });
+}
+
 export async function openVideo(file,signal) {
   onAbort(signal);
   ensure(file instanceof File, 'Сначала выберите видеофайл.');
@@ -27,8 +59,10 @@ export async function openVideo(file,signal) {
   video.src = url;
   video.preload = 'auto'; video.playsInline = true;
   video.style.cssText = 'position:fixed;left:-10000px;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
-  document.body.append(video);
+  let released=false;
+  const close=()=>{if(released)return;released=true;releaseVideo(video,url);};
   try {
+    document.body.append(video);
     await new Promise((resolve,reject)=>{
       let finished=false;
       const timeout=setTimeout(()=>finish(new Error('Браузер не смог открыть видео. Проверьте формат файла.')),18000);
@@ -51,8 +85,8 @@ export async function openVideo(file,signal) {
     ensure(video.videoWidth && video.videoHeight, 'Не удалось определить размер кадра.');
     ensure(Number.isFinite(video.duration) && video.duration > 0, 'Не удалось определить длительность видео.');
     return { video, url, duration:video.duration, width:video.videoWidth, height:video.videoHeight,
-      close() { video.pause(); video.removeAttribute('src'); video.load(); video.remove(); URL.revokeObjectURL(url); } };
-  } catch (error) { video.remove(); URL.revokeObjectURL(url); throw error; }
+      close };
+  } catch (error) { close(); throw error; }
 }
 
 export function supportedMediaFeatures(){
@@ -97,8 +131,10 @@ async function seek(video, at, signal) {
     const ok = () => {done();resolve();};
     const done = () => {clearTimeout(timeout);video.removeEventListener(eventName,ok);signal?.removeEventListener('abort',aborted);};
     video.addEventListener(eventName,ok,{once:true});signal?.addEventListener('abort',aborted,{once:true});
-    if(!same)video.currentTime=at;
-    else if(video.readyState>=2)ok();
+    try {
+      if(!same)video.currentTime=at;
+      else if(video.readyState>=2)ok();
+    }catch(error){done();reject(error);}
   });
 }
 
@@ -116,6 +152,15 @@ export function playbackWatchdog({maxIdleMs=15000,now=()=>performance.now()}={})
       lastTime=current;lastAdvance=tick;return;
     }
     if(tick-lastAdvance>maxIdleMs)throw new Error('Воспроизведение остановилось: браузер не может декодировать видео. Попробуйте другой формат или другой браузер.');
+  };
+}
+
+export function splitPlaybackWatchdog({maxIdleMs=15000,now=()=>performance.now()}={}){
+  const first=playbackWatchdog({maxIdleMs,now});
+  const second=playbackWatchdog({maxIdleMs,now});
+  return ({primary,secondary,secondStarted})=>{
+    if(!primary.ended)first(primary.currentTime);
+    if(secondStarted&&!secondary.ended)second(secondary.currentTime);
   };
 }
 
@@ -174,7 +219,7 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
       try {
         audioCtx=new AudioContext();
         connectAudio(audioCtx,videos,stream,mode==='volume'?clamp(Number(options.gain)||1,0,3):1);
-        await audioCtx.resume();
+        await awaitMedia(audioCtx.resume(),{signal,message:'Аудиосистема не отвечает при подготовке экспорта.'});
         ensure(audioCtx.state==='running','Браузер не разрешил включить звук при экспорте.');
         ensure(stream.getAudioTracks().length>0,'Не удалось добавить звуковую дорожку к результату.');
       } catch(e){
@@ -194,7 +239,7 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
     ensure(end>start,'Конечное время должно быть больше начального.');
     const loopCount=mode==='loop'?clamp(Math.floor(Number(options.loops)||2),1,10):1;
     const splitOffset=mode==='split'?clamp(Number(options.offsetSeconds)||0,0,3600):0;
-    const total=mode==='merge'?primary.duration+secondary.duration:mode==='split'?Math.max(primary.duration,splitOffset+secondary.duration):(end-start)*loopCount;
+    const total=mode==='merge'?primary.duration+secondary.duration:mode==='split'?Math.max(primary.duration,splitOffset+secondary.duration):(end-start)*loopCount/rate;
     const bitrate=mode==='compress'?clamp(Number(options.bitrate)||650000,150000,5000000):clamp(Number(options.bitrate)||2500000,200000,15000000);
     recorderPack=recorderFor(stream,{videoBitsPerSecond:bitrate});
     const {recorder,done,mime}=recorderPack;
@@ -205,7 +250,12 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
     recorder.start(200);
     let runs=0,current=primary,next=secondary;
     let checkPlayback=playbackWatchdog();
-    const play=async item=>{onAbort(signal);try {await item.video.play();} catch(e) {throw new Error('Браузер заблокировал воспроизведение. Нажмите «Запустить» ещё раз либо проверьте формат файла.');}};
+    const checkSplitPlayback=mode==='split'?splitPlaybackWatchdog():null;
+    const play=async item=>{
+      onAbort(signal);
+      try{await awaitMedia(item.video.play(),{signal,message:'Видеодекодер не начал воспроизведение за 18 секунд.'});}
+      catch(e){if(e?.name==='AbortError')throw e;throw new Error(`Не удалось начать воспроизведение: ${e.message||e}`);}
+    };
     await play(primary);
     const splitStartedAt=performance.now();
     let secondStarted=false;
@@ -217,13 +267,15 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
       draw(current,mode==='split'&&secondStarted?secondary:null);
       // Split-screen finishes after both videos; the longest running clock
       // should advance even when one of the streams ends before the other.
-      checkPlayback(mode==='split'?Math.max(elapsed,primary.video.currentTime,secondStarted?splitOffset+secondary.video.currentTime:0):current.video.currentTime);
+      if(mode==='split')checkSplitPlayback({primary:primary.video,secondary:secondary.video,secondStarted});
+      else checkPlayback(current.video.currentTime);
       let fraction;
       if(mode==='merge')fraction=(current===primary?primary.video.currentTime:primary.duration+secondary.video.currentTime)/total;
       else if(mode==='split')fraction=Math.max(elapsed,primary.video.currentTime,secondStarted?splitOffset+secondary.video.currentTime:0)/total;
-      else fraction=(runs*(end-start)+Math.min(end-start,Math.max(0,current.video.currentTime-start)))/total;
+      else fraction=(runs*(end-start)+Math.min(end-start,Math.max(0,current.video.currentTime-start)))/((end-start)*loopCount);
       onProgress({stage:'processing',percent:clamp(fraction*100,0,99),current:clamp(fraction,0,1)*total,total});
-      const finished=mode==='split'?(primary.video.ended&&secondStarted&&secondary.video.ended):current.video.ended||current.video.currentTime>=(mode==='merge'?current.duration:end)-.035;
+      const hasFinished=item=>item.video.ended||item.video.currentTime>=item.duration-.035;
+      const finished=mode==='split'?(hasFinished(primary)&&secondStarted&&hasFinished(secondary)):current.video.ended||current.video.currentTime>=(mode==='merge'?current.duration:end)-.035;
       if(finished){
         if(mode==='merge'&&next){current.video.pause();current=next;next=null;checkPlayback=playbackWatchdog();await play(current);continue;}
         if(mode==='loop'&&runs+1<loopCount){runs++;current.video.pause();await seek(current.video,start,signal);checkPlayback=playbackWatchdog();await play(current);continue;}
@@ -234,14 +286,17 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
     draw(current,mode==='split'&&secondStarted?secondary:null);
     onProgress({stage:'finalizing',description:'Завершение кодирования видео…'});
     recorder.stop();
-    const blob=await done;
+    const blob=await awaitMedia(done,{signal,timeoutMs:20000,message:'Кодировщик не завершил запись за 20 секунд.'});
     ensure(blob.size>0,'Файл не получился: браузер не выдал записанных данных.');
     onProgress({stage:'complete',percent:100,current:total,total});
     const experimentalRequested=options.engine==='webcodecs'||options.engine==='ffmpeg';
     return {blob,ext:extension(mime),type:mime,method:experimentalRequested?'classic-fallback':'classic',
       info:experimentalRequested?'Экспериментальный движок недоступен или не поддержал файл; использован проверенный Canvas/MediaRecorder.':''};
   } catch(e){
-    if(recorderPack?.recorder.state==='recording'){recorderPack.recorder.stop();await recorderPack.done.catch(()=>{});}
+    if(recorderPack?.recorder.state==='recording'){
+      recorderPack.recorder.stop();
+      await awaitMedia(recorderPack.done.catch(()=>{}),{timeoutMs:3000}).catch(()=>{});
+    }
     throw e;
   } finally {
     for(const track of stream?.getTracks()||[])track.stop();
@@ -257,7 +312,8 @@ export async function frameFromVideo(file, seconds=0, signal){
     await seek(item.video,clamp(Number(seconds)||0,0,Math.max(0,item.duration-.02)),signal);
     const canvas=document.createElement('canvas');canvas.width=item.width;canvas.height=item.height;
     canvas.getContext('2d').drawImage(item.video,0,0,item.width,item.height);
-    const blob=await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Не удалось создать PNG.')),'image/png'));
+    const blob=await awaitMedia(new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Не удалось создать PNG.')),'image/png')),
+      {signal,timeoutMs:20000,message:'Создание PNG не завершилось за 20 секунд.'});
     onAbort(signal);
     return {blob,ext:'png'};
   } finally { item.close(); }
@@ -276,19 +332,25 @@ export async function extractAudio(file,{onProgress=()=>{},signal}={}){
     context=new AudioContext();
     const destination=context.createMediaStreamDestination();
     const source=context.createMediaElementSource(item.video);source.connect(destination);
-    await context.resume();
+    await awaitMedia(context.resume(),{signal,message:'Аудиосистема не отвечает при извлечении звука.'});
     pack=recorderFor(destination.stream,{audioOnly:true});
     pack.recorder.start(200);
-    await item.video.play();
-    while(!item.video.ended){
-      onAbort(signal);onProgress({stage:'processing',description:'Извлечение звука',percent:Math.min(99,item.video.currentTime/item.duration*100),current:item.video.currentTime,total:item.duration});
-      await new Promise(resolve=>setTimeout(resolve,100));
+    await awaitMedia(item.video.play(),{signal,message:'Видео не начало воспроизведение для извлечения звука.'});
+    const checkPlayback=playbackWatchdog();
+    while(!item.video.ended&&item.video.currentTime<item.duration-.03){
+      onAbort(signal);
+      checkPlayback(item.video.currentTime);
+      if(item.video.error)throw new Error('Ошибка декодера при извлечении звука.');
+      onProgress({stage:'processing',description:'Извлечение звука',percent:Math.min(99,item.video.currentTime/item.duration*100),current:item.video.currentTime,total:item.duration});
+      await abortableDelay(100,signal);
     }
     onProgress({stage:'finalizing',description:'Сохранение аудиофайла…'});
-    pack.recorder.stop();const blob=await pack.done;
+    pack.recorder.stop();const blob=await awaitMedia(pack.done,{signal,timeoutMs:20000,message:'Аудиокодировщик не завершил запись за 20 секунд.'});
     ensure(blob.size>0,'Звук не был записан.');onProgress({stage:'complete',percent:100,current:item.duration,total:item.duration});
     return {blob,ext:extension(pack.mime,true)};
-  }catch(e){if(pack?.recorder.state==='recording'){pack.recorder.stop();await pack.done.catch(()=>{});}throw e;}
+  }catch(e){if(pack?.recorder.state==='recording'){
+    pack.recorder.stop();await awaitMedia(pack.done.catch(()=>{}),{timeoutMs:3000}).catch(()=>{});
+  }throw e;}
   finally {await context?.close().catch(()=>{});item.close();}
 }
 
@@ -341,13 +403,17 @@ export async function recordDevice(kind,{onStop=()=>{},onProgress=()=>{},onStrea
     if(signal?.aborted)onAbort(signal);
     let abortWait;
     try{
-      await Promise.race([stopPromise,new Promise(resolve=>{abortWait=resolve;signal?.addEventListener('abort',abortWait,{once:true});})]);
+      await Promise.race([
+        stopPromise,
+        pack.done.then(()=>{throw new Error('Запись неожиданно остановилась. Проверьте доступ к камере или экрану.');}),
+        new Promise(resolve=>{abortWait=resolve;signal?.addEventListener('abort',abortWait,{once:true});})
+      ]);
     }finally{if(abortWait)signal?.removeEventListener('abort',abortWait);}
     onAbort(signal);
     clearInterval(ticker);ticker=null;
     onProgress({stage:'finalizing',description:'Сохранение записи…',elapsedSeconds:(performance.now()-started)/1000});
     if(recorder.state==='recording')recorder.stop();
-    const blob=await pack.done;
+    const blob=await awaitMedia(pack.done,{signal,timeoutMs:20000,message:'Кодировщик записи не завершился за 20 секунд.'});
     onAbort(signal);
     ensure(blob.size>0,'Запись не содержит данных.');
     return {blob,ext:extension(pack.mime)};
