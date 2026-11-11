@@ -611,7 +611,7 @@ function subtitleStudio(root,tool){
   });}
   function buildRows(){
     const track=tracks[active];list.replaceChildren();if(!track){refreshCueTimeline();return;}
-    badge.textContent=`${track.cues.length} реплик`;
+    badge.textContent=`Реплик: ${track.cues.length}`;
     for(const [i,cue] of track.cues.entries()){
       const row=el('div','studio-cue');
       const number=el('span','studio-cue-number',String(i+1));
