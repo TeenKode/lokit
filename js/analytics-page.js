@@ -50,7 +50,7 @@ function renderChart(stats){
     const label=document.createElement('span');label.className='activity-date';label.textContent=days===7?item.day.slice(5):item.day.slice(8);
     bar.append(label);root.append(bar);
   }
-  root.setAttribute('aria-label',`Активность за ${days} дней: ${bars.reduce((n,item)=>n+item.total,0)} событий`);
+  root.setAttribute('aria-label',`Активность за ${days} дней, событий: ${bars.reduce((n,item)=>n+item.total,0)}`);
 }
 function renderTools(stats){
   const body=$('#analytics-tools');body.replaceChildren();
