@@ -144,9 +144,8 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
         run: python tests/test-experimental-live.py
-      - name: Live bundled FFmpeg/WASM composite smoke (advisory)
+      - name: Real bundled FFmpeg/WASM: merge, split, watermark, VR
         if: matrix.browser == 'chromium' && matrix.mobile == false
-        continue-on-error: true
         timeout-minutes: 12
         run: python tests/test-ffmpeg-wasm-composite.py
       - name: VP8 / H.264 decoding smoke
