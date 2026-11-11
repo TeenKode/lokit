@@ -1,3 +1,4 @@
+// Refresh installed offline navigation assets when the service worker updates.
 const CACHE='lokit-v0.8.4';
 const FILES=[
   './','./index.html','./analytics.html','./about.html','./batch.html','./style.css','./style-enhancements.css','./layout-compact.css','./sidebar.css','./batch.css','./manifest.webmanifest',
