@@ -83,7 +83,7 @@
 :where(.search-box,.dropzone,.batch-dropzone):focus-within{
   box-shadow:0 0 0 1px rgba(120,190,255,.22),0 0 14px rgba(106,185,255,.16);
 }
-/* Don't spend rendering resources on a glow for offscreen tool/guide elements. */
+/* Fewer large blurred surfaces on narrow viewports and low-power phones. */
 @media(max-width:650px){
   :root{
     --glow-rest:rgba(78,149,232,.075);
@@ -91,6 +91,9 @@
     --glow-hover:rgba(107,187,255,.18);
     --glow-radius:8px;
     --glow-depth:0 7px 18px rgba(0,0,0,.16);
+  }
+  :is(.batch-job,.sidebar-group,.studio-wave-area,.studio-trim,.batch-empty,.batch-export){
+    box-shadow:inset 0 1px 0 rgba(166,208,255,.04),0 0 6px rgba(80,152,234,.055);
   }
 }
 @media(forced-colors:active){
