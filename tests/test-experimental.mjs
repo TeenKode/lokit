@@ -5,6 +5,11 @@ assert.equal(experimentalEligibility({files:[file],mode:'convert',options:{engin
 assert.equal(experimentalEligibility({files:[file,file],mode:'convert',options:{engine:'ffmpeg'}}).eligible,false);
 assert.equal(experimentalEligibility({files:[file],mode:'filter',options:{engine:'ffmpeg'}}).eligible,true);
 assert.equal(experimentalEligibility({files:[file],mode:'merge',options:{engine:'ffmpeg'}}).eligible,false);
+assert.equal(experimentalEligibility({files:[file,file],mode:'merge',options:{engine:'ffmpeg'}}).eligible,true);
+assert.equal(experimentalEligibility({files:[file,file],mode:'split',options:{engine:'ffmpeg'}}).eligible,true);
+assert.equal(experimentalEligibility({files:[file],mode:'watermark',options:{engine:'ffmpeg'}}).eligible,true);
+assert.equal(experimentalEligibility({files:[file,file],mode:'split',options:{engine:'auto'}}).eligible,false);
+assert.equal(experimentalEligibility({files:[{name:'one.mkv',size:55*1024*1024},{name:'two.mp4',size:40*1024*1024}],mode:'merge',options:{engine:'ffmpeg'}}).eligible,false);
 assert.equal(experimentalEligibility({files:[{name:'big.mp4',size:91*1024*1024}],mode:'compress',options:{engine:'ffmpeg'}}).eligible,false);
 assert.deepEqual(scaledSize(1920,1080,'720'),{width:1280,height:720});
 assert.deepEqual(scaledSize(1080,1920,'720'),{width:720,height:1280});
@@ -42,6 +47,24 @@ const workerResult=await runFfmpeg({file,mode:'compress',options:{resolution:'72
  assert(Object.values(DEPENDENCIES).includes(url));return new Blob([new Uint8Array([0])]);
  }});
 assert.equal(workerResult.method,'ffmpeg-wasm');assert.equal(WorkerImpl.latest.terminated,true);
+// Required fallback must return a diagnostic instead of hiding codec failures.
+await assert.rejects(tryExperimental({files:[file],mode:'merge',options:{engine:'ffmpeg'},strict:true}),/два|инструмент|поддерживается/i);
+class MultiWorker {
+  constructor(){this.terminated=false;MultiWorker.latest=this;}
+  postMessage(data,transfers){
+    assert.equal(data.mode,'merge');
+    assert.equal(data.inputs.length,2);
+    assert.equal(transfers.length,2);
+    assert.ok(data.inputs.every(f=>f.bytes.byteLength>0));
+    queueMicrotask(()=>this.onmessage({data:{type:'done',data:new Uint8Array([0,0,0,24,102,116,121,112,105,115,111,109]).buffer}}));
+  }
+  terminate(){this.terminated=true;}
+}
+const joined=await runFfmpeg({files:[file,file],mode:'merge',options:{},
+  WorkerImpl:MultiWorker,loadBlob:async()=>new Blob([new Uint8Array([0])])});
+assert.equal(joined.ext,'mp4');
+assert.equal(MultiWorker.latest.terminated,true);
+
 const c=new AbortController();c.abort();
 await assert.rejects(runFfmpeg({file,mode:'convert',options:{},signal:c.signal,WorkerImpl,loadBlob:async()=>new Blob()}),{name:'AbortError'});
 const before=globalThis.VideoEncoder;
