@@ -4,7 +4,7 @@ self.onmessage=async({data})=>{
   let core;
   try{
     importScripts(data.coreScriptUrl);
-    if(typeof self.createFFmpegCore!=='function')throw new Error('FFmpeg core не инициализирован.');
+    if(typeof self.createFFmpegCore!=='function')throw new Error('Не удалось запустить FFmpeg.');
     const mainScriptUrlOrBlob=`${data.coreScriptUrl}#${btoa(JSON.stringify({wasmURL:data.wasmUrl}))}`;
     core=await self.createFFmpegCore({mainScriptUrlOrBlob});
     core.setProgress?.(({progress})=>{
@@ -22,9 +22,9 @@ self.onmessage=async({data})=>{
     else args.push('-crf','24');
     args.push('-c:a','aac','-b:a','128k','-movflags','+faststart',destination);
     core.exec(...args);
-    if(core.ret!==0)throw new Error(`FFmpeg завершился с кодом ${core.ret}.`);
+    if(core.ret!==0)throw new Error(`FFmpeg завершился с ошибкой (код ${core.ret}).`);
     const result=core.FS.readFile(destination);
-    if(!result?.byteLength)throw new Error('FFmpeg вернул пустой файл.');
+    if(!result?.byteLength)throw new Error('FFmpeg не создал файл.');
     // Send an owned byte array and transfer its underlying memory.
     const owned=result.slice();
     self.postMessage({type:'done',data:owned.buffer},[owned.buffer]);
