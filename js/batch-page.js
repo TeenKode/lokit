@@ -46,14 +46,14 @@ function updateFileHint(){
   const tool=currentTool(),size=tool?.requiredFiles||1;
   const files=Array.from(filesInput.files||[]);
   const count=files.length;
-  fileHint.textContent=size===2?'Выбирайте пары в нужном порядке. 2 файла = одно задание.':'Каждый выбранный файл станет отдельным заданием.';
-  if(!count){selectedFiles.textContent='Файлы не выбраны';return;}
-  selectedFiles.textContent=`Выбрано ${count} ${count===1?'файл':count<5?'файла':'файлов'} (${fmtSize(files.reduce((sum,file)=>sum+file.size,0))}). ${size===2?'Ожидается '+Math.floor(count/2)+' пар. ':''}`+
+  fileHint.textContent=size===2?'Выбирайте файлы парами в нужном порядке: каждые два файла образуют одно задание.':'Для каждого файла будет создано отдельное задание.';
+  if(!count){selectedFiles.textContent='Файлы пока не выбраны';return;}
+  selectedFiles.textContent=`Выбрано ${count} ${count===1?'файл':count<5?'файла':'файлов'} (${fmtSize(files.reduce((sum,file)=>sum+file.size,0))}). ${size===2?'Будет создано '+Math.floor(count/2)+' пар. ':''}`+
     files.map(f=>f.name).slice(0,4).join(' · ')+(count>4?' · …':'');
 }
 function showTool(){
   const tool=currentTool();if(!tool)return;
-  $('batch-tool-hint').textContent=tool.description+(tool.requiredFiles===2?' · Файлы обрабатываются парами.':'');
+  $('batch-tool-hint').textContent=tool.description+(tool.requiredFiles===2?' · Добавляйте файлы парами.':'');
   filesInput.accept=tool.accept||'*/*';filesInput.value='';
   optionRoot.replaceChildren(...(tool.options||[]).map(appendOption));
   const saved=readPreset(tool);
@@ -76,7 +76,7 @@ dropzone.addEventListener('drop',e=>{
   const files=e.dataTransfer?.files;
   if(!files?.length)return;
   try{filesInput.files=files;updateFileHint();}
-  catch{setMessage('batch-add-message','Выберите файлы через стандартную кнопку браузера.',true);}
+  catch{setMessage('batch-add-message','Выберите файлы кнопкой выше.',true);}
 });
 
 let painting=false;
@@ -125,13 +125,13 @@ function makeJobNode(job){
 function render(){
   const snapshot=queue.snapshot();
   for(const id of [...jobNodes.keys()])if(!queue.jobs.some(x=>x.id===id)){jobNodes.get(id).card.remove();jobNodes.delete(id);}
-  const statuses={pending:'Ожидает',running:'В работе',success:'Готово',error:'Ошибка',cancelled:'Отменено'};
+  const statuses={pending:'В очереди',running:'Обрабатывается',success:'Готово',error:'Ошибка',cancelled:'Отменено'};
   for(const job of queue.jobs){
     let n=jobNodes.get(job.id);
     if(!n){n=makeJobNode(job);jobNodes.set(job.id,n);itemsRoot.append(n.card);}
     n.card.dataset.status=job.status;
     n.title.textContent=`${job.tool.title} · ${job.files.map(f=>f.name).join(' + ')}`;
-    n.badge.textContent=job.abortPending?'Отменяется…':statuses[job.status];
+    n.badge.textContent=job.abortPending?'Отмена…':statuses[job.status];
     n.desc.textContent=job.error||job.description;
     if(job.percent===null)n.progress.removeAttribute('value');else n.progress.value=job.percent;
     n.percentage.textContent=job.percent===null?'…':`${Math.floor(job.percent)}%`;
@@ -140,12 +140,12 @@ function render(){
     n.cancel.disabled=job.abortPending;
   }
   $('batch-empty').classList.toggle('hidden',snapshot.total>0);
-  $('batch-counts').textContent=`Всего: ${snapshot.total} · Готово: ${snapshot.counts.success} · Ошибок: ${snapshot.counts.error} · Отменено: ${snapshot.counts.cancelled} · Ожидают: ${snapshot.counts.pending}`;
+  $('batch-counts').textContent=`Всего: ${snapshot.total} · Готово: ${snapshot.counts.success} · С ошибками: ${snapshot.counts.error} · Отменено: ${snapshot.counts.cancelled} · В очереди: ${snapshot.counts.pending}`;
   $('batch-overall').value=snapshot.percent;
   $('batch-overall-percent').textContent=`${snapshot.percent}%`;
-  $('batch-progress-title').textContent=snapshot.paused?'Пауза после текущего задания':snapshot.running?'Обработка файлов':'Общий прогресс';
+  $('batch-progress-title').textContent=snapshot.paused?'Остановка после текущего задания':snapshot.running?'Обрабатываем файлы':'Общий прогресс';
   $('batch-start').disabled=exporting||snapshot.counts.pending===0;
-  $('batch-start').textContent=snapshot.paused?'Продолжить очередь':snapshot.running?'Очередь выполняется':'Запустить очередь';
+  $('batch-start').textContent=snapshot.paused?'Продолжить обработку':snapshot.running?'Идёт обработка':'Запустить очередь';
   $('batch-pause').disabled=!snapshot.running||snapshot.paused;
   $('batch-cancel-all').disabled=(!snapshot.running&&!snapshot.counts.pending)||exporting;
   $('batch-retry').disabled=exporting||snapshot.running||!snapshot.counts.error&&!snapshot.counts.cancelled;
@@ -155,10 +155,10 @@ function render(){
   const started=queue.jobs.filter(j=>j.startedAt!==null);
   const running=queue.jobs.find(j=>j.status==='running');
   const elapsed=completedDuration+(running?Date.now()-running.startedAt:0);
-  $('batch-elapsed').textContent=`Время обработки: ${fmtMs(elapsed)}`;
+  $('batch-elapsed').textContent=`Прошло: ${fmtMs(elapsed)}`;
   const remaining=snapshot.counts.pending+(running?1:0);
-  $('batch-remaining').textContent=completed.length&&remaining?`Осталось ≈ ${fmtMs(completedDuration/completed.length*remaining)}`:remaining?'Осталось: рассчитывается…':'Осталось: 00:00:00';
-  $('batch-ready').textContent=snapshot.counts.success?`${snapshot.counts.success} готовых результатов. ZIP без повторного сжатия видео.`:'Готовых файлов пока нет';
+  $('batch-remaining').textContent=completed.length&&remaining?`Осталось ≈ ${fmtMs(completedDuration/completed.length*remaining)}`:remaining?'Осталось: считаем…':'Осталось: 00:00:00';
+  $('batch-ready').textContent=snapshot.counts.success?`${snapshot.counts.success} готовых файлов. Их можно скачать по одному или одним ZIP.`:'Пока нет готовых файлов';
   $('batch-zip').disabled=exporting||snapshot.running||!snapshot.counts.success;
   $('batch-zip-cancel').classList.toggle('hidden',!exporting);
 }
@@ -169,19 +169,19 @@ form.addEventListener('submit',event=>{
   const values={};
   for(const def of tool.options||[]){
     const field=form.elements.namedItem(def.key);
-    if(!field?.checkValidity()){setMessage('batch-add-message',`Проверьте поле «${def.label}».`,true);return;}
+    if(!field?.checkValidity()){setMessage('batch-add-message',`Проверьте значение поля «${def.label}».`,true);return;}
     values[def.key]=field.value;
   }
   const files=Array.from(filesInput.files||[]);
   try{
     const groups=groupFiles(tool,files);
-    if(tool.id==='video-trim' && Number(values.end)>0 && Number(values.start)>=Number(values.end))throw new Error('Конец обрезки должен быть позже начала.');
+    if(tool.id==='video-trim' && Number(values.end)>0 && Number(values.start)>=Number(values.end))throw new Error('Конец фрагмента должен быть позже начала.');
     const jobs=queue.add(tool,files,values);
     savePreset(tool,form);
     filesInput.value='';updateFileHint();
-    setMessage('batch-add-message',`Добавлено ${jobs.length} заданий. ${groups.length===1?'':'Можно выбрать следующий инструмент.'}`);
+    setMessage('batch-add-message',`Добавлено заданий: ${jobs.length}. ${groups.length===1?'':'Можно добавить задания другого инструмента.'}`);
     $('batch-queue-title').scrollIntoView({behavior:'smooth',block:'nearest'});
-  }catch(error){setMessage('batch-add-message',error?.message||'Не удалось добавить файлы.',true);}
+  }catch(error){setMessage('batch-add-message',error?.message||'Не получилось добавить файлы в очередь.',true);}
 });
 $('batch-start').addEventListener('click',()=>{void queue.start();});
 $('batch-pause').addEventListener('click',()=>queue.pause());
@@ -194,16 +194,16 @@ $('batch-zip').addEventListener('click',async()=>{
   if(!ready.length)return;
   exporting=true;const controller=new AbortController();exportAbort=controller;
   $('batch-zip-progress').classList.remove('hidden');$('batch-zip-progress').value=0;
-  setMessage('batch-export-status','Подготовка ZIP: вычисление контрольных сумм…');render();
+  setMessage('batch-export-status','Подготавливаем ZIP-архив…');render();
   try{
     const blob=await createZip(ready,{signal:controller.signal,onProgress:info=>{
       $('batch-zip-progress').value=info.percent;
-      setMessage('batch-export-status',`Создание ZIP: ${info.percent}% · ${fmtSize(info.bytes)} из ${fmtSize(info.totalBytes)}`);
+      setMessage('batch-export-status',`Собираем ZIP: ${info.percent}% · ${fmtSize(info.bytes)} из ${fmtSize(info.totalBytes)}`);
     }});
     if(controller.signal.aborted)throw new DOMException('Отменено','AbortError');
     safeDownload(blob,`lokit-batch-${new Date().toISOString().slice(0,10)}.zip`);
-    setMessage('batch-export-status',`ZIP готов: ${ready.length} файлов, ${fmtSize(blob.size)}. Загрузка началась.`);
-  }catch(error){setMessage('batch-export-status',error?.name==='AbortError'?'Создание ZIP отменено.':error?.message||'Не удалось создать ZIP.',error?.name!=='AbortError');}
+    setMessage('batch-export-status',`ZIP готов: ${ready.length} файлов (${fmtSize(blob.size)}). Скачивание началось.`);
+  }catch(error){setMessage('batch-export-status',error?.name==='AbortError'?'Сборка ZIP-архива отменена.':error?.message||'Не получилось собрать ZIP-архив.',error?.name!=='AbortError');}
   finally{exporting=false;exportAbort=null;$('batch-zip-progress').classList.add('hidden');render();}
 });
 $('batch-zip-cancel').addEventListener('click',()=>exportAbort?.abort());
