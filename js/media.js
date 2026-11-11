@@ -395,6 +395,15 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
       recorderPack.recorder.stop();
       await awaitMedia(recorderPack.done.catch(()=>{}),{timeoutMs:3000}).catch(()=>{});
     }
+    // A browser may decode a clip but lack Canvas capture, Web Audio or a
+    // compatible MediaRecorder. These composite jobs can still use FFmpeg/WASM.
+    if(['merge','split','watermark','vr'].includes(mode)
+      &&e?.name!=='AbortError'&&!signal?.aborted){
+      for(const track of stream?.getTracks()||[])track.stop();
+      await audioCtx?.close().catch(()=>{});
+      primary.close();secondary?.close();
+      return await compatibilityFallback(files,mode,options,onProgress,signal,e);
+    }
     throw e;
   } finally {
     for(const track of stream?.getTracks()||[])track.stop();
