@@ -1,6 +1,6 @@
-const CACHE='lokit-v0.8.2';
+const CACHE='lokit-v0.8.3';
 const FILES=[
-  './','./index.html','./analytics.html','./about.html','./batch.html','./style.css','./style-enhancements.css','./batch.css','./manifest.webmanifest',
+  './','./index.html','./analytics.html','./about.html','./batch.html','./style.css','./style-enhancements.css','./layout-compact.css','./batch.css','./manifest.webmanifest',
   './icons/icon.svg','./icons/icon-192.png','./icons/icon-512.png',
   './js/app.js','./js/tools.js','./js/media.js','./js/analytics.js',
   './js/analytics-page.js','./js/batch-queue.js','./js/batch-page.js','./js/zip.js','./js/editor.js','./js/edit-history.js','./js/multitrack.js','./js/subtitle-timeline.js','./js/precision-timeline.js','./js/render.js','./js/mp4-fast.js','./js/experimental-engines.js','./js/experimental-ffmpeg-worker.js','./js/vendor/mp4-track-remux.js','./js/vendor/mp4-flatten.js','./js/vendor/mp4-copy-trim.js','./js/vendor/webm-copy-trim.js','./js/presets.js','./js/capabilities.js','./js/version.js',

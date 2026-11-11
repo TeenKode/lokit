@@ -170,7 +170,7 @@ function openTool(tool){
     input.multiple=Boolean(tool.maxFiles);input.required=true;
     zone.append(zoneTitle,zoneSubtitle,input);
     const hint=document.createElement('span');hint.className='filehint';hint.textContent='Файлы обрабатываются локально на вашем устройстве';zone.append(hint);
-    form.append(zone);
+    previewColumn.append(zone);
     input.addEventListener('change',()=>{
       hint.textContent=Array.from(input.files).map(f=>f.name).join(' · ')||'Файл не выбран';
       activeEditor?.update(Array.from(input.files));

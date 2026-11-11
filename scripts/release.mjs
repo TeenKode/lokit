@@ -23,11 +23,12 @@ function checkProject(expected=version){
    const html=read(page);
    assert(html.includes(`v${expected}`),`Неверная плашка версии: ${page}`);
    assert(html.includes('./style-enhancements.css'),`Отсутствуют стили редактора: ${page}`);
+   assert(html.includes('./layout-compact.css'),`Отсутствуют адаптивные стили компоновки: ${page}`);
  }
- for(const path of ['js/media.js','js/editor.js','js/edit-history.js','js/precision-timeline.js','js/multitrack.js','js/subtitle-timeline.js','js/render.js','js/presets.js','style-enhancements.css','batch.css','js/batch-page.js','js/batch-queue.js','js/zip.js']){
+ for(const path of ['js/media.js','js/editor.js','js/edit-history.js','js/precision-timeline.js','js/multitrack.js','js/subtitle-timeline.js','js/render.js','js/presets.js','style-enhancements.css','layout-compact.css','batch.css','js/batch-page.js','js/batch-queue.js','js/zip.js']){
    assert(existsSync(resolve(ROOT,path)),`Файл не найден: ${path}`);
  }
- for(const asset of ['./js/render.js','./js/edit-history.js','./js/precision-timeline.js','./js/multitrack.js','./js/subtitle-timeline.js','./js/presets.js','./js/capabilities.js','./style-enhancements.css','./batch.html','./batch.css','./js/batch-page.js','./js/batch-queue.js','./js/zip.js']){
+ for(const asset of ['./js/render.js','./js/edit-history.js','./js/precision-timeline.js','./js/multitrack.js','./js/subtitle-timeline.js','./js/presets.js','./js/capabilities.js','./style-enhancements.css','./layout-compact.css','./batch.html','./batch.css','./js/batch-page.js','./js/batch-queue.js','./js/zip.js']){
    assert(code.includes(asset),`Новый файл не закеширован PWA: ${asset}`);
  }
  console.log(`PASS: version v${expected}, changelog, pages, PWA and assets`);
