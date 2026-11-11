@@ -1,12 +1,15 @@
 // Браузерный движок обработки пользовательских файлов. Не использует серверные API.
 import {renderVideoFrame,canvasSize} from './render.js';
-import {tryFastMp4} from './mp4-fast.js';
+import {tryFastMp4,tryFastExtractAudio} from './mp4-fast.js';
 import {tryExperimental} from './experimental-engines.js';
 const VIDEO_TYPES = [
+  // Native H.264 may use hardware acceleration. MediaRecorder still decides
+  // whether the encoder is actually available; WebM VP8 is the safe fallback.
+  'video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4',
   'video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus',
   'video/webm;codecs=vp8', 'video/webm', 'video/mp4'
 ];
-const VIDEO_SILENT_TYPES=['video/webm;codecs=vp8','video/webm;codecs=vp9','video/webm','video/mp4'];
+const VIDEO_SILENT_TYPES=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp8','video/webm;codecs=vp9','video/webm'];
 const AUDIO_TYPES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
 
 function ensure(value, message) { if (!value) throw new Error(message); }
@@ -166,9 +169,16 @@ export function splitPlaybackWatchdog({maxIdleMs=15000,now=()=>performance.now()
 
 function recorderFor(stream, {videoBitsPerSecond=2500000,audioOnly=false}={}) {
   ensure(typeof MediaRecorder!=='undefined', 'Этот браузер не поддерживает запись MediaRecorder.');
-  const mime=mimeChoice(audioOnly?AUDIO_TYPES:stream.getAudioTracks().length?VIDEO_TYPES:VIDEO_SILENT_TYPES);
-  ensure(mime, 'Браузер не поддерживает экспорт аудио/видео в доступный формат.');
-  const recorder=new MediaRecorder(stream, audioOnly?{mimeType:mime}:{mimeType:mime,videoBitsPerSecond});
+  const types=audioOnly?AUDIO_TYPES:stream.getAudioTracks().length?VIDEO_TYPES:VIDEO_SILENT_TYPES;
+  let recorder=null,mime='';
+  for(const candidate of types){
+    if(!MediaRecorder.isTypeSupported(candidate))continue;
+    try{
+      recorder=new MediaRecorder(stream,audioOnly?{mimeType:candidate}:{mimeType:candidate,videoBitsPerSecond});
+      mime=candidate;break;
+    }catch{/* Try the next native encoder if a MIME is advertised but unusable. */}
+  }
+  ensure(recorder, 'Браузер не поддерживает экспорт аудио/видео в доступный формат.');
   const chunks=[];
   recorder.addEventListener('dataavailable',e=>{if(e.data?.size)chunks.push(e.data);});
   const done=new Promise((resolve,reject)=>{
@@ -187,9 +197,36 @@ function connectAudio(ctx, videos, stream, gainValue=1) {
   }
   for(const track of destination.stream.getAudioTracks())stream.addTrack(track);
 }
+async function tryOriginalVideoCopy(file,options,signal){
+  // "Convert" with unchanged resolution and frame rate is already complete
+  // when the original format can be opened by this browser. A requested FPS
+  // or resolution change must never silently return the unmodified source.
+  if(!file?.size || String(options.resolution||'original')!=='original'
+    ||(options.fps&&options.fps!=='original')
+    ||!/\.(mp4|m4v|webm)$/i.test(file.name||''))return null;
+  let item;
+  try{
+    item=await openVideo(file,signal);
+    const ext=/\.webm$/i.test(file.name)?'webm':'mp4';
+    const mime=file.type||('video/'+ext);
+    if(typeof item.video.canPlayType!=='function'||!item.video.canPlayType(mime))return null;
+    onAbort(signal);
+    return {blob:file,ext,type:mime,fast:true,method:'copy',info:'Формат уже поддерживается браузером. Исходные видео и звук сохранены без изменений.'};
+  }catch(error){
+    if(error?.name==='AbortError'||signal?.aborted)throw error;
+    return null;
+  }finally{item?.close();}
+}
 export async function transformVideo({files, mode='convert', options={}, onProgress=()=>{}, signal}){
   // Use the selected clip order in both fast MP4 and ordinary export.
   if(mode==='merge'&&options.clipOrder==='reverse'&&files?.length===2)files=[files[1],files[0]];
+  if(mode==='convert'){
+    const unchanged=await tryOriginalVideoCopy(files?.[0],options,signal);
+    if(unchanged){
+      onProgress({stage:'complete',percent:100,description:'Файл сохранён без перекодирования.'});
+      return unchanged;
+    }
+  }
   // Try container surgery first: a compatible MP4 can be edited without decoding.
   const fast=await tryFastMp4({files,mode,options,onProgress,signal});
   if(fast)return fast;
@@ -324,7 +361,9 @@ export async function inspectVideo(file,signal){
   finally {item.close();}
 }
 export async function extractAudio(file,{onProgress=()=>{},signal}={}){
-  onProgress({stage:'preparing',description:'Чтение видео и подготовка звуковой дорожки…'});
+  const fast=await tryFastExtractAudio({file,onProgress,signal});
+  if(fast)return fast;
+  onProgress({stage:'preparing',description:'Без потерь извлечь звук нельзя. Подготовка аудиокодера…'});
   const item=await openVideo(file,signal);let context=null,pack=null;
   try{
     ensure(typeof AudioContext!=='undefined','Web Audio API не поддерживается.');
