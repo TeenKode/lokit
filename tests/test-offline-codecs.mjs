@@ -28,6 +28,15 @@ try{
   const abort=new AbortController();abort.abort();
   await assert.rejects(downloadAllCodecs({signal:abort.signal}),{name:'AbortError'});
   await assert.rejects(fetchCodecBlob('https://example.org/evil.js'),/Неизвестный/);
+  // Storage can be blocked even when CacheStorage exists (private mode/policy).
+  // Ordinary online codec fetches must not fail with the storage error.
+  globalThis.caches={open:async()=>{throw new DOMException('Storage blocked','SecurityError');}};
+  const beforeOnline=calls;
+  const online=await fetchCodecBlob(DEPENDENCIES.ffmpegCore);
+  assert.equal(online.size,3);
+  assert.equal(calls,beforeOnline+1,'Online codec fetch works when cache.open rejects');
+  assert.deepEqual(await getCodecStatus(),{supported:false,cached:[],missing:[...CODEC_NAMES],complete:false});
+  await assert.rejects(downloadAllCodecs(),/офлайн-хранилище/,'Offline prefetch must report unavailable storage');
 }finally{globalThis.caches=originalCaches;globalThis.fetch=originalFetch;}
 const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
 assert(sw.includes('lokit-optional-codecs-v2'));

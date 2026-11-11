@@ -16,7 +16,11 @@ function assertAsset(url) {
 }
 function checkAbort(signal) { if (signal?.aborted) throw cancelError(); }
 async function openCache() {
-  return typeof caches === 'undefined' ? null : caches.open(CODEC_CACHE);
+  if (typeof caches === 'undefined') return null;
+  // Private browsing and restricted storage can reject CacheStorage.open().
+  // Online codec loading must still work when optional caching is unavailable.
+  try { return await caches.open(CODEC_CACHE); }
+  catch { return null; }
 }
 async function loadResponse(url, {signal, requireCache = false} = {}) {
   assertAsset(url); checkAbort(signal);
