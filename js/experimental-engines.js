@@ -3,7 +3,7 @@ export const ENGINE_OPTIONS = ['auto','classic','webcodecs','ffmpeg'];
 export const EXPERIMENTAL_MODES = new Set(['convert','compress']);
 const FFMPEG_MODES = new Set(['convert','compress','trim','mute','speed','loop',
   'crop','flip-h','flip-v','rotate-90','rotate-180','rotate-270','filter','blur',
-  'volume','extract-audio','frame']);
+  'volume','extract-audio','frame','merge','split','watermark','vr']);
 export const DEPENDENCIES = Object.freeze({
   mediabunny: 'https://cdn.jsdelivr.net/npm/mediabunny@1.65.2/dist/bundles/mediabunny.cjs',
   ffmpegCore: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.js',
@@ -16,11 +16,12 @@ export function experimentalEligibility({files,mode,options={}}={}){
   const engine=options.engine||'auto';
   if(engine==='classic')return {eligible:false,reason:'Проверенный экспорт по умолчанию'};
   if(!ENGINE_OPTIONS.includes(engine))return {eligible:false,reason:'Неизвестный движок'};
-  if(!files?.length||files.length!==1||!(engine==='ffmpeg'?FFMPEG_MODES:EXPERIMENTAL_MODES).has(mode))return {eligible:false,reason:'Инструмент не поддерживается экспериментальным движком'};
+  const expected=engine==='ffmpeg'&&['merge','split'].includes(mode)?2:1;
+  if(!files?.length||files.length!==expected||!(engine==='ffmpeg'?FFMPEG_MODES:EXPERIMENTAL_MODES).has(mode))return {eligible:false,reason:'Инструмент не поддерживается экспериментальным движком'};
   if(!files[0]?.size)return {eligible:false,reason:'Файл пустой'};
   if((engine==='auto'||engine==='webcodecs')&&(typeof VideoEncoder==='undefined'||typeof VideoDecoder==='undefined'))
     return {eligible:false,reason:'WebCodecs не поддерживается браузером'};
-  if(engine==='ffmpeg'&&files[0].size>MAX_FFMPEG_BYTES)
+  if(engine==='ffmpeg'&&files.reduce((total,f)=>total+f.size,0)>MAX_FFMPEG_BYTES)
     return {eligible:false,reason:'FFmpeg/WASM ограничен файлами до 90 МиБ из-за расхода памяти'};
   return {eligible:true,engine:engine==='auto'?'webcodecs':engine,automatic:engine==='auto'};
 }
@@ -132,10 +133,12 @@ export async function runWebCodecs({file,mode,options,signal,onProgress=()=>{},m
     try{input.dispose?.();}catch{}
   }
 }
-export async function runFfmpeg({file,mode,options,signal,onProgress=()=>{},WorkerImpl=globalThis.Worker,loadBlob=cachedBlob}={}){
+export async function runFfmpeg({file,files,mode,options={},signal,onProgress=()=>{},WorkerImpl=globalThis.Worker,loadBlob=cachedBlob}={}){
+  files ||= file?[file]:[];
   aborted(signal);
   if(typeof WorkerImpl!=='function')throw new Error('Web Workers не поддерживаются.');
-  if(file.size>MAX_FFMPEG_BYTES)throw new Error('FFmpeg/WASM: файл больше 90 МиБ; будет обычный экспорт.');
+  if(!files.length||files.some(item=>!item?.size)||files.reduce((sum,item)=>sum+item.size,0)>MAX_FFMPEG_BYTES)
+    throw new Error('FFmpeg/WASM: суммарный размер исходников больше 90 МиБ или отсутствует видео.');
   onProgress({stage:'preparing',description:'Загрузка FFmpeg/WASM (однопоточное ядро ≈31 МБ, только при выборе)…'});
   const coreScript=await loadBlob(DEPENDENCIES.ffmpegCore,{signal});
   const coreWasm=await loadBlob(DEPENDENCIES.ffmpegWasm,{signal});
@@ -146,7 +149,7 @@ export async function runFfmpeg({file,mode,options,signal,onProgress=()=>{},Work
   let timeout,abortHandler;
   try{
     worker=new WorkerImpl(new URL('./experimental-ffmpeg-worker.js',import.meta.url));
-    const bytes=await file.arrayBuffer();aborted(signal);
+    const inputs=await Promise.all(files.map(async file=>({name:file.name,bytes:await file.arrayBuffer()})));aborted(signal);
     return await new Promise((resolve,reject)=>{
       let settled=false;
       const done=(err,result)=>{if(settled)return;settled=true;clearTimeout(timeout);signal?.removeEventListener('abort',abortHandler);if(err)reject(err);else resolve(result);};
@@ -172,7 +175,9 @@ export async function runFfmpeg({file,mode,options,signal,onProgress=()=>{},Work
         }
       };
       worker.onerror=e=>done(new Error(e.message||'Ошибка рабочего потока FFmpeg/WASM.'));
-      worker.postMessage({type:'run',coreScriptUrl:scriptUrl,wasmUrl,bytes,mode,options:{...options},name:file.name},[bytes]);
+      // Transfer, don't clone, the two video buffers into the worker.
+      const buffers=inputs.map(item=>item.bytes);
+      worker.postMessage({type:'run',coreScriptUrl:scriptUrl,wasmUrl,inputs,mode,options:{...options}},buffers);
       if(signal?.aborted)abortHandler();
     });
   }finally{clearTimeout(timeout);worker?.terminate();URL.revokeObjectURL(scriptUrl);URL.revokeObjectURL(wasmUrl);}
@@ -192,7 +197,7 @@ export async function tryExperimental({files,mode,options={},onProgress=()=>{},s
       if(!cached)return null;
     }
     aborted(signal);
-    const task={file:files[0],mode,options,signal,onProgress};
+    const task={file:files[0],files,mode,options,signal,onProgress};
     return eligibility.engine==='webcodecs'?await runWebCodecs(task):await runFfmpeg(task);
   }catch(e){
     if(e?.name==='AbortError'||signal?.aborted)throw e;
