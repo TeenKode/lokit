@@ -1,6 +1,9 @@
 /** Optional client-side engines. The ordinary Lokit pipeline never loads these. */
 export const ENGINE_OPTIONS = ['auto','classic','webcodecs','ffmpeg'];
 export const EXPERIMENTAL_MODES = new Set(['convert','compress']);
+const FFMPEG_MODES = new Set(['convert','compress','trim','mute','speed','loop',
+  'crop','flip-h','flip-v','rotate-90','rotate-180','rotate-270','filter','blur',
+  'volume','extract-audio','frame']);
 export const DEPENDENCIES = Object.freeze({
   mediabunny: 'https://cdn.jsdelivr.net/npm/mediabunny@1.65.2/dist/bundles/mediabunny.cjs',
   ffmpegCore: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.js',
@@ -13,7 +16,7 @@ export function experimentalEligibility({files,mode,options={}}={}){
   const engine=options.engine||'auto';
   if(engine==='classic')return {eligible:false,reason:'Проверенный экспорт по умолчанию'};
   if(!ENGINE_OPTIONS.includes(engine))return {eligible:false,reason:'Неизвестный движок'};
-  if(!EXPERIMENTAL_MODES.has(mode)||!files?.length||files.length!==1)return {eligible:false,reason:'Инструмент не поддерживается экспериментальным движком'};
+  if(!files?.length||files.length!==1||!(engine==='ffmpeg'?FFMPEG_MODES:EXPERIMENTAL_MODES).has(mode))return {eligible:false,reason:'Инструмент не поддерживается экспериментальным движком'};
   if(!files[0]?.size)return {eligible:false,reason:'Файл пустой'};
   if((engine==='auto'||engine==='webcodecs')&&(typeof VideoEncoder==='undefined'||typeof VideoDecoder==='undefined'))
     return {eligible:false,reason:'WebCodecs не поддерживается браузером'};
@@ -154,12 +157,14 @@ export async function runFfmpeg({file,mode,options,signal,onProgress=()=>{},Work
         if(msg.type==='done'){
           const data=msg.data;
           if(!data?.byteLength){done(new Error('FFmpeg/WASM вернул пустой результат.'));return;}
-          onProgress({stage:'complete',percent:100,description:'FFmpeg/WASM: MP4 готов.'});
-          done(null,{blob:new Blob([data],{type:'video/mp4'}),ext:'mp4',method:'ffmpeg-wasm',fast:false,info:'Экспериментальный однопоточный FFmpeg/WASM.'});
+          const ext=msg.ext||'mp4';
+          const mime=ext==='m4a'?'audio/mp4':ext==='png'?'image/png':'video/mp4';
+          onProgress({stage:'complete',percent:100,description:'FFmpeg/WASM: '+ext.toUpperCase()+' готов.'});
+          done(null,{blob:new Blob([data],{type:mime}),ext,method:'ffmpeg-wasm',fast:false,info:'Совместимый '+ext.toUpperCase()+' через FFmpeg/WASM, кодирование выполняется локально.'});
         }
       };
       worker.onerror=e=>done(new Error(e.message||'Ошибка рабочего потока FFmpeg/WASM.'));
-      worker.postMessage({type:'run',coreScriptUrl:scriptUrl,wasmUrl,bytes,mode,resolution:options.resolution||'original',bitrate:Number(options.bitrate)||650000,name:file.name},[bytes]);
+      worker.postMessage({type:'run',coreScriptUrl:scriptUrl,wasmUrl,bytes,mode,options:{...options},name:file.name},[bytes]);
       if(signal?.aborted)abortHandler();
     });
   }finally{clearTimeout(timeout);worker?.terminate();URL.revokeObjectURL(scriptUrl);URL.revokeObjectURL(wasmUrl);}
