@@ -70,9 +70,12 @@ try:
    if mobile:
     page.locator('#tool-sidebar').wait_for(state='hidden',timeout=4000)
     page.locator('#sidebar-toggle').click()
-    assert page.locator('#sidebar-recent').is_visible()
-    # Focus remains inside the modal drawer when tabbing.
-    page.locator('#sidebar-close').focus()
+    page.locator('#tool-sidebar').wait_for(state='visible',timeout=4000)
+    page.locator('#sidebar-recent').wait_for(state='visible',timeout=4000)
+    # Tab from the final link wraps to the drawer's first control.
+    page.locator('.sidebar-footer-links a').last.focus()
+    page.keyboard.press('Tab')
+    assert page.locator('#sidebar-close').evaluate('(el)=>document.activeElement===el')
     page.keyboard.press('Escape')
     page.locator('#tool-sidebar').wait_for(state='hidden',timeout=4000)
     assert page.locator('#sidebar-toggle').get_attribute('aria-expanded')=='false'
