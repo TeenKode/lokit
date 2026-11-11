@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0f1727">
-  <meta name="description" content="Личная статистика использования Lokit на вашем устройстве.">
+  <meta name="description" content="Личная история работы в Lokit: операции, ошибки и время обработки. Данные хранятся в браузере.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https://cdn.jsdelivr.net; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
-  <title>Аналитика — Lokit</title>
+  <title>Моя статистика — Lokit</title>
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./style.css">
@@ -20,16 +20,16 @@
     <header class="header">
       <a class="brand" href="./" aria-label="На главную Lokit">
         <span class="brand-icon" aria-hidden="true">✦</span>
-        <span class="brand-text"><strong>Lokit</strong><span>локальные инструменты без лишнего</span></span>
+        <span class="brand-text"><strong>Lokit</strong><span>обработка файлов в браузере</span></span>
       </a>
-      <a class="version-pill" href="./about.html" title="Информация о версии и изменениях"><span data-app-version>v0.8.4</span><small data-app-stage>beta</small></a>
-      <nav class="header-right" aria-label="Навигация"><a class="ghost-button" href="./">← Инструменты</a><a class="ghost-button" href="./batch.html">Пакетная обработка</a><span class="nav-active">Аналитика</span></nav>
+      <a class="version-pill" href="./about.html" title="Версия и история изменений"><span data-app-version>v0.8.4</span><small data-app-stage>beta</small></a>
+      <nav class="header-right" aria-label="Навигация"><a class="ghost-button" href="./">← Инструменты</a><a class="ghost-button" href="./batch.html">Пакетная обработка</a><span class="nav-active">Статистика</span></nav>
     </header>
     <main class="analytics-main">
       <section class="analytics-intro">
-        <p class="eyebrow">СТАТИСТИКА ИСПОЛЬЗОВАНИЯ</p>
-        <h1>Аналитика Lokit</h1>
-        <p>Личные открытия, результаты, ошибки и время обработки. Всё хранится только на этом устройстве.</p>
+        <p class="eyebrow">ТОЛЬКО В ЭТОМ БРАУЗЕРЕ</p>
+        <h1>Моя статистика</h1>
+        <p>Посмотрите, какие инструменты вы открывали, сколько операций завершилось и сколько времени они заняли. Данные не отправляются на сервер.</p>
       </section>
       <section class="analytics-toolbar" aria-label="Параметры статистики">
         <div class="range-actions">
@@ -41,34 +41,34 @@
       </section>
       <div id="analytics-message" class="analytics-message" role="status" aria-live="polite"></div>
       <section class="analytics-stats" aria-label="Основные показатели">
-        <article class="metric-card"><span>Просмотры сайта</span><strong id="metric-views">—</strong><small>Открытия страниц, не уникальные посетители</small></article>
-        <article class="metric-card"><span>Открытия инструментов</span><strong id="metric-opens">—</strong><small>Выбор инструментов в каталоге</small></article>
-        <article class="metric-card"><span>Успешные операции</span><strong id="metric-success">—</strong><small id="metric-success-rate">—</small></article>
-        <article class="metric-card"><span>Среднее время</span><strong id="metric-time">—</strong><small>На завершённую операцию</small></article>
-        <article class="metric-card"><span>Ошибки</span><strong id="metric-errors">—</strong><small>Сбой обработки или сохранения</small></article>
-        <article class="metric-card"><span>Обработано данных</span><strong id="metric-bytes">—</strong><small>Объём входных файлов успешных операций</small></article>
+        <article class="metric-card"><span>Открытия страниц</span><strong id="metric-views">—</strong><small>Учитываются все открытия, а не отдельные посетители</small></article>
+        <article class="metric-card"><span>Выбор инструментов</span><strong id="metric-opens">—</strong><small>Сколько раз вы открывали инструмент</small></article>
+        <article class="metric-card"><span>Готовые результаты</span><strong id="metric-success">—</strong><small id="metric-success-rate">—</small></article>
+        <article class="metric-card"><span>Среднее время обработки</span><strong id="metric-time">—</strong><small>Для завершённых операций</small></article>
+        <article class="metric-card"><span>Ошибки</span><strong id="metric-errors">—</strong><small>Неудачные операции</small></article>
+        <article class="metric-card"><span>Объём исходных файлов</span><strong id="metric-bytes">—</strong><small>Сумма размеров файлов успешных операций</small></article>
       </section>
       <section class="analytics-panel" aria-labelledby="activity-heading">
-        <div class="panel-heading"><h2 id="activity-heading">Активность по дням</h2><span class="subtle small" id="activity-caption">Количество событий</span></div>
+        <div class="panel-heading"><h2 id="activity-heading">Операции по дням</h2><span class="subtle small" id="activity-caption">Открытия и результаты</span></div>
         <div class="activity-key"><span><i class="key-success"></i> Успешно</span><span><i class="key-open"></i> Открытия</span><span><i class="key-other"></i> Остальное</span></div>
         <div id="analytics-chart" class="activity-chart" role="img" aria-label="График событий по дням"></div>
       </section>
       <section class="analytics-panel" aria-labelledby="popular-heading">
-        <div class="panel-heading"><h2 id="popular-heading">Использование инструментов</h2><span class="subtle small">По количеству запусков и результатам</span></div>
-        <div class="table-scroll"><table class="analytics-table"><thead><tr><th>Инструмент</th><th>Открытия</th><th>Успешно</th><th>Ошибки</th><th>Отмены</th><th>Среднее время</th></tr></thead><tbody id="analytics-tools"></tbody></table></div>
+        <div class="panel-heading"><h2 id="popular-heading">По инструментам</h2><span class="subtle small">Открытия, результаты и ошибки</span></div>
+        <div class="table-scroll"><table class="analytics-table"><thead><tr><th>Инструмент</th><th>Открытия</th><th>Успешно</th><th>Ошибки</th><th>Отмены</th><th>Среднее время обработки</th></tr></thead><tbody id="analytics-tools"></tbody></table></div>
       </section>
       <section class="analytics-panel" id="personal-history" aria-labelledby="history-heading">
-        <div class="panel-heading"><h2 id="history-heading">Последние события</h2><span class="subtle small">Только в этом браузере</span></div>
+        <div class="panel-heading"><h2 id="history-heading">История действий</h2><span class="subtle small">Хранится на этом устройстве</span></div>
         <div class="table-scroll"><table class="analytics-table"><thead><tr><th>Дата</th><th>Событие</th><th>Инструмент</th><th>Длительность</th></tr></thead><tbody id="analytics-history"></tbody></table></div>
-        <div class="analytics-bottom-actions"><button type="button" class="secondary" id="analytics-export">Экспорт в JSON</button><button type="button" class="danger" id="analytics-clear">Удалить мою статистику</button></div>
+        <div class="analytics-bottom-actions"><button type="button" class="secondary" id="analytics-export">Скачать историю (JSON)</button><button type="button" class="danger" id="analytics-clear">Удалить историю</button></div>
       </section>
       <section class="analytics-panel privacy-panel" aria-labelledby="privacy-heading">
-        <div class="panel-heading"><h2 id="privacy-heading">Приватность</h2></div>
-        <p>История ограничена 1200 событиями и хранится исключительно в localStorage браузера. Не записываются имена и содержимое файлов, тексты ошибок или поисковые запросы. Никаких запросов к сторонним сервисам аналитики.</p>
-        <p class="small subtle">Можно экспортировать историю в JSON или полностью удалить. Периоды считаются по календарным дням UTC.</p>
+        <div class="panel-heading"><h2 id="privacy-heading">Где хранятся данные</h2></div>
+        <p>Lokit хранит до 1200 событий в локальном хранилище браузера. Имена и содержимое файлов, поисковые запросы и тексты ошибок в историю не попадают. Внешних сервисов аналитики нет.</p>
+        <p class="small subtle">Историю можно скачать в формате JSON или удалить. Границы периодов рассчитываются по времени UTC.</p>
       </section>
     </main>
-    <footer class="footer"><span>Lokit · Статистика · <a href="./about.html">Что нового</a></span><span>Личная статистика · ваши файлы остаются у вас</span></footer>
+    <footer class="footer"><span>Lokit · Моя статистика · <a href="./about.html">Что нового</a></span><span>История хранится в вашем браузере</span></footer>
   </div>
 </body>
 </html>
