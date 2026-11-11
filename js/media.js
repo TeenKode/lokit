@@ -217,20 +217,51 @@ async function tryOriginalVideoCopy(file,options,signal){
     return null;
   }finally{item?.close();}
 }
-async function compatibilityFallback(file,mode,options,onProgress,signal,error){
+async function watermarkBitmap(text,signal){
+  onAbort(signal);
+  const canvas=document.createElement('canvas');canvas.width=1000;canvas.height=160;
+  const ctx=canvas.getContext('2d');
+  ensure(ctx,'Этот браузер не умеет создавать PNG с текстом.');
+  const label=String(text||'Моё видео').slice(0,80);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.font='700 64px system-ui,sans-serif';
+  ctx.textAlign='right';ctx.textBaseline='bottom';
+  ctx.shadowColor='#000';ctx.shadowBlur=10;
+  ctx.fillStyle='#fff';ctx.fillText(label,980,135,960);
+  const png=await awaitMedia(new Promise((resolve,reject)=>
+    canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Не удалось подготовить текстовую подпись.')),'image/png')),
+    {signal,timeoutMs:20000,message:'Не удалось создать текстовую подпись.'});
+  onAbort(signal);
+  ensure(png.size>0&&png.size<2*1024*1024,'Неверный размер подписи PNG.');
+  return png.arrayBuffer();
+}
+async function compatibilityFallback(filesOrFile,mode,options,onProgress,signal,error){
   if(error?.name==='AbortError'||signal?.aborted)throw error;
-  // The built-in browser decoder cannot load e.g. MKV/H.265/AVI. Fetch
-  // an optional FFmpeg core only after that decoder actually rejects the file.
-  // The codec is cached for subsequent offline runs, not the user media.
-  onProgress({stage:'preparing',description:'Браузер не открыл файл. Пробуем совместимый FFmpeg/WASM…'});
-  const converted=await tryExperimental({files:[file],mode,
-    options:{...options,engine:'ffmpeg'},onProgress,signal});
-  if(converted)return converted;
-  const limit=file?.size>90*1024*1024
-    ?' FFmpeg/WASM ограничен файлами до 90 МиБ из-за памяти.'
-    :' Для первого использования резервного кодека может потребоваться интернет.';
-  throw new Error('Браузер не смог декодировать этот формат или кодек. '+String(error?.message||'')+
-    ' Для совместимых MP4/MOV/WebM доступна обработка без перекодирования.'+limit);
+  // A format unsupported by HTMLVideoElement is not necessarily unsupported
+  // by FFmpeg/WASM. Always pass *all* source clips to preserve both timelines.
+  const files=Array.isArray(filesOrFile)?filesOrFile:[filesOrFile];
+  const parameters={...options,engine:'ffmpeg'};
+  if(['merge','split'].includes(mode)){
+    const source=await inspectContainer(files[0],signal);
+    if(source?.width>0&&source?.height>0){
+      parameters.targetWidth=source.width;parameters.targetHeight=source.height;
+    }
+  }
+  if(mode==='watermark')parameters.watermarkPng=await watermarkBitmap(options.text,signal);
+  onProgress({stage:'preparing',description:'Браузер не открыл исходник. Используем совместимый FFmpeg/WASM…'});
+  const converted=await tryExperimental({files,mode,options:parameters,onProgress,signal});
+  if(converted){
+    if(['merge','split'].includes(mode))
+      converted.info+=' Несовместимые источники нормализованы до H.264/AAC; звук и порядок дорожек сохранены.';
+    if(mode==='watermark')converted.info+=' Текст отрисован браузером в PNG, включая кириллицу.';
+    return converted;
+  }
+  const totalSize=files.reduce((total,file)=>total+(file?.size||0),0);
+  const limit=totalSize>90*1024*1024
+    ?' Суммарный размер файлов превышает лимит FFmpeg/WASM 90 МиБ.'
+    :' Для первого использования FFmpeg/WASM может потребоваться интернет.';
+  throw new Error('Браузер не смог декодировать исходный формат или кодек. '+
+    String(error?.message||'')+limit);
 }
 export async function transformVideo({files, mode='convert', options={}, onProgress=()=>{}, signal}){
   // Use the selected clip order in both fast MP4 and ordinary export.
@@ -251,13 +282,16 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
   onProgress({stage:'preparing',description:'Чтение метаданных видео для обычного экспорта…'});
   let primary;
   try{primary=await openVideo(files[0],signal);}
-  catch(error){return compatibilityFallback(files[0],mode,options,onProgress,signal,error);}
+  catch(error){return compatibilityFallback(files,mode,options,onProgress,signal,error);}
   let secondary=null, audioCtx=null, stream=null, recorderPack=null;
   try {
     onAbort(signal);
     if(['merge','split'].includes(mode)) {
       onProgress({stage:'preparing',description:'Подготовка второго видео…'});
-      ensure(files[1], 'Этот инструмент требует два видеофайла.');secondary=await openVideo(files[1],signal);
+      ensure(files[1], 'Этот инструмент требует два видеофайла.');
+      try{secondary=await openVideo(files[1],signal);}
+      catch(error){return await compatibilityFallback(files,mode,
+        {...options,targetWidth:primary.width,targetHeight:primary.height},onProgress,signal,error);}
     }
     const {width,height}=canvasSize(primary,mode,options);
     ensure(width*height<=16_000_000,'Слишком большое разрешение для браузерного экспорта. Выберите 1080p или 720p.');
