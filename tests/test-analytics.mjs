@@ -30,4 +30,16 @@ localStorage.setItem('lokit:analytics:v1',JSON.stringify([
 ]));
 assert.equal(a.summarizeLocal(7).kinds.find(e=>e.kind==='success').count,1);
 assert.equal(a.summarizeLocal(7).kinds.some(e=>e.kind==='error'),false);
+// Corrupted localStorage may contain arrays or numbers instead of ISO timestamp strings.
+// Date.parse() coerces a single-element array to a valid date, but summarizeLocal()
+// expects string timestamps for day grouping and otherwise throws.
+const validTs=new Date().toISOString();
+localStorage.setItem('lokit:analytics:v1',JSON.stringify([
+ {id:'valid',ts:validTs,kind:'view',tool:'site'},
+ {id:'bad-array',ts:[validTs],kind:'view',tool:'site'},
+ {id:'bad-number',ts:2026,kind:'view',tool:'site'}
+]));
+assert.deepEqual(a.localEvents().map(e=>e.id),['valid']);
+assert.equal(a.summarizeLocal(7).kinds.find(e=>e.kind==='view').count,1);
+assert.equal(JSON.parse(a.exportLocalEvents()).events.length,1);
 console.log('Local analytics: private, export, clear, history limit and time windows — PASS');
