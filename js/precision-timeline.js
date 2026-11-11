@@ -1,11 +1,13 @@
 /** Pure millisecond timeline geometry, plus an accessible zoomed navigation lane. */
 export function clampTime(time,duration){return Math.min(Math.max(0,Number(time)||0),Math.max(0,Number(duration)||0));}
 export function timelineWindow(duration,zoom=1,center=0){
-  const total=Math.max(0,Number(duration)||0);
-  const factor=Math.min(32,Math.max(1,Number(zoom)||1));
+  const seconds=Number(duration), requestedZoom=Number(zoom);
+  const total=Number.isFinite(seconds)?Math.max(0,seconds):0;
+  const factor=Number.isFinite(requestedZoom)?Math.min(32,Math.max(1,requestedZoom)):1;
   if(!total)return {start:0,end:0,span:0,zoom:factor};
   const span=total/factor;
-  const start=Math.min(Math.max(0,center-span/2),total-span);
+  const midpoint=Number(center);
+  const start=Math.min(Math.max(0,(Number.isFinite(midpoint)?midpoint:0)-span/2),total-span);
   return {start,end:start+span,span,zoom:factor};
 }
 export function positionInWindow(time,view){return view.span?100*(time-view.start)/view.span:0;}
@@ -51,7 +53,7 @@ export function mountPrecisionTimeline(host,{duration=0,onSeek=()=>{},onRangeCha
   fields.append(startLabel,endLabel,fpsLabel,backward,forward);
   const hint=make('p','precision-hint','Укажите начало и конец с точностью до миллисекунды. Реальная точность результата зависит от формата и способа экспорта.');
   root.append(toolbar,ruler,bar,fields,hint);host.append(root);
-  let total=Math.max(0,Number(duration)||0),zoom=1,center=total/2,selected={start:0,end:total},current=0,disabled=false;
+  let total=timelineWindow(duration).end,zoom=1,center=total/2,selected={start:0,end:total},current=0,disabled=false;
   const unsub=[];
   const listen=(node,event,fn)=>{node.addEventListener(event,fn);unsub.push([node,event,fn]);};
   const markers=()=>{
@@ -91,7 +93,7 @@ export function mountPrecisionTimeline(host,{duration=0,onSeek=()=>{},onRangeCha
   markers();refreshInputs();
   return {
     root,
-    setDuration(value){total=Math.max(0,Number(value)||0);center=total/2;selected={start:0,end:total};current=0;markers();refreshInputs();},
+    setDuration(value){total=timelineWindow(value).end;center=total/2;selected={start:0,end:total};current=0;markers();refreshInputs();},
     setRange(start,end){selected={start:clampTime(start,total),end:clampTime(end,total)};markers();refreshInputs();},
     setPlayhead(time){current=clampTime(time,total);markers();},
     step:frame,
