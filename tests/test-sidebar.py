@@ -111,7 +111,7 @@ try:
     page.locator('#search').focus()
     page.set_viewport_size({'width':800,'height':850})
     expect(page.locator('#sidebar-toggle')).to_be_focused(timeout=5000)
-    assert not page.locator('#tool-sidebar').is_visible()
+    page.locator('#tool-sidebar').wait_for(state='hidden',timeout=4000)
     page.locator('#sidebar-toggle').click()
     assert page.locator('#tool-sidebar').get_attribute('aria-modal')=='true'
     page.set_viewport_size({'width':1024,'height':850})
