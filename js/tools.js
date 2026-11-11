@@ -105,7 +105,7 @@ const stamp=(ms,sep=',')=>{
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}${sep}${String(rest).padStart(3,'0')}`;
 };
 function srtToVtt(text){
-  const lines=text.replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').split('\n').map(line=>line.replace(/^(\d\d:\d\d:\d\d),(\d{3})\s+-->\s+(\d\d:\d\d:\d\d),(\d{3})/,'$1.$2 --> $3.$4'));
+  const lines=text.replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').split('\n').map(line=>line.replace(/^(\d+:\d{2}:\d{2}),(\d{3})\s+-->\s+(\d+:\d{2}:\d{2}),(\d{3})(?=\s|$)/,'$1.$2 --> $3.$4'));
   return 'WEBVTT\n\n'+lines.join('\n').trim()+'\n';
 }
 function vttToSrt(text){
