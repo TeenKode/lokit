@@ -88,8 +88,30 @@ try:
   assert page.evaluate("window.__captureStream.getTracks().every(t=>t.readyState==='ended')")
   page.evaluate('clearInterval(window.__captureTimer)')
   assert page.locator('.studio-capture-live').is_hidden()
+  # The new lossless routes must run inside an actual browser, independently
+  # of the HTML player (headless Chromium may not decode every MP4 codec).
+  page.goto(SERVER,wait_until='networkidle')
+  routes=page.evaluate("""async () => {
+    const {transformVideo,extractAudio}=await import('./js/media.js');
+    const source=await fetch('./tests/fixtures/sample-audio.mp4').then(r=>r.blob())
+      .then(b=>new File([b],'source.mp4',{type:'video/mp4'}));
+    const webm=await fetch('./tests/fixtures/sample.webm').then(r=>r.blob())
+      .then(b=>new File([b],'source.webm',{type:'video/webm'}));
+    const loop=await transformVideo({files:[source],mode:'loop',options:{resolution:'original',loops:2}});
+    const audio=await extractAudio(source);
+    const convert=await transformVideo({files:[webm],mode:'convert',
+      options:{resolution:'original',fps:'original',engine:'auto'}});
+    return {loopMethod:loop.method,loopFast:loop.fast,loopBytes:loop.blob.size,
+      audioMethod:audio.method,audioFast:audio.fast,audioType:audio.blob.type,
+      convertMethod:convert.method,convertFast:convert.fast,convertSameBlob:convert.blob===webm};
+  }""")
+  assert routes['loopFast'] and routes['loopMethod']=='lossless-loop',routes
+  assert routes['audioFast'] and routes['audioMethod']=='audio-remux',routes
+  assert routes['audioType']=='audio/mp4',routes
+  assert routes['convertFast'] and routes['convertMethod']=='copy',routes
+  assert routes['convertSameBlob'],routes
   assert not errors,errors
-  print('v0.8.1 browser: merge order, split offset, exact frame, subtitle blocks, capture preview/cleanup — PASS')
+  print('v0.8.1 browser + video fast paths: merge, split, frame, subtitles, capture, lossless loop/audio/convert — PASS')
   ctx.close();browser.close()
 finally:
  server.terminate();server.wait(timeout=5)
