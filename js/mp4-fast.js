@@ -3,13 +3,20 @@
  * Operations modify container metadata/sample ranges rather than re-encode video.
  * Unsupported combinations return null and the caller uses Canvas/MediaRecorder.
  */
-const validMp4=file=>file?.size>0&&/\.(mp4|m4v)$/i.test(file.name||'');
+// MOV/3GP share ISO-BMFF atoms with MP4. The existing parser validates the
+// actual container, so the extension only selects the low-cost attempt.
+const validMp4=file=>file?.size>0&&/\.(mp4|m4v|mov|3gp|3g2)$/i.test(file.name||'');
+const originalExt=file=>/\.mov$/i.test(file.name||'')?'mov'
+  :/\.3gp$/i.test(file.name||'')?'3gp'
+  :/\.3g2$/i.test(file.name||'')?'3g2'
+  :/\.webm$/i.test(file.name||'')?'webm':'mp4';
+const mp4OutputExt=file=>/\.mov$/i.test(file.name||'')?'mov':'mp4';
 const validWebm=file=>file?.size>0&&/\.webm$/i.test(file.name||'');
 const abortCheck=signal=>{if(signal?.aborted)throw new DOMException('Отменено','AbortError');};
 let trackPromise,copyPromise,webmPromise;
 async function tracks(){
   trackPromise ||= import('./vendor/mp4-track-remux.js')
-    .then(()=>{if(!globalThis.MP4TrackRemux)throw new Error('MP4TrackRemux не загружен.');return globalThis.MP4TrackRemux;})
+    .then(()=>{if(!globalThis.MP4TrackRemux)throw new Error('Не удалось загрузить модуль быстрого MP4.');return globalThis.MP4TrackRemux;})
     .catch(error=>{trackPromise=null;throw error;});
   return trackPromise;
 }
@@ -17,14 +24,14 @@ async function mp4Copy(){
   copyPromise ||= (async()=>{
     await import('./vendor/mp4-flatten.js');
     await import('./vendor/mp4-copy-trim.js');
-    if(!globalThis.Mp4CopyTrim)throw new Error('Mp4CopyTrim не загружен.');
+    if(!globalThis.Mp4CopyTrim)throw new Error('Не удалось загрузить модуль обрезки MP4.');
     return globalThis.Mp4CopyTrim;
   })().catch(error=>{copyPromise=null;throw error;});
   return copyPromise;
 }
 async function webmCopy(){
   webmPromise ||= import('./vendor/webm-copy-trim.js')
-    .then(()=>{if(!globalThis.WebmCopyTrim)throw new Error('WebmCopyTrim не загружен.');return globalThis.WebmCopyTrim;})
+    .then(()=>{if(!globalThis.WebmCopyTrim)throw new Error('Не удалось загрузить модуль обрезки WebM.');return globalThis.WebmCopyTrim;})
     .catch(error=>{webmPromise=null;throw error;});
   return webmPromise;
 }
@@ -33,7 +40,9 @@ async function webmCopy(){
  * keyframe. Otherwise use re-encoding to avoid surprising early frames.
  */
 const almostEqual=(a,b)=>Math.abs(a-b)<0.05;
-const successful=(blob,ext,method,info='')=>({blob,ext,type:ext==='mp4'?'video/mp4':'video/webm',fast:true,method,info});
+const mimeFor=ext=>ext==='webm'?'video/webm':ext==='mov'?'video/quicktime'
+  :ext==='3gp'?'video/3gpp':ext==='3g2'?'video/3gpp2':'video/mp4';
+const successful=(blob,ext,method,info='')=>({blob,ext,type:mimeFor(ext),fast:true,method,info});
 const done=(onProgress,description)=>onProgress({stage:'complete',percent:100,description});
 // Refuse a fast success when the output container reports missing samples,
 // changed track counts or a duration outside the requested range. A usable
@@ -58,17 +67,101 @@ function validCopy(source,out,expectedDuration,toleranceMs=160){
 }
 
 export async function tryFastMp4({files,file=files?.[0],mode,options={},onProgress=()=>{},signal}){
-  if(!file?.size||!['mute','speed','trim','merge'].includes(mode))return null;
+  if(!file?.size||!['mute','speed','trim','merge','loop','volume','crop','blur','compress','convert'].includes(mode))return null;
   if(String(options.resolution ?? options.width ?? 'original')!=='original')return null;
   if(mode==='merge' && (!files?.[1]||!validMp4(file)||!validMp4(files[1])))return null;
-  if(mode==='speed' && (!validMp4(file)||!Number.isFinite(Number(options.speed))||Number(options.speed)<=0||Number(options.speed)===1))return null;
+  // Do not relabel a QuickTime movie as ISO MP4 or mix brands implicitly.
+  if(mode==='merge' && (mp4OutputExt(file)!==mp4OutputExt(files[1])
+    ||/\.(3gp|3g2)$/i.test(file.name||'')||/\.(3gp|3g2)$/i.test(files[1].name||'')))return null;
+  if(['loop','compress'].includes(mode) && (!validMp4(file)&&!validWebm(file)))return null;
+  const unchanged=(mode==='volume'&&Number(options.gain)===1&&options.audio!=='off')
+    ||(mode==='crop'&&Number(options.crop)===0)
+    ||(mode==='blur'&&Number(options.blur)===0)
+    ||(mode==='speed'&&Number(options.speed)===1)
+    ||(mode==='loop'&&Number(options.loops)===1);
+  if(['volume','crop','blur'].includes(mode)&&!unchanged)return null;
+  if(unchanged&&!validMp4(file)&&!validWebm(file))return null;
+  if(mode==='speed' && (!validMp4(file)||!Number.isFinite(Number(options.speed))||Number(options.speed)<=0))return null;
   if(mode==='mute'&&!validMp4(file))return null;
   if(mode==='trim'&&!validMp4(file)&&!validWebm(file))return null;
+  if(mode==='convert'&&(!/\.(mov|3gp|3g2)$/i.test(file.name||'')
+    ||(options.fps&&options.fps!=='original')
+    ||(options.engine&&!['auto','classic'].includes(options.engine))))return null;
   abortCheck(signal);
   try{
+    if(mode==='convert'){
+      // QuickTime/3GP holding H.264 + AAC can be repackaged directly as MP4.
+      // Reject HEVC, MPEG-4 Part 2, AMR, AC3, etc: relabeling these would
+      // silently create an MP4 many browsers cannot actually play.
+      const track=await tracks();abortCheck(signal);
+      const original=await track.inspect(file);abortCheck(signal);
+      const video=original.tracks.filter(t=>t.handler==='vide');
+      const audio=original.tracks.filter(t=>t.handler==='soun');
+      if(video.length!==1||video[0].codec!=='h264'||audio.length>1
+        ||audio.some(t=>t.codec!=='aac')||!(original.durationSec>0))return null;
+      onProgress({stage:'preparing',description:'Перепаковка MOV/3GP в MP4 без перекодирования H.264/AAC…'});
+      const engine=await mp4Copy();abortCheck(signal);
+      const output=await engine.run(file,0,original.durationSec,{exact:true});
+      abortCheck(signal);
+      if(!output?.size)return null;
+      const meta=await engine.inspect(output);abortCheck(signal);
+      if(!validCopy(await engine.inspect(file),meta,original.durationSec*1000,250))return null;
+      done(onProgress,'Готов совместимый MP4 без перекодирования.');
+      return successful(output,'mp4','lossless-remux');
+    }
+    // A no-op still needs a valid container: never label corrupt data a successful copy.
+    if(unchanged){
+      const isMp4=validMp4(file);
+      const engine=isMp4?await tracks():await webmCopy();
+      const metadata=await engine.inspect(file);
+      abortCheck(signal);
+      const hasVideo=isMp4?metadata.tracks.some(t=>t.handler==='vide'):!!metadata.videoTrack;
+      if(!hasVideo)return null;
+      done(onProgress,'Файл не требует изменений — оригинал сохранён без перекодирования.');
+      return successful(file,originalExt(file),'copy');
+    }
+    // Compressing an already-below-target source can only increase its size
+    // at the requested bitrate. Keep the original bytes and codec instead.
+    if(mode==='compress'){
+      if(options.engine&&!['auto','classic'].includes(options.engine))return null;
+      const isMp4=validMp4(file);
+      const engine=isMp4?await tracks():await webmCopy();
+      const info=await engine.inspect(file);abortCheck(signal);
+      const duration=isMp4?info.durationSec:info.durationMs/1000;
+      const hasVideo=isMp4?info.tracks.some(t=>t.handler==='vide'):!!info.videoTrack;
+      const target=Number(options.bitrate)||650000;
+      if(!hasVideo||!Number.isFinite(duration)||duration<=0||!Number.isFinite(target)||target<=0)return null;
+      const totalBitrate=file.size*8/duration;
+      if(totalBitrate>target)return null;
+      done(onProgress,'Видео уже имеет битрейт ниже выбранного. Перекодирование не нужно.');
+      return successful(file,originalExt(file),'copy','Исходный битрейт уже ниже выбранного ограничения; качество сохранено.');
+    }
+    if(mode==='loop'){
+      const loops=Math.floor(Number(options.loops)||2);
+      if(!Number.isFinite(loops)||loops<2||loops>10||!validMp4(file))return null;
+      const track=await tracks();abortCheck(signal);
+      const input=await track.inspect(file);abortCheck(signal);
+      const videos=input.tracks.filter(t=>t.handler==='vide');
+      const audios=input.tracks.filter(t=>t.handler==='soun');
+      if(videos.length!==1||audios.length>1||!(input.durationSec>0))return null;
+      const engine=await mp4Copy();abortCheck(signal);
+      onProgress({stage:'preparing',description:'Повтор MP4 без перекодирования кадров и звука…'});
+      const clips=Array.from({length:loops},()=>({video:file,audio:audios.length?file:null}));
+      const ext=mp4OutputExt(file);
+      const output=await engine.concat({clips,brand:ext,name:'loop.'+ext});
+      abortCheck(signal);
+      if(!output?.size||output.concatInfo?.clips?.length!==loops)return null;
+      const actual=await engine.inspect(output);abortCheck(signal);
+      const expected=input.durationSec*loops*1000;
+      if(!Number.isFinite(actual.durationMs)||Math.abs(actual.durationMs-expected)>Math.max(250,expected*.04)
+        ||actual.tracks.filter(t=>t.handler==='vide').length!==1
+        ||actual.tracks.filter(t=>t.handler==='soun').length!==audios.length)return null;
+      done(onProgress,'Повтор готов без перекодирования.');
+      return successful(output,ext,'lossless-loop');
+    }
     if(mode==='trim'){
       const isMp4=validMp4(file);
-      onProgress({stage:'preparing',description:'Подготовка обрезки без перекодирования…'});
+      onProgress({stage:'preparing',description:'Подготавливаем обрезку без перекодирования…'});
       const engine=isMp4?await mp4Copy():await webmCopy();
       abortCheck(signal);
       const meta=await engine.inspect(file);
@@ -77,10 +170,10 @@ export async function tryFastMp4({files,file=files?.[0],mode,options={},onProgre
       if(!Number.isFinite(duration)||duration<=0)return null;
       const start=Math.max(0,Math.min(duration,Number(options.start)||0));
       const end=Math.max(0,Math.min(duration,Number(options.end)||duration));
-      if(!(end>start))throw new Error('Конечное время должно быть больше начального.');
+      if(!(end>start))throw new Error('Конец фрагмента должен быть позже начала.');
       if(start===0&&almostEqual(end,duration)){
-        done(onProgress,'Изменения не требуются, файл сохранён без перекодирования.');
-        return successful(file,isMp4?'mp4':'webm','copy');
+        done(onProgress,'Изменения не нужны — исходное видео сохранено без перекодирования.');
+        return successful(file,originalExt(file),'copy');
       }
       let warning='';
       if(!isMp4){
@@ -89,22 +182,22 @@ export async function tryFastMp4({files,file=files?.[0],mode,options={},onProgre
         const prior=(keys||[]).filter(t=>t<=start+0.001).at(-1);
         if(start>0 && (!Number.isFinite(prior)||!almostEqual(prior,start))){
           if(options.cutMode!=='keyframe')return null;
-          warning=`Начало с ближайшего ключевого кадра (${(prior??0).toFixed(2)} с вместо ${start.toFixed(2)} с).`;
+          warning=`Начало перенесено на ключевой кадр (${(prior??0).toFixed(2)} с вместо ${start.toFixed(2)} с).`;
         }
       }
-      onProgress({stage:'preparing',description:'Сборка видео из исходных кадров без потери качества…'});
+      onProgress({stage:'preparing',description:'Собираем видео без перекодирования…'});
       const out=isMp4
         ?await engine.run(file,start,end,{exact:true})
         :await engine.run(file,start,end);
       abortCheck(signal);
-      if(!out?.size)throw new Error('Не удалось собрать обрезанное видео.');
+      if(!out?.size)throw new Error('Не удалось сохранить обрезанное видео.');
       if(isMp4){
         const resultMeta=await engine.inspect(out);
         abortCheck(signal);
         if(!validCopy(meta,resultMeta,(end-start)*1000))return null;
       }
       if(!isMp4&&options.cutMode!=='keyframe'&&!almostEqual((out.trimInfo?.startMs??0)/1000,start))return null;
-      done(onProgress,'Обрезка готова без перекодирования.');
+      done(onProgress,'Фрагмент готов: без перекодирования.');
       return successful(out,isMp4?'mp4':'webm','lossless-trim',warning);
     }
     if(mode==='merge'){
@@ -115,10 +208,11 @@ export async function tryFastMp4({files,file=files?.[0],mode,options={},onProgre
       const flags=info.map(x=>x.tracks.some(t=>t.handler==='soun'));
       if(flags[0]!==flags[1])return null; // never fabricate a silent track from audible frames
       if(info.some(x=>x.tracks.filter(t=>t.handler==='vide').length!==1 || x.tracks.filter(t=>t.handler==='soun').length>1))return null;
-      onProgress({stage:'preparing',description:'Склейка MP4 без перекодирования…'});
-      const out=await engine.concat({clips:files.slice(0,2).map(x=>({video:x,audio:flags[0]?x:null})),brand:'mp4',name:'merged.mp4'});
+      onProgress({stage:'preparing',description:'Объединяем MP4 без перекодирования…'});
+      const ext=mp4OutputExt(file);
+      const out=await engine.concat({clips:files.slice(0,2).map(x=>({video:x,audio:flags[0]?x:null})),brand:ext,name:'merged.'+ext});
       abortCheck(signal);
-      if(!out?.size)throw new Error('Не удалось объединить видео.');
+      if(!out?.size)throw new Error('Не удалось объединить видеофайлы.');
       const outputMeta=await engine.inspect(out);
       abortCheck(signal);
       const expectedMs=info.every(x=>x.durationSec>0)
@@ -129,45 +223,108 @@ export async function tryFastMp4({files,file=files?.[0],mode,options={},onProgre
       if(!Number.isFinite(outputMeta.durationMs)||Math.abs(outputMeta.durationMs-expectedMs)>Math.max(200,expectedMs*.04)
         ||outputMeta.tracks.filter(t=>t.handler==='vide').length!==1
         ||outputMeta.tracks.filter(t=>t.handler==='soun').length!==Number(flags[0]))return null;
-      done(onProgress,'Два MP4 объединены без перекодирования.');
-      return successful(out,'mp4','lossless-merge');
+      done(onProgress,'Видеофайлы объединены без перекодирования.');
+      return successful(out,ext,'lossless-merge');
     }
     const engine=await tracks();abortCheck(signal);
-    onProgress({stage:'preparing',description:'Анализ дорожек MP4 без перекодирования…'});
+    onProgress({stage:'preparing',description:'Проверяем звуковые дорожки MP4…'});
     const details=await engine.inspect(file);abortCheck(signal);
     if(!details?.tracks?.some(x=>x.handler==='vide'))return null;
     if(mode==='mute'){
       if(!details.tracks.some(x=>x.handler==='soun')){
-        done(onProgress,'У файла уже нет звуковой дорожки.');
-        return successful(file,'mp4','copy');
+        done(onProgress,'В этом файле уже нет звука.');
+        return successful(file,originalExt(file),'copy');
       }
-      onProgress({stage:'preparing',description:'Удаление аудиодорожки без перекодирования…'});
+      onProgress({stage:'preparing',description:'Удаляем звук без перекодирования…'});
       const out=await engine.dropAudio(file);abortCheck(signal);
-      if(!out?.blob?.size)throw new Error('Быстрый MP4-движок вернул пустой файл.');
+      if(!out?.blob?.size)throw new Error('Не удалось получить видео после быстрой обработки MP4.');
       const outputMeta=await engine.inspect(new File([out.blob],file.name,{type:'video/mp4'}));
       abortCheck(signal);
       if(outputMeta.tracks.some(t=>t.handler==='soun')||outputMeta.tracks.filter(t=>t.handler==='vide').length!==details.tracks.filter(t=>t.handler==='vide').length
         ||(details.durationSec>0&&Math.abs(outputMeta.durationSec-details.durationSec)>.20))return null;
-      done(onProgress,'Звуковая дорожка удалена без перекодирования.');
-      return successful(out.blob,'mp4','track-remux');
+      done(onProgress,'Звук удалён без перекодирования.');
+      return successful(out.blob,originalExt(file),'track-remux');
     }
     // Altering just video timestamps while leaving audio intact causes A/V drift.
     if(details.tracks.some(x=>x.handler==='soun'))return null;
-    onProgress({stage:'preparing',description:'Изменение временных меток MP4 без перекодирования…'});
+    onProgress({stage:'preparing',description:'Меняем скорость MP4 без перекодирования…'});
     const result=await engine.retime(file,Number(options.speed),{keepOtherTracks:false});
     abortCheck(signal);
-    if(!result?.blob?.size)throw new Error('Быстрый MP4-движок вернул пустой файл.');
+    if(!result?.blob?.size)throw new Error('Не удалось получить видео после быстрой обработки MP4.');
     const outputMeta=await engine.inspect(new File([result.blob],file.name,{type:'video/mp4'}));
     abortCheck(signal);
     if(outputMeta.tracks.filter(t=>t.handler==='vide').length!==details.tracks.filter(t=>t.handler==='vide').length
       ||outputMeta.tracks.some(t=>t.handler==='soun')
       ||(details.durationSec>0&&Math.abs(outputMeta.durationSec-details.durationSec/Number(options.speed))>.20))return null;
     done(onProgress,'Скорость изменена без перекодирования.');
-    return successful(result.blob,'mp4','timestamp-retime');
+    return successful(result.blob,originalExt(file),'timestamp-retime');
   }catch(error){
     if(error?.name==='AbortError'||signal?.aborted)throw error;
     console.warn('Быстрый экспорт недоступен, используем обычную обработку:',error);
-    onProgress({stage:'preparing',description:'Быстрый путь недоступен. Подготовка обычного экспорта…'});
+    onProgress({stage:'preparing',description:'Быстрый режим недоступен. Запускаем обычный экспорт…'});
+    return null;
+  }
+}
+
+/**
+ * Preserve the original MP4 audio samples when extracting sound. For codecs
+ * outside the MP4 audio family, the caller falls back to Web Audio/MediaRecorder.
+ */
+export async function tryFastExtractAudio({file,onProgress=()=>{},signal}={}){
+  if(!validMp4(file))return null;
+  abortCheck(signal);
+  try{
+    const engine=await tracks();abortCheck(signal);
+    const input=await engine.inspect(file);abortCheck(signal);
+    const videos=input.tracks.filter(t=>t.handler==='vide');
+    const audios=input.tracks.filter(t=>t.handler==='soun');
+    if(!videos.length||audios.length!==1||!['aac','alac','mp4a'].includes(audios[0].codec))return null;
+    onProgress({stage:'preparing',description:'Извлечение оригинальной аудиодорожки без перекодирования…'});
+    const result=await engine.remux(file,{keepHandlers:['soun'],brand:'M4A ',mime:'audio/mp4'});
+    abortCheck(signal);
+    if(!result?.blob?.size)return null;
+    const output=await engine.inspect(new File([result.blob],'audio.m4a',{type:'audio/mp4'}));
+    abortCheck(signal);
+    const resultAudios=output.tracks.filter(t=>t.handler==='soun');
+    if(output.tracks.some(t=>t.handler==='vide')||resultAudios.length!==1
+      ||resultAudios[0].codec!==audios[0].codec
+      ||(input.durationSec>0&&Math.abs(output.durationSec-input.durationSec)>.35))return null;
+    done(onProgress,'Оригинальная аудиодорожка сохранена без перекодирования.');
+    return {blob:result.blob,ext:'m4a',type:'audio/mp4',fast:true,method:'audio-remux',info:'Сохранён исходный аудиокодек и качество звука.'};
+  }catch(error){
+    if(error?.name==='AbortError'||signal?.aborted)throw error;
+    console.warn('Извлечение звука без перекодирования недоступно:',error);
+    return null;
+  }
+}
+
+/** Read codec and geometry from container headers even without browser decoders.
+ * Works with MP4, MOV, 3GP, WebM; unknown formats return null.
+ */
+export async function inspectContainer(file,signal){
+  if(!validMp4(file)&&!validWebm(file))return null;
+  abortCheck(signal);
+  try{
+    if(validMp4(file)){
+      const engine=await tracks();abortCheck(signal);
+      const data=await engine.inspect(file);abortCheck(signal);
+      const video=data.tracks.find(t=>t.handler==='vide');
+      const audio=data.tracks.filter(t=>t.handler==='soun');
+      if(!video||!(data.durationSec>0))return null;
+      return {width:video.width,height:video.height,duration:data.durationSec,
+        videoCodec:video.codec,audioCodec:audio.map(t=>t.codec).join(', ')||'нет',
+        container:originalExt(file).toUpperCase()};
+    }
+    const engine=await webmCopy();abortCheck(signal);
+    const data=await engine.inspect(file);abortCheck(signal);
+    const video=data.tracks.find(t=>t.type===1);
+    const audio=data.tracks.filter(t=>t.type===2);
+    if(!video||!(data.durationMs>0))return null;
+    return {width:video.width,height:video.height,duration:data.durationMs/1000,
+      videoCodec:video.codec,audioCodec:audio.map(t=>t.codec).join(', ')||'нет',
+      container:'WebM'};
+  }catch(error){
+    if(error?.name==='AbortError'||signal?.aborted)throw error;
     return null;
   }
 }

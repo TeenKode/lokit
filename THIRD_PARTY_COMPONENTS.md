@@ -21,6 +21,6 @@ MP4TrackRemux в Lokit вызывается для удаления звука �
 
 ## v0.7.0 — дополнительные движки (по запросу пользователя)
 
-- **Mediabunny 1.65.2 (MPL-2.0)** — https://github.com/Vanilagy/mediabunny/releases/tag/v1.65.2; CDN URL закреплён в `js/experimental-engines.js`. Не используется, пока пользователь не выбирает WebCodecs.
-- **@ffmpeg/core 0.12.10** — https://github.com/ffmpegwasm/ffmpeg.wasm; содержит ffmpeg-core.js/wasm, загружается только при выборе FFmpeg/WASM; лицензии некоторых встроенных кодеков могут иметь ограничения, см. исходный проект.
-- **Собственный Worker** `js/experimental-ffmpeg-worker.js` управляет ограничениями, отменой и запуском `libx264`/`aac`; двоичные зависимости не хранятся в GitHub-репозитории.
+- **Mediabunny 1.65.2 (MPL-2.0)** — https://github.com/Vanilagy/mediabunny/releases/tag/v1.65.2; локальная копия закреплена в `assets/codecs/` и собирается из npm. Не используется, пока пользователь не выбирает WebCodecs.
+- **@ffmpeg/core 0.12.10** — https://github.com/ffmpegwasm/ffmpeg.wasm; содержит ffmpeg-core.js/wasm, публикуемые вместе с Lokit и загружаемые только при выборе FFmpeg/WASM; лицензии некоторых встроенных кодеков могут иметь ограничения, см. исходный проект.
+- **Собственный Worker** `js/experimental-ffmpeg-worker.js` управляет ограничениями, отменой и запуском `libx264`/`aac`; сборка автоматически добавляет двоичные зависимости в GitHub-репозиторий для GitHub Pages.

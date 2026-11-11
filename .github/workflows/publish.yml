@@ -23,6 +23,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install pinned codec packages
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Build same-origin optional codecs
+        run: npm run vendor-codecs
       - name: Static JavaScript checks
         run: |
           for file in js/*.js js/vendor/*.js sw.js scripts/*.mjs; do node --check "$file"; done
@@ -81,6 +85,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build same-origin optional codecs
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run vendor-codecs
       - name: Install Playwright browser
         env:
           BROWSER: ${{ matrix.browser }}
@@ -122,14 +133,21 @@ jobs:
       - name: Full Chromium integration tests
         if: matrix.browser == 'chromium' && matrix.mobile == false
         run: python tests/test-browser.py
-      - name: Experimental engines fall back when optional CDN is blocked
+      - name: Experimental engines fall back when optional local assets are unavailable
         if: matrix.browser == 'chromium' && matrix.mobile == false
         run: python tests/test-experimental-browser.py
-      - name: Live optional engines (external CDN, diagnostic)
+      - name: Offline codec prefetch, reload and cache removal in Chromium
+        if: matrix.browser == 'chromium' && matrix.mobile == false
+        run: python tests/test-offline-browser.py
+      - name: Live optional engines (same-origin assets, diagnostic)
         if: matrix.browser == 'chromium' && matrix.mobile == false
         continue-on-error: true
         timeout-minutes: 10
         run: python tests/test-experimental-live.py
+      - name: "Real bundled FFmpeg/WASM - merge, split, watermark, VR"
+        if: matrix.browser == 'chromium' && matrix.mobile == false
+        timeout-minutes: 12
+        run: python tests/test-ffmpeg-wasm-composite.py
       - name: VP8 / H.264 decoding smoke
         if: matrix.browser == 'chromium' && matrix.mobile == false
         run: python tests/test-codecs.py

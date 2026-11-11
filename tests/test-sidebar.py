@@ -22,6 +22,11 @@ try:
     page.locator('#sidebar-toggle').click()
     page.locator('#tool-sidebar').wait_for(state='visible',timeout=4000)
     assert page.locator('#sidebar-toggle').get_attribute('aria-expanded')=='true'
+    assert page.locator('#tool-sidebar').get_attribute('role')=='dialog'
+    assert page.locator('#tool-sidebar').get_attribute('aria-modal')=='true'
+    assert page.locator('.header').evaluate('(el)=>el.inert')
+    assert page.locator('.footer').evaluate('(el)=>el.inert')
+    assert page.locator('.app-content').evaluate('(el)=>el.inert')
     assert page.locator('.sidebar-favorite').first.is_visible()
    else:
     page.locator('#tool-sidebar').wait_for(state='visible',timeout=4000)
@@ -32,6 +37,7 @@ try:
     page.locator('#sidebar-toggle').click()
     page.locator('#tool-sidebar').wait_for(state='visible',timeout=4000)
     assert page.locator('#sidebar-toggle').get_attribute('aria-expanded')=='true'
+    assert page.locator('#tool-sidebar').get_attribute('role') is None
    # Ctrl+K must focus the search regardless of previous focus.
    page.keyboard.press('Control+k')
    assert page.locator('#search').evaluate('(input)=>document.activeElement===input'),width
@@ -64,6 +70,7 @@ try:
    assert group.get_attribute('open') is not None,width
    page.locator('.tool-card[data-tool-id="video-trim"]').click()
    assert page.locator('#workspace').is_visible()
+   page.locator('.studio-form input[type=file]').set_input_files(str(ROOT/'tests/fixtures/sample.webm'))
    assert page.locator('#sidebar-recent').is_visible() if not mobile else True
    assert page.locator('#sidebar-recent-name').text_content()=='Обрезка видео'
    assert page.locator('.tool-card[data-tool-id="video-trim"]').get_attribute('aria-current')=='true'
@@ -79,9 +86,18 @@ try:
     page.keyboard.press('Escape')
     page.locator('#tool-sidebar').wait_for(state='hidden',timeout=4000)
     assert page.locator('#sidebar-toggle').get_attribute('aria-expanded')=='false'
+    assert page.locator('#tool-sidebar').get_attribute('aria-modal') is None
+    assert not page.locator('.header').evaluate('(el)=>el.inert')
+    assert not page.locator('.footer').evaluate('(el)=>el.inert')
+    page.locator('#sidebar-toggle').click()
+    page.locator('#tool-sidebar').wait_for(state='visible',timeout=4000)
    else:
     # Desktop catalog stays open while tools run.
     assert page.locator('#tool-sidebar').is_visible()
+   assert page.locator('#sidebar-recent-button').get_attribute('aria-label').startswith('Открыть инструмент:')
+   page.locator('#sidebar-recent-button').click()
+   assert page.locator('.studio-form input[type=file]').evaluate("(el)=>el.files.length===1&&el.files[0].name==='sample.webm'"),width
+   assert page.locator('#workspace').is_visible()
    assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),width
    page.close()
    print('PASS sidebar',width)

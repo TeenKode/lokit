@@ -68,6 +68,21 @@ function syncSidebarToggle(){
   sidebarToggle?.setAttribute('aria-expanded',String(open));
   sidebarToggle?.setAttribute('aria-label',open?'Свернуть каталог инструментов':'Открыть каталог инструментов');
   $('#sidebar-close')?.setAttribute('aria-label',isMobileSidebar()?'Закрыть меню инструментов':'Свернуть каталог инструментов');
+  $('#sidebar-close')?.setAttribute('title',isMobileSidebar()?'Закрыть каталог':'Свернуть каталог');
+  const modal=isMobileSidebar()&&document.body.classList.contains('sidebar-open');
+  for(const selector of ['.header','.footer','.app-content']){
+    const node=document.querySelector(selector);
+    if(node)node.inert=modal;
+  }
+  if(modal){
+    sidebar?.setAttribute('role','dialog');
+    sidebar?.setAttribute('aria-modal','true');
+    sidebar?.setAttribute('aria-labelledby','tools-title');
+  }else{
+    sidebar?.removeAttribute('role');
+    sidebar?.removeAttribute('aria-modal');
+    sidebar?.removeAttribute('aria-labelledby');
+  }
 }
 function setSidebarOpen(open,{restoreFocus=true,savePreference=true}={}){
   if(!isMobileSidebar()){
@@ -80,8 +95,6 @@ function setSidebarOpen(open,{restoreFocus=true,savePreference=true}={}){
   }
   const wasOpen=document.body.classList.contains('sidebar-open');
   document.body.classList.toggle('sidebar-open',open);
-  const content=document.querySelector('.app-content');
-  if(content)content.inert=open;
   syncSidebarToggle();
   if(open){sidebar?.querySelector('#search')?.focus({preventScroll:true});}
   else if(wasOpen&&restoreFocus){sidebarToggle?.focus({preventScroll:true});}
@@ -100,7 +113,6 @@ $('#sidebar-close')?.addEventListener('click',()=>setSidebarOpen(false));
 $('#sidebar-backdrop')?.addEventListener('click',()=>setSidebarOpen(false));
 window.matchMedia('(min-width: 901px)').addEventListener('change',event=>{
   document.body.classList.remove('sidebar-open');
-  const content=document.querySelector('.app-content');if(content)content.inert=false;
   document.body.classList.toggle('sidebar-collapsed',event.matches&&savedSidebarCollapsed());
   syncSidebarToggle();
 });
@@ -112,7 +124,7 @@ function formatDuration(seconds){
   return h?`${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
 }
 const progressStages={
-  preparing:'Подготовка файлов',processing:'Обработка файла',finalizing:'Формирование результата',
+  preparing:'Подготовка файлов',processing:'Обработка файла',finalizing:'Сохранение результата',
   recording:'Идёт запись',complete:'Готово',cancelled:'Операция отменена',error:'Ошибка обработки'
 };
 function setupProgress(form){
@@ -146,10 +158,10 @@ function setupProgress(form){
     }
     if(Number.isFinite(state.elapsedSeconds))parts.push(`${kind==='recording'?'Записывается':'Прошло'}: ${formatDuration(state.elapsedSeconds)}`);
     if(Number.isFinite(state.remainingSeconds)&&kind==='processing')parts.push(`Осталось ≈ ${formatDuration(state.remainingSeconds)}`);
-    if(kind==='complete'&&!parts.length)parts.push('Результат готов к сохранению');
-    if(kind==='preparing'&&!parts.length)parts.push('Чтение и подготовка исходного файла');
-    if(kind==='finalizing'&&!parts.length)parts.push('Завершаем запись и собираем результат');
-    if(kind==='recording'&&!parts.length)parts.push('Нажмите «Остановить запись» для сохранения');
+    if(kind==='complete'&&!parts.length)parts.push('Файл готов к скачиванию');
+    if(kind==='preparing'&&!parts.length)parts.push('Чтение исходного файла');
+    if(kind==='finalizing'&&!parts.length)parts.push('Завершаем обработку и создаём файл');
+    if(kind==='recording'&&!parts.length)parts.push('Чтобы закончить, нажмите «Остановить запись»');
     details.textContent=parts.join('  ·  ');
   };
 }
@@ -163,7 +175,7 @@ function updateLastToolButtons(){
   for(const node of [$('#open-last-tool'),$('#hero-last-tool')]){
     if(!node)continue;
     node.disabled=!last;
-    node.textContent=last?`Последний: ${last.title}`:'Последний инструмент';
+    node.textContent=last?`Недавний: ${last.title}`:'Недавний инструмент';
   }
   const recent=$('#sidebar-recent'),recentButton=$('#sidebar-recent-button');
   recent?.classList.toggle('hidden',!last);
@@ -171,7 +183,7 @@ function updateLastToolButtons(){
     $('#sidebar-recent-name').textContent=last.title;
     $('#sidebar-recent-icon').textContent=last.icon;
     recentButton.title=last.description;
-    recentButton.setAttribute('aria-label',`Продолжить: ${last.title}`);
+    recentButton.setAttribute('aria-label',`Открыть инструмент: ${last.title}`);
   }
 }
 function updateHeroStats(){const el=$('#hero-tool-count');if(el)el.textContent=String(tools.length);}
@@ -185,9 +197,9 @@ function addResult(result){
   if(!result.blob)return;
   const url=URL.createObjectURL(result.blob);downloadUrls.push(url);
   const container=document.createElement('div');container.className='download';
-  const a=document.createElement('a');a.href=url;a.download=result.name;a.textContent='Скачать результат';
+  const a=document.createElement('a');a.href=url;a.download=result.name;a.textContent='Скачать файл';
   const label=document.createElement('span');label.textContent=result.name;
-  const details=document.createElement('small');details.textContent=`${(result.blob.size/1024/1024).toFixed(2)} МБ · ${result.fast?'без перекодирования':result.method==='webcodecs'?'WebCodecs':result.method==='ffmpeg-wasm'?'FFmpeg/WASM':'обработка завершена'} · готово к сохранению`;
+  const details=document.createElement('small');details.textContent=`${(result.blob.size/1024/1024).toFixed(2)} МБ · ${result.fast?'без перекодирования':result.method==='webcodecs'?'WebCodecs':result.method==='ffmpeg-wasm'?'FFmpeg/WASM':'готово'} · можно скачать`;
   container.append(a,label,details);if(result.info){const note=document.createElement('small');note.textContent=result.info;container.append(note);}resultArea.append(container);
 }
 
@@ -220,6 +232,12 @@ function makeField(def){
 }
 
 function openTool(tool){
+  if(currentTool?.id===tool.id&&!workspace.classList.contains('hidden')){
+    if(isMobileSidebar())setSidebarOpen(false,{restoreFocus:false});
+    workspace.scrollIntoView({block:'start',behavior:'smooth'});
+    $('#tool-title')?.focus({preventScroll:true});
+    return;
+  }
   resetWorkspace();currentTool=tool;saveLastTool(tool);recordEvent('open',tool.id);updateFavoriteButton();
   document.body.classList.add('has-active-tool');
   renderCards();if(isMobileSidebar())setSidebarOpen(false,{restoreFocus:false});
@@ -232,27 +250,27 @@ function openTool(tool){
   const layout=document.createElement('div');layout.className='studio-layout';
   const previewColumn=document.createElement('div');previewColumn.className='studio-main';
   const settings=document.createElement('aside');settings.className='studio-settings';
-  settings.setAttribute('aria-label','Настройки инструмента');
+  settings.setAttribute('aria-label','Параметры инструмента');
   settings.append(Object.assign(document.createElement('h3'),{textContent:'Настройки'}));
   layout.append(previewColumn,settings);
   let input;
   if(!tool.isCapture){
     const zone=document.createElement('label');zone.className='dropzone';
-    const zoneTitle=document.createElement('span');zoneTitle.className='dropzone-title';zoneTitle.textContent=tool.maxFiles?'Перетащите файлы сюда или выберите их':'Перетащите файл сюда или выберите его';
-    const zoneSubtitle=document.createElement('span');zoneSubtitle.className='dropzone-subtitle';zoneSubtitle.textContent=tool.maxFiles?`Можно выбрать до ${tool.maxFiles} файлов`:'Поддерживается один входной файл';
+    const zoneTitle=document.createElement('span');zoneTitle.className='dropzone-title';zoneTitle.textContent=tool.maxFiles?'Перетащите файлы сюда или выберите на устройстве':'Перетащите файл сюда или выберите на устройстве';
+    const zoneSubtitle=document.createElement('span');zoneSubtitle.className='dropzone-subtitle';zoneSubtitle.textContent=tool.maxFiles?`Не более ${tool.maxFiles} файлов`:'Нужен один файл';
     input=document.createElement('input');input.type='file';input.accept=tool.accept||'*/*';
     input.multiple=Boolean(tool.maxFiles);input.required=true;
     zone.append(zoneTitle,zoneSubtitle,input);
-    const hint=document.createElement('span');hint.className='filehint';hint.textContent='Файлы обрабатываются локально на вашем устройстве';zone.append(hint);
+    const hint=document.createElement('span');hint.className='filehint';hint.textContent='Файлы не отправляются на сервер';zone.append(hint);
     previewColumn.append(zone);
     input.addEventListener('change',()=>{
-      hint.textContent=Array.from(input.files).map(f=>f.name).join(' · ')||'Файл не выбран';
+      hint.textContent=Array.from(input.files).map(f=>f.name).join(' · ')||'Файл пока не выбран';
       activeEditor?.update(Array.from(input.files));
     });
     zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('dragover');});
     zone.addEventListener('dragleave',()=>zone.classList.remove('dragover'));
     zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('dragover');const files=e.dataTransfer.files;if(!files?.length)return;
-      try{input.files=files;input.dispatchEvent(new Event('change'));}catch{hint.textContent='Выберите файл через поле загрузки.';}
+      try{input.files=files;input.dispatchEvent(new Event('change'));}catch{hint.textContent='Выберите файл кнопкой выше.';}
     });
   }
 
@@ -262,21 +280,21 @@ function openTool(tool){
     for(const def of tool.options)fields.append(makeField(def));
     settings.append(fields);
     const presetHelp=document.createElement('p');presetHelp.className='studio-settings-hint';
-    presetHelp.textContent='Параметры сохраняются только в этом браузере. Файлы не сохраняются.';
+    presetHelp.textContent='Настройки запоминаются в этом браузере. Сами файлы не сохраняются.';
     resetSettings=document.createElement('button');resetSettings.className='secondary studio-reset-settings';
-    resetSettings.type='button';resetSettings.textContent='Сбросить настройки';
+    resetSettings.type='button';resetSettings.textContent='Сбросить параметры';
     settings.append(presetHelp,resetSettings);
   }
   if(tool.note){const info=document.createElement('p');info.className='small subtle';info.textContent=tool.note;settings.append(info);}
 
   const actions=document.createElement('div');actions.className='actions';
-  const start=document.createElement('button');start.className='primary';start.type='submit';start.textContent=tool.isCapture?'Начать запись':'Выполнить';
-  const cancel=document.createElement('button');cancel.className='secondary';cancel.type='button';cancel.textContent='Отмена';cancel.disabled=true;
+  const start=document.createElement('button');start.className='primary';start.type='submit';start.textContent=tool.isCapture?'Начать запись':'Обработать';
+  const cancel=document.createElement('button');cancel.className='secondary';cancel.type='button';cancel.textContent='Отменить';cancel.disabled=true;
   const stop=document.createElement('button');stop.className='danger hidden';stop.type='button';stop.textContent='Остановить запись';
   actions.append(start,cancel,stop);settings.append(actions);
   if(!tool.options?.length){
     const hint=document.createElement('p');hint.className='studio-settings-hint';
-    hint.textContent=tool.isCapture?'Выберите источник и начинайте запись.':'Дополнительные настройки не нужны — можно выполнять операцию.';
+    hint.textContent=tool.isCapture?'Нажмите «Начать запись» и разрешите доступ в браузере.':'Дополнительные параметры не нужны. Выберите файл и запустите обработку.';
     settings.insertBefore(hint,actions);
   }
   form.append(layout);
@@ -284,20 +302,20 @@ function openTool(tool){
   activeEditor=mountEditor({host:previewColumn,tool,form});
   if(restored){
     const note=document.createElement('p');note.className='studio-settings-hint';
-    note.textContent='Восстановлены настройки предыдущего сеанса. Выберите файл заново.';
+    note.textContent='Параметры восстановлены. Выберите файл для нового запуска.';
     settings.prepend(note);
   }
   resetSettings?.addEventListener('click',()=>{
     resetPreset(tool,form);
     clearResults();form.querySelector('.progress-panel')?.classList.add('hidden');
-    showStatus('Настройки сброшены к значениям по умолчанию.');
+    showStatus('Параметры сброшены.');
   });
   if(tool.category==='Видео'||tool.category==='Аудио'||tool.category==='Изображения'){
     const features=supportedMediaFeatures();
     const capability=document.createElement('p');capability.className='studio-settings-hint';
     capability.textContent=features.mediaRecorder
-      ?`Для совместимых MP4 доступны быстрые обрезка, склейка, удаление звука и изменение скорости без аудио. WebM обрезается без перекодирования на ключевых кадрах. В остальных случаях используется MediaRecorder. ${features.webCodecs?'WebCodecs доступен.':''}`
-      :'Кодирование MediaRecorder недоступно в этом браузере. Инструменты анализа и кадров могут работать.';
+      ?`Совместимые MP4 обрабатываются без перекодирования. WebM можно обрезать по ключевым кадрам. В других случаях потребуется повторное кодирование. ${features.webCodecs?'WebCodecs поддерживается браузером.':''}`
+      :'Браузер не поддерживает запись видео через MediaRecorder. Анализ файлов и сохранение кадров могут быть доступны.';
     settings.append(capability);
   }
   const setProgress=setupProgress(form);
@@ -329,15 +347,15 @@ function openTool(tool){
     event.preventDefault();
     if(controller)return;
     if(!form.reportValidity()){
-      showStatus('Проверьте значения параметров и выбранные файлы.',true);
+      showStatus('Проверьте выбранные файлы и параметры.',true);
       return;
     }
     const originalFiles=tool.isCapture?[]:Array.from(input.files);
     let files;
     try{files=tool.isCapture?[]:(await activeEditor?.getFiles(originalFiles))||originalFiles;}
-    catch(error){showStatus(error?.message||'Неверные параметры редактирования.',true);return;}
-    if(!tool.isCapture&&files.length<(tool.requiredFiles||1)){showStatus(`Выберите ${tool.requiredFiles||1} файл(а).`,true);return;}
-    if(files.length>(tool.maxFiles||1)){showStatus(`Можно выбрать не больше ${tool.maxFiles||1} файла(ов).`,true);return;}
+    catch(error){showStatus(error?.message||'Не удалось применить параметры редактирования.',true);return;}
+    if(!tool.isCapture&&files.length<(tool.requiredFiles||1)){showStatus(((tool.requiredFiles||1)===2?'Выберите два файла.':'Выберите файл.'),true);return;}
+    if(files.length>(tool.maxFiles||1)){showStatus(((tool.maxFiles||1)===2?'Можно выбрать не более двух файлов.':'Можно выбрать только один файл.'),true);return;}
     if(currentTool!==tool||!form.isConnected)return;
     const startValue=Number(form.elements.namedItem('start')?.value||0);
     const endValue=Number(form.elements.namedItem('end')?.value||0);
@@ -377,7 +395,7 @@ function openTool(tool){
         addResult(result);
         recordOperation(tool.id,'success',files,result,(performance.now()-started));
         setProgress({stage:'complete',percent:100,elapsedSeconds:(performance.now()-started)/1000});
-        showStatus('Готово. Результат находится только в вашем браузере.');
+        showStatus('Готово. Скачайте результат, прежде чем закрыть вкладку.');
       }else{
         recordOperation(tool.id,'cancelled',files,null,(performance.now()-started));
         if(isCurrent()){
@@ -390,7 +408,7 @@ function openTool(tool){
       recordOperation(tool.id,wasCancelled?'cancelled':'error',files,null,(performance.now()-started));
       if(isCurrent()){
         setProgress({stage:wasCancelled?'cancelled':'error',elapsedSeconds:(performance.now()-started)/1000});
-        showStatus(wasCancelled?'Операция отменена.':e.message||'Произошла ошибка.',!wasCancelled);
+        showStatus(wasCancelled?'Операция отменена.':e.message||'Не удалось завершить обработку.',!wasCancelled);
       }
     }
     finally{active=false;lockSettings(false);start.disabled=false;cancel.disabled=true;stop.classList.add('hidden');
@@ -531,7 +549,7 @@ document.addEventListener('keydown',event=>{
   if(event.key==='Tab'&&isMobileSidebar()&&document.body.classList.contains('sidebar-open')){
     const focusable=[...sidebar.querySelectorAll('button:not([disabled]),input:not([disabled]),a[href],summary')].filter(node=>node.getClientRects().length);
     const first=focusable[0],last=focusable[focusable.length-1];
-    if(first&&last&&(event.shiftKey&&document.activeElement===first||!event.shiftKey&&document.activeElement===last)){
+    if(first&&last&&(!sidebar.contains(document.activeElement)||(event.shiftKey&&document.activeElement===first)||(!event.shiftKey&&document.activeElement===last))){
       event.preventDefault();(event.shiftKey?last:first).focus();return;
     }
   }
@@ -547,7 +565,7 @@ for(const node of [$('#open-last-tool'),$('#hero-last-tool')]){
 
 function networkStatus(){
   const online=navigator.onLine;const node=$('#network-status');
-  node.textContent=online?'Локальная обработка':'Офлайн-режим';
+  node.textContent=online?'Обработка на устройстве':'Работа без сети';
   node.classList.toggle('offline',!online);
 }
 

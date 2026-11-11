@@ -69,58 +69,80 @@ export function generateBackgroundSvg(theme, timestamp = Date.now()) {
   const random = generator(seedFor(theme, timestamp));
   const shapes = [];
   if (theme === 'topography') {
-    for (let row = 0; row < 32; row++) {
-      const phase = random()*6.283;
+    // Shared phase prevents adjacent contours from crossing like random scribbles.
+    const phase = random() * 6.283;
+    const ridgeX = 1030 + random() * 220;
+    for (let row = 0; row < 29; row++) {
       let d = '';
       for (let x = -30; x <= 1470; x += 30) {
-        const y = 45 + row*27 + Math.sin(x/180 + phase)*13
-          + Math.sin(x/275 + row*.11)*20 + 45*Math.exp(-Math.pow((x-1210)/280,2))*Math.cos(row*.28);
+        const y = 25 + row * 31 + Math.sin(x / 205 + phase + row * .025) * 16
+          + Math.sin(x / 360 + row * .09) * 14
+          + 36 * Math.exp(-Math.pow((x - ridgeX) / 305, 2)) * Math.cos(row * .20);
         d += (x === -30 ? 'M' : 'L') + x + ' ' + f(y);
       }
-      shapes.push('<path d="' + d + '" stroke="#78c4f3" opacity="' + f(.10 + random()*.08) + '"/>');
+      const color = row % 7 === 0 ? '#7b9df0' : '#7ec8ec';
+      shapes.push('<path d="' + d + '" stroke="' + color + '" opacity="' + f(.17 + random() * .08) + '"/>');
     }
     return svg('<g fill="none" stroke-width="1">' + shapes.join('') + '</g>');
   }
   if (theme === 'constellations') {
-    const points = Array.from({length:62}, () => [Math.round(random()*1440),Math.round(random()*900)]);
+    const points = Array.from({length:54}, () => [Math.round(random()*1440),Math.round(random()*900)]);
     for (let i=0;i<points.length;i++) {
       const [x,y] = points[i];
       const nearest = points.map(([xx,yy],j) => ({j,dist:Math.hypot(xx-x,yy-y)}))
-        .filter(p => p.j !== i && p.dist<180).sort((a,b)=>a.dist-b.dist).slice(0,2);
+        .filter(p => p.j !== i && p.dist < 170).sort((a,b)=>a.dist-b.dist).slice(0,2);
       for (const {j} of nearest) if (j>i)
-        shapes.push('<path d="M'+x+' '+y+'L'+points[j][0]+' '+points[j][1]+'" stroke="#70b8ef" stroke-width=".7" opacity=".17"/>');
-      shapes.push('<circle cx="'+x+'" cy="'+y+'" r="'+f(.8+random()*1.3)+'" fill="#b3ddff" opacity="'+f(.25+random()*.4)+'"/>');
+        shapes.push('<path d="M'+x+' '+y+'L'+points[j][0]+' '+points[j][1]+'" stroke="#70b8ef" stroke-width=".8" opacity=".24"/>');
+      shapes.push('<circle cx="'+x+'" cy="'+y+'" r="'+f(.9+random()*1.45)+'" fill="#b3ddff" opacity="'+f(.36+random()*.42)+'"/>');
     }
     return svg(shapes.join(''));
   }
   if (theme === 'flow') {
-    for (let i=0;i<25;i++) {
-      const y=185+i*20, sway=(random()-.5)*100, dy=(random()-.5)*120;
-      const d='M-90 '+f(y)+' C310 '+f(y-130+sway)+' 860 '+f(y+110+dy)+' 1530 '+f(y-55+sway);
-      shapes.push('<path d="'+d+'" stroke="'+(i%4===0?'#5cddda':'#83b4ff')+'" stroke-width="'+f(.65+random()*.65)+'" opacity="'+f(.10+random()*.15)+'" fill="none"/>');
+    const bend = (random() - .5) * 90;
+    for (let i = 0; i < 21; i++) {
+      // Close, parallel Bezier ribbons create a single intentional flow.
+      const y = 165 + i * 27;
+      const offset = (random() - .5) * 10;
+      const d = 'M-90 ' + f(y) + ' C310 ' + f(y - 125 + bend + offset)
+        + ' 890 ' + f(y + 100 + bend * .55) + ' 1530 ' + f(y - 72 + offset);
+      shapes.push('<path d="' + d + '" stroke="' + (i % 5 === 0 ? '#68dad0' : '#80b5f3')
+        + '" stroke-width="' + f(.8 + random() * .45) + '" opacity="' + f(.18 + random() * .12) + '" fill="none"/>');
     }
     return svg(shapes.join(''));
   }
   if (theme === 'lenses') {
-    for (let i=0;i<12;i++) {
-      const cx=Math.round(random()*1650-100), cy=Math.round(random()*1080-90);
-      const rx=85+Math.round(random()*260), ry=60+Math.round(random()*160);
-      shapes.push('<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+rx+'" ry="'+ry+'" fill="'+(i%2?'#856bcc':'#3b9cbb')+'" fill-opacity=".018" stroke="#84bfee" stroke-opacity=".11" stroke-width="1"/>');
-    }
+    // Sparse concentric lenses with negative space between them.
+    const anchors = [[120,200],[1330,160],[130,790],[1270,780],[690,480]];
+    anchors.forEach(([ax,ay],i) => {
+      const cx = ax + Math.round((random() - .5) * 125);
+      const cy = ay + Math.round((random() - .5) * 90);
+      const rx = 125 + Math.round(random() * 110);
+      const ry = 100 + Math.round(random() * 85);
+      const color = i % 2 ? '#ab8ee9' : '#70cad5';
+      for (let ring = 0; ring < 3; ring++) {
+        const scale = 1 + ring * .27;
+        shapes.push('<ellipse cx="' + cx + '" cy="' + cy + '" rx="' + f(rx * scale)
+          + '" ry="' + f(ry * scale) + '" fill="' + color + '" fill-opacity="'
+          + (ring === 0 ? '.055' : '.008') + '" stroke="' + color
+          + '" stroke-opacity="' + (ring === 0 ? '.24' : '.11') + '" stroke-width=".9"/>');
+      }
+    });
     return svg(shapes.join(''));
   }
   if (theme === 'geometry' || theme === 'polygons') {
-    const cols=16, rows=9, dx=1440/(cols-1), dy=900/(rows-1);
+    const cols = theme === 'geometry' ? 15 : 13;
+    const rows = theme === 'geometry' ? 9 : 8;
+    const dx = 1440 / (cols - 1), dy = 900 / (rows - 1);
     const nodes=Array.from({length:rows},(_,y) =>
       Array.from({length:cols},(_,x)=>[
-        Math.round(x*dx+(x===0||x===cols-1?0:(random()-.5)*35)),
-        Math.round(y*dy+(y===0||y===rows-1?0:(random()-.5)*35))
+        Math.round(x*dx+(x===0||x===cols-1?0:(random()-.5)*30)),
+        Math.round(y*dy+(y===0||y===rows-1?0:(random()-.5)*30))
       ]));
     const polygon = (a,b,c,i) => {
       const points=[a,b,c].map(([x,y])=>x+','+y).join(' ');
-      if (theme==='geometry') return '<polygon points="'+points+'" fill="'+(i%7===0?'#70bdf6':'none')+'" fill-opacity=".035" stroke="#7ab4df" stroke-opacity=".12" stroke-width=".8"/>';
-      const tones=['#4597c9','#676dc1','#2bafb0','#7e69c8'];
-      return '<polygon points="'+points+'" fill="'+tones[i%tones.length]+'" fill-opacity="'+f(.045+random()*.075)+'"/>';
+      if (theme==='geometry') return '<polygon points="'+points+'" fill="'+(i%7===0?'#70bdf6':'none')+'" fill-opacity=".055" stroke="#7ab4df" stroke-opacity=".19" stroke-width=".9"/>';
+      const tones=['#4f94c7','#7773c9','#38a7a9','#8675c0'];
+      return '<polygon points="'+points+'" fill="'+tones[i%tones.length]+'" fill-opacity="'+f(.075+random()*.09)+'"/>';
     };
     let n=0;
     for(let y=0;y<rows-1;y++)for(let x=0;x<cols-1;x++) {
@@ -130,18 +152,20 @@ export function generateBackgroundSvg(theme, timestamp = Date.now()) {
     return svg(shapes.join(''));
   }
   if (theme === 'dust') {
-    for(let i=0;i<155;i++) {
-      const x=Math.round(random()*1440),y=Math.round(random()*900);
-      shapes.push('<circle cx="'+x+'" cy="'+y+'" r="'+f(.45+random()*1.5)+'" fill="'+(i%4===0?'#75ead8':'#91c9f6')+'" opacity="'+f(.10+random()*.29)+'"/>');
+    for(let i=0;i<148;i++) {
+      const x=Math.round(random()*1440), y=Math.round(random()*900);
+      shapes.push('<circle cx="'+x+'" cy="'+y+'" r="'+f(.6+random()*1.35)
+        +'" fill="'+(i%5===0?'#7fe2d5':'#a1cff7')
+        +'" opacity="'+f(.22+random()*.40)+'"/>');
     }
     return svg(shapes.join(''));
   }
   if (theme === 'interference') {
-    for(const [cx,cy] of [[-160,220],[1370,350],[700,940]]) {
+    for(const [cx,cy] of [[-75,240],[1505,360],[715,980]]) {
       const shift=random()*35;
-      for(let i=0;i<30;i++) {
-        const rx=40+i*19+shift, ry=30+i*13+shift;
-        shapes.push('<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+f(rx)+'" ry="'+f(ry)+'" fill="none" stroke="'+(i%3===0?'#a58bf1':'#82b7f2')+'" stroke-opacity=".125" stroke-width=".8"/>');
+      for(let i=0;i<24;i++) {
+        const rx=60+i*24+shift, ry=44+i*18+shift;
+        shapes.push('<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+f(rx)+'" ry="'+f(ry)+'" fill="none" stroke="'+(i%3===0?'#a58bf1':'#82b7f2')+'" stroke-opacity=".19" stroke-width=".85"/>');
       }
     }
     return svg(shapes.join(''));

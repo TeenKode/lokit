@@ -14,6 +14,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install and bundle pinned local codecs
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run vendor-codecs
       - name: Check tag and project version
         env:
           REF_NAME: ${{ github.ref_name }}
@@ -23,11 +27,12 @@ jobs:
           npm test
       - name: Assemble standalone GitHub Pages bundle
         run: |
-          mkdir -p _site/js/vendor _site/icons
-          cp index.html analytics.html about.html batch.html style.css style-enhancements.css batch.css sw.js manifest.webmanifest .nojekyll _site/
+          mkdir -p _site/js/vendor _site/icons _site/assets/codecs
+          cp index.html analytics.html about.html batch.html style.css style-enhancements.css layout-compact.css sidebar.css glow.css batch.css sw.js manifest.webmanifest .nojekyll _site/
           cp js/*.js _site/js/
           cp js/vendor/*.js _site/js/vendor/
           cp icons/* _site/icons/
+          cp assets/codecs/* _site/assets/codecs/
           (cd _site && zip -qr ../lokit-${GITHUB_REF_NAME}.zip .)
       - name: Publish GitHub Release
         env:

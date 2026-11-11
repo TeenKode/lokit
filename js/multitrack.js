@@ -30,17 +30,17 @@ export function splitSourceTime(globalTime,offset,duration){return clamp(globalT
 const fmt=t=>{const ms=Math.max(0,Math.round(t*1000));return `${String(Math.floor(ms/60000)).padStart(2,'0')}:${String(Math.floor(ms/1000)%60).padStart(2,'0')}.${String(ms%1000).padStart(3,'0')}`;};
 /** Lightweight accessible multitrack view; actual export consumes the same order/offset options. */
 export function mountMultiTrack(host,{kind,onSeek=()=>{},onChange=()=>{}}={}){
-  const root=document.createElement('section');root.className='multi-timeline';root.setAttribute('aria-label','Многодорожечный таймлайн');
+  const root=document.createElement('section');root.className='multi-timeline';root.setAttribute('aria-label','Временная шкала с несколькими дорожками');
   const heading=document.createElement('div');heading.className='multi-heading';
-  const title=document.createElement('strong');title.textContent=kind==='merge'?'Монтажная последовательность':kind==='split'?'Две видеодорожки':kind==='loop'?'Повторения': 'Временная шкала';
+  const title=document.createElement('strong');title.textContent=kind==='merge'?'Порядок видео':kind==='split'?'Два видео':kind==='loop'?'Повторения': 'Временная шкала';
   const total=document.createElement('span');total.className='multi-total';heading.append(title,total);
   const lanes=document.createElement('div');lanes.className='multi-lanes';
   const ruler=document.createElement('div');ruler.className='multi-ruler';
-  const scrub=document.createElement('input');scrub.className='multi-scrub';scrub.type='range';scrub.min='0';scrub.max='1000';scrub.step='1';scrub.value='0';scrub.setAttribute('aria-label','Позиция на монтажной шкале');
+  const scrub=document.createElement('input');scrub.className='multi-scrub';scrub.type='range';scrub.min='0';scrub.max='1000';scrub.step='1';scrub.value='0';scrub.setAttribute('aria-label','Положение на временной шкале');
   root.append(heading,lanes,ruler,scrub);host.append(root);
   let current={total:0,tracks:[]},position=0;
   const render=(layout,filenames=['Видео 1','Видео 2'])=>{
-    current=layout;lanes.replaceChildren();ruler.replaceChildren();total.textContent=`Итоговая длительность: ${fmt(layout.total)}`;
+    current=layout;lanes.replaceChildren();ruler.replaceChildren();total.textContent=`Длительность результата: ${fmt(layout.total)}`;
     for(const [row,clips] of layout.tracks.entries()){
       const track=document.createElement('div');track.className='multi-lane';track.setAttribute('aria-label',`Дорожка ${row+1}`);
       for(const clip of clips){

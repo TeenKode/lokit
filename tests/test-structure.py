@@ -76,7 +76,7 @@ for path in ['js/experimental-engines.js','js/experimental-ffmpeg-worker.js']:
  assert f"'./{path}'" in sw,path
 for page in ['index.html','batch.html']:
  html=(ROOT/page).read_text()
- assert 'https://cdn.jsdelivr.net' in html and 'wasm-unsafe-eval' in html
+ assert 'https://cdn.jsdelivr.net' not in html and 'wasm-unsafe-eval' in html
 print('Optional engines, strict opt-in assets and CSP — PASS')
 
 # The grouped tool menu must be a first-class offline asset.
@@ -87,3 +87,16 @@ assert './sidebar.css' in home
 assert "'./sidebar.css'" in sw
 assert (ROOT/'tests/test-sidebar.py').exists()
 print('Grouped sidebar, mobile drawer and offline assets — PASS')
+
+# Shared low-cost glow layer loads last on every page and is available offline.
+glow=(ROOT/'glow.css').read_text()
+assert "'./glow.css'" in sw
+for page in ['index.html','analytics.html','about.html','batch.html']:
+ html=(ROOT/page).read_text()
+ assert html.count('./glow.css')==1,(page,'glow stylesheet missing or duplicated')
+ assert html.index('./glow.css')>html.index('./layout-compact.css'),page
+ if page=='index.html':assert html.index('./glow.css')>html.index('./sidebar.css')
+assert 'box-shadow' in glow
+assert not re.search(r'@keyframes|animation\s*:|filter\s*:|backdrop-filter\s*:',glow)
+assert '@media(forced-colors:active)' in glow
+print('UI glow: all pages, correct cascade, offline cache, no animations/filters — PASS')

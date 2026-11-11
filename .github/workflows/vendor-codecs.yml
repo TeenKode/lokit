@@ -1,0 +1,59 @@
+name: Vendor pinned offline codec binaries
+on:
+  push:
+    branches: [main, 'feat/**']
+    paths:
+      - package.json
+      - scripts/vendor-codecs.mjs
+      - .github/workflows/vendor-codecs.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lokit-codecs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install exact pinned packages
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Copy codecs to first-party static assets
+        run: npm run vendor-codecs
+      - name: Verify binary format and manifest
+        run: |
+          node --check assets/codecs/mediabunny-1.65.2.cjs
+          node --check assets/codecs/ffmpeg-core-0.12.10.js
+          node --input-type=module <<'EOF'
+          import {readFileSync} from 'node:fs';
+          import {createHash} from 'node:crypto';
+          const m=JSON.parse(readFileSync('assets/codecs/manifest.json'));
+          if(m.files.length!==3)throw new Error('Expected three optional assets');
+          for(const item of m.files){
+            const bytes=readFileSync('assets/codecs/'+item.name);
+            if(bytes.length!==item.bytes||createHash('sha256').update(bytes).digest('hex')!==item.sha256)
+              throw new Error('Codec artifact mismatch: '+item.name);
+          }
+          if(!readFileSync('assets/codecs/ffmpeg-core-0.12.10.wasm').subarray(0,4).equals(Buffer.from([0,97,115,109])))
+            throw new Error('Invalid WASM magic');
+          EOF
+      - name: Commit vendored assets for branch-based GitHub Pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/codecs/ package-lock.json
+          if git diff --cached --quiet; then
+            echo "Pinned codec assets already up to date"
+          else
+            git commit -m "build: publish pinned self-hosted codec assets"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
