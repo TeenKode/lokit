@@ -20,7 +20,7 @@
   <div class="wrap">
     <header class="header">
       <div class="header-left">
-        <button id="sidebar-toggle" class="sidebar-menu-toggle" type="button" aria-label="Открыть меню инструментов" aria-controls="tool-sidebar" aria-expanded="false"><span aria-hidden="true">☰</span><span class="sidebar-menu-label">Инструменты</span></button>
+        <button id="sidebar-toggle" class="sidebar-menu-toggle" type="button" aria-label="Открыть каталог инструментов" aria-controls="tool-sidebar" aria-expanded="false" aria-keyshortcuts="Control+K Meta+K"><span class="sidebar-toggle-icon" aria-hidden="true">☰</span><span class="sidebar-menu-label">Каталог</span></button>
         <a class="brand" href="./" aria-label="На главную">
           <span class="brand-icon" aria-hidden="true">✦</span>
           <span class="brand-text">
@@ -41,23 +41,51 @@
       <div class="app-shell">
       <aside id="tool-sidebar" class="tool-sidebar" aria-label="Навигация по инструментам">
         <div class="sidebar-heading">
-          <div><span class="sidebar-eyebrow">КАТАЛОГ LOKIT</span><h2 id="tools-title">Инструменты</h2></div>
-          <button id="sidebar-close" class="sidebar-close" type="button" aria-label="Закрыть меню инструментов">✕</button>
+          <div class="sidebar-heading-copy">
+            <span class="sidebar-eyebrow">РАБОЧЕЕ ПРОСТРАНСТВО</span>
+            <h2 id="tools-title">Каталог Lokit</h2>
+            <p>Всё необходимое под рукой</p>
+          </div>
+          <button id="sidebar-close" class="sidebar-close" type="button" aria-label="Свернуть каталог инструментов" title="Свернуть каталог">
+            <span class="sidebar-close-desktop" aria-hidden="true">‹</span><span class="sidebar-close-mobile" aria-hidden="true">✕</span>
+          </button>
         </div>
-      <section class="toolbar" aria-label="Поиск и фильтрация">
-        <div class="search-row">
-          <label class="search-box" for="search">
-            <span class="search-icon" aria-hidden="true">⌕</span>
-            <input id="search" type="search" autocomplete="off" placeholder="Поиск по инструментам">
-            <button id="clear-search" class="clear-search hidden" type="button" aria-label="Очистить поиск">✕</button>
-          </label>
-          <span id="counter" class="counter"></span>
+        <section class="toolbar" aria-label="Поиск и фильтрация">
+          <div class="search-row">
+            <label class="search-box" for="search">
+              <span class="search-icon" aria-hidden="true">⌕</span>
+              <input id="search" type="search" autocomplete="off" spellcheck="false" placeholder="Найти инструмент…" aria-keyshortcuts="Control+K Meta+K">
+              <kbd class="sidebar-search-shortcut" aria-hidden="true">Ctrl K</kbd>
+              <button id="clear-search" class="clear-search hidden" type="button" aria-label="Очистить поиск">✕</button>
+            </label>
+          </div>
+          <div id="categories" class="categories" role="group" aria-label="Показать инструменты"></div>
+        </section>
+        <section id="sidebar-recent" class="sidebar-recent hidden" aria-label="Последний открытый инструмент">
+          <span class="sidebar-mini-label">НЕДАВНО ИСПОЛЬЗОВАЛИ</span>
+          <button id="sidebar-recent-button" class="sidebar-recent-button" type="button">
+            <span id="sidebar-recent-icon" class="sidebar-recent-icon" aria-hidden="true">↶</span>
+            <span class="sidebar-recent-info"><strong id="sidebar-recent-name"></strong><small>Продолжить работу</small></span>
+            <span class="sidebar-recent-arrow" aria-hidden="true">↗</span>
+          </button>
+        </section>
+        <div class="sidebar-section-bar">
+          <div><strong>Разделы</strong><span id="counter" class="counter"></span></div>
+          <button id="sidebar-expand-all" class="sidebar-expand-all" type="button" aria-label="Развернуть все разделы">Развернуть</button>
         </div>
-        <div id="categories" class="categories" aria-label="Категории"></div>
-      </section>
         <nav id="tool-grid" class="sidebar-groups" aria-labelledby="tools-title"></nav>
-        <p class="no-results hidden" id="no-results">Ничего не найдено. Попробуйте другой запрос.</p>
-        <div class="sidebar-footer"><a href="./batch.html">Пакетная обработка <span aria-hidden="true">↗</span></a><span>24 инструмента · без загрузки файлов на сервер</span></div>
+        <div class="no-results hidden" id="no-results">
+          <strong>Инструменты не найдены</strong>
+          <p>Попробуйте другой запрос или сбросьте фильтры.</p>
+          <button id="reset-sidebar-filters" type="button">Сбросить фильтры</button>
+        </div>
+        <div class="sidebar-footer">
+          <div class="sidebar-footer-links">
+            <a href="./batch.html">Пакетная обработка <span aria-hidden="true">↗</span></a>
+            <a href="./analytics.html">Аналитика <span aria-hidden="true">↗</span></a>
+          </div>
+          <p><span class="sidebar-local-dot" aria-hidden="true"></span> Файлы остаются на устройстве</p>
+        </div>
       </aside>
       <button id="sidebar-backdrop" class="sidebar-backdrop" type="button" aria-label="Закрыть меню инструментов" tabindex="-1"></button>
       <div class="app-content">
