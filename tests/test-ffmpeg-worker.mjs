@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 const responses=[],executions=[];
 const core={
   ret:0,
-  FS:{writeFile(name,data){assert.ok(name.startsWith('input.'));assert.ok(data.byteLength);},
+  FS:{writeFile(name,data){assert.ok(/^input[01]\.|^lokit-watermark\.png$|^lokit-concat\.txt$/.test(name),name);assert.ok(data.byteLength);},
     readFile(name){assert.ok(name.endsWith('.mp4')||name.endsWith('.m4a')||name.endsWith('.png'));return new Uint8Array([1,2,3,4]);}},
   exec(...args){executions.push(args);return 0;}
 };
@@ -60,4 +60,33 @@ await self.onmessage({data:{type:'run',mode:'filter',options:{filter:'arbitrary;
   name:'input.mkv',bytes:new Uint8Array([1,2]).buffer}});
 assert.equal(responses.at(-1).type,'error');
 assert.equal(executions.length,before,'Reject unsupported filters before FFmpeg execution');
+
+async function runComposite(mode,options={},names=['first.mkv','second.webm']){
+ const before=executions.length;
+ const inputs=names.map(name=>({name,bytes:new Uint8Array([1,2,3]).buffer}));
+ await self.onmessage({data:{type:'run',mode,options,inputs,coreScriptUrl:'blob:ffmpeg',wasmUrl:'blob:wasm'}});
+ const answer=responses.at(-1);
+ assert.equal(answer.type,'done',JSON.stringify(answer));
+ assert.equal(answer.ext,'mp4');
+ return executions.slice(before);
+}
+let steps=await runComposite('merge',{targetWidth:640,targetHeight:360});
+assert.equal(steps.length,5,'Two audio probes, two encodes and concat copy');
+assert.ok(has(steps.at(-1),'concat')&&has(steps.at(-1),'copy'));
+assert.ok(steps.some(args=>has(args,'anullsrc')||has(args,'aresample')));
+steps=await runComposite('split',{offsetSeconds:2.5,targetWidth:640,targetHeight:360});
+assert.equal(steps.length,1);
+assert.ok(has(steps[0],'hstack=inputs=2')&&has(steps[0],'start_duration=2.5'));
+assert.ok(has(steps[0],'0:a?'),'Split audio must use only source zero');
+steps=await runComposite('vr',{targetWidth:640,targetHeight:360},['one.mp4']);
+assert.ok(has(steps[0],'split=2')&&has(steps[0],'hstack=inputs=2'));
+const watermark=new Uint8Array(128);watermark.set([137,80,78,71,13,10,26,10]);
+steps=await runComposite('watermark',{watermarkPng:watermark.buffer,text:'Русский текст'},['movie.mkv']);
+assert.ok(has(steps[0],'scale2ref')&&has(steps[0],'overlay='));
+assert.ok(steps[0].every(arg=>!String(arg).includes('Русский текст')),'Text must not be interpolated into FFmpeg args');
+const badBefore=executions.length;
+await self.onmessage({data:{type:'run',mode:'merge',inputs:[{name:'one.mkv',bytes:new Uint8Array([1]).buffer}],
+  coreScriptUrl:'blob:ffmpeg',wasmUrl:'blob:wasm'}});
+assert.equal(responses.at(-1).type,'error');
+assert.equal(executions.length,badBefore);
 console.log('FFmpeg compatibility worker: input formats, transform filters, audio, frame, output codec, safe options — PASS');
