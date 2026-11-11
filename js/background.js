@@ -198,5 +198,7 @@ export function initBackground(doc = document, storage = localStorage, timestamp
 }
 
 if (typeof document !== 'undefined') {
-  initBackground(document,window.localStorage);
+  let storage = null;
+  try { storage = window.localStorage; } catch { /* Storage can be disabled. */ }
+  initBackground(document,storage);
 }
