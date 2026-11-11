@@ -1,6 +1,7 @@
 """Portable browser smoke: Firefox/WebKit/Chromium. Does not simulate real Android hardware."""
 from pathlib import Path
 from playwright.sync_api import sync_playwright
+from sidebar_nav import click_sidebar_tool
 import subprocess, argparse, time, re
 
 root=Path(__file__).resolve().parents[1]
@@ -41,20 +42,20 @@ try:
   assert page.locator('.tool-card').count()==24
   assert 'v'+APP_VERSION in page.locator('.version-pill').inner_text()
   assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),'Horizontal overflow'
-  page.locator('.tool-card').filter(has_text='Обрезка видео').first.click()
+  click_sidebar_tool(page,'Обрезка видео')
   assert page.locator('.studio-shell').count()==1
   assert page.locator('.studio-reset-settings').count()==1
   page.locator('[name=start]').fill('2.25')
   page.locator('[name=start]').blur()
   page.reload(wait_until='domcontentloaded')
   if args.mobile:page.locator('#sidebar-toggle').click()
-  page.locator('.tool-card').filter(has_text='Обрезка видео').first.click()
+  click_sidebar_tool(page,'Обрезка видео')
   assert page.locator('[name=start]').input_value()=='2.25','Settings not restored'
   page.locator('.studio-reset-settings').click()
   assert page.locator('[name=start]').input_value()=='0'
   page.locator('#close-workspace').click()
   if args.mobile:page.locator('#sidebar-toggle').click()
-  page.locator('.tool-card').filter(has_text='SRT ⇄ VTT').first.click()
+  click_sidebar_tool(page,'SRT ⇄ VTT')
   page.locator('#tool-content input[type=file]').set_input_files(str(root/'tests/fixtures/sample.srt'))
   page.locator('.studio-cue-list .studio-cue textarea').first.wait_for(timeout=15000)
   page.locator('.studio-cue-list .studio-cue textarea').first.fill(f'Lokit {args.browser} mobile={args.mobile}')
