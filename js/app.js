@@ -39,25 +39,71 @@ function updateFavoriteButton(){
 }
 const categoryNames=['Все','Избранное'];
 const groupNames=['Видео','Аудио','Изображения','Субтитры','Запись','Анализ'];
-const expandedGroups=new Set(groupNames);
+const GROUPS_KEY='lokit:sidebar:groups:v1';
+const SIDEBAR_COLLAPSED_KEY='lokit:sidebar:collapsed:v1';
+function savedGroups(){
+  try{
+    const value=JSON.parse(localStorage.getItem(GROUPS_KEY)||'null');
+    if(Array.isArray(value))return new Set(value.filter(name=>groupNames.includes(name)));
+  }catch{}
+  return new Set(['Видео']);
+}
+const expandedGroups=savedGroups();
+function saveGroups(){try{localStorage.setItem(GROUPS_KEY,JSON.stringify([...expandedGroups]));}catch{}}
+function savedSidebarCollapsed(){try{return localStorage.getItem(SIDEBAR_COLLAPSED_KEY)==='true';}catch{return false;}}
 const categoryIcons={Все:'◈',Избранное:'★',Видео:'▣',Аудио:'♪',Изображения:'▧',Анализ:'ⓘ',Запись:'●',Субтитры:'≡'};
+const videoSections=[
+  ['Монтаж',['video-trim','video-crop','video-merge','video-speed','video-loop','video-flip','video-rotate','split-screen']],
+  ['Эффекты',['video-filter','video-blur','video-watermark','video-to-vr']],
+  ['Звук',['mute-video','video-volume']],
+  ['Экспорт',['video-converter','video-compressor']]
+];
+function videoSectionFor(id){return videoSections.find(([,ids])=>ids.includes(id))?.[0]||'Другие';}
 let currentTool=null,controller=null,stopRecording=null,activeEditor=null,downloadUrls=[];
 const sidebar=$('#tool-sidebar');
 const sidebarToggle=$('#sidebar-toggle');
-function setSidebarOpen(open,{restoreFocus=true}={}){
+const isMobileSidebar=()=>window.matchMedia('(max-width: 900px)').matches;
+function syncSidebarToggle(){
+  const open=isMobileSidebar()?document.body.classList.contains('sidebar-open'):!document.body.classList.contains('sidebar-collapsed');
+  sidebarToggle?.setAttribute('aria-expanded',String(open));
+  sidebarToggle?.setAttribute('aria-label',open?'Свернуть каталог инструментов':'Открыть каталог инструментов');
+  $('#sidebar-close')?.setAttribute('aria-label',isMobileSidebar()?'Закрыть меню инструментов':'Свернуть каталог инструментов');
+}
+function setSidebarOpen(open,{restoreFocus=true,savePreference=true}={}){
+  if(!isMobileSidebar()){
+    document.body.classList.toggle('sidebar-collapsed',!open);
+    if(savePreference)try{localStorage.setItem(SIDEBAR_COLLAPSED_KEY,String(!open));}catch{}
+    syncSidebarToggle();
+    if(open)sidebar?.querySelector('#search')?.focus({preventScroll:true});
+    else if(restoreFocus)sidebarToggle?.focus({preventScroll:true});
+    return;
+  }
   const wasOpen=document.body.classList.contains('sidebar-open');
   document.body.classList.toggle('sidebar-open',open);
-  sidebarToggle?.setAttribute('aria-expanded',String(open));
-  sidebarToggle?.setAttribute('aria-label',open?'Закрыть меню инструментов':'Открыть меню инструментов');
-  if(window.matchMedia('(max-width: 900px)').matches){const content=document.querySelector('.app-content');if(content)content.inert=open;}
+  const content=document.querySelector('.app-content');
+  if(content)content.inert=open;
+  syncSidebarToggle();
   if(open){sidebar?.querySelector('#search')?.focus({preventScroll:true});}
   else if(wasOpen&&restoreFocus){sidebarToggle?.focus({preventScroll:true});}
 }
-sidebarToggle?.addEventListener('click',()=>setSidebarOpen(!document.body.classList.contains('sidebar-open')));
-$('#hero-open-tools')?.addEventListener('click',event=>{event.preventDefault();if(window.matchMedia('(max-width: 900px)').matches)setSidebarOpen(true);else{sidebar.querySelector('#search')?.focus({preventScroll:true});sidebar.scrollIntoView({block:'nearest',behavior:'smooth'});}});
+if(!isMobileSidebar())document.body.classList.toggle('sidebar-collapsed',savedSidebarCollapsed());
+syncSidebarToggle();
+sidebarToggle?.addEventListener('click',()=>{
+  const open=isMobileSidebar()?document.body.classList.contains('sidebar-open'):!document.body.classList.contains('sidebar-collapsed');
+  setSidebarOpen(!open);
+});
+$('#hero-open-tools')?.addEventListener('click',event=>{
+  event.preventDefault();setSidebarOpen(true);
+  if(!isMobileSidebar())sidebar?.scrollIntoView({block:'nearest',behavior:'smooth'});
+});
 $('#sidebar-close')?.addEventListener('click',()=>setSidebarOpen(false));
 $('#sidebar-backdrop')?.addEventListener('click',()=>setSidebarOpen(false));
-window.matchMedia('(min-width: 901px)').addEventListener('change',event=>{if(event.matches)setSidebarOpen(false,{restoreFocus:false});});
+window.matchMedia('(min-width: 901px)').addEventListener('change',event=>{
+  document.body.classList.remove('sidebar-open');
+  const content=document.querySelector('.app-content');if(content)content.inert=false;
+  document.body.classList.toggle('sidebar-collapsed',event.matches&&savedSidebarCollapsed());
+  syncSidebarToggle();
+});
 
 function escapeText(t){return String(t||'');}
 function formatDuration(seconds){
@@ -119,7 +165,14 @@ function updateLastToolButtons(){
     node.disabled=!last;
     node.textContent=last?`Последний: ${last.title}`:'Последний инструмент';
   }
-}
+  const recent=$('#sidebar-recent'),recentButton=$('#sidebar-recent-button');
+  recent?.classList.toggle('hidden',!last);
+  if(last&&recentButton){
+    $('#sidebar-recent-name').textContent=last.title;
+    $('#sidebar-recent-icon').textContent=last.icon;
+    recentButton.title=last.description;
+    recentButton.setAttribute('aria-label',`Продолжить: ${last.title}`);
+  }
 function updateHeroStats(){const el=$('#hero-tool-count');if(el)el.textContent=String(tools.length);}
 
 function addResult(result){
@@ -168,7 +221,7 @@ function makeField(def){
 function openTool(tool){
   resetWorkspace();currentTool=tool;saveLastTool(tool);recordEvent('open',tool.id);updateFavoriteButton();
   document.body.classList.add('has-active-tool');
-  renderCards();setSidebarOpen(false,{restoreFocus:false});
+  renderCards();if(isMobileSidebar())setSidebarOpen(false,{restoreFocus:false});
   $('#tool-title').textContent=tool.title;
   $('#tool-description').textContent=tool.description;
   workspace.classList.remove('hidden');
@@ -363,10 +416,17 @@ function updateFilters(){
   }
 }
 
+function updateExpandControl(){
+  const allExpanded=groupNames.every(name=>expandedGroups.has(name));
+  const control=$('#sidebar-expand-all');if(!control)return;
+  control.textContent=allExpanded?'Свернуть':'Развернуть';
+  control.setAttribute('aria-label',allExpanded?'Свернуть все разделы':'Развернуть все разделы');
+  control.disabled=Boolean(selected.search)||selected.category==='Избранное';
+}
 function renderCards(){
   const matching=tools.filter(t=>(selected.category==='Все'||(selected.category==='Избранное'?favorites.has(t.id):t.category===selected.category))&&
     `${t.title} ${t.description} ${t.id} ${t.category}`.toLocaleLowerCase('ru').includes(selected.search));
-  const oldScroll=sidebar.scrollTop;
+  const oldScroll=root.scrollTop;
   root.replaceChildren();
   for(const category of (selected.category==='Избранное'?['Избранное']:groupNames)){
     const matches=matching.filter(t=>category==='Избранное'?true:t.category===category);
@@ -383,9 +443,23 @@ function renderCards(){
     group.addEventListener('toggle',()=>{
       if(selected.search||selected.category==='Избранное')return;
       if(group.open)expandedGroups.add(category);else expandedGroups.delete(category);
+      saveGroups();updateExpandControl();
     });
     const list=document.createElement('div');list.className='sidebar-tools';
-    for(const t of matches){
+    const ordered=category==='Видео'?[...matches].sort((a,b)=>{
+      const ai=videoSections.findIndex(([,ids])=>ids.includes(a.id));
+      const bi=videoSections.findIndex(([,ids])=>ids.includes(b.id));
+      return (ai<0?videoSections.length:ai)-(bi<0?videoSections.length:bi);
+    }):matches;
+    let currentSection='';
+    for(const t of ordered){
+      if(category==='Видео'){
+        const section=videoSectionFor(t.id);
+        if(section!==currentSection){
+          const divider=document.createElement('span');divider.className='sidebar-subsection';divider.textContent=section;
+          list.append(divider);currentSection=section;
+        }
+      }
       const row=document.createElement('div');row.className='sidebar-tool-row';row.dataset.toolId=t.id;
       const button=document.createElement('button');button.className='tool-card sidebar-tool'+(currentTool?.id===t.id?' is-active':'');
       button.type='button';button.dataset.toolId=t.id;button.title=t.description;
@@ -399,16 +473,25 @@ function renderCards(){
       star.setAttribute('aria-pressed',String(favorites.has(t.id)));
       star.setAttribute('aria-label',`${favorites.has(t.id)?'Убрать из избранного':'Добавить в избранное'}: ${t.title}`);
       star.title=favorites.has(t.id)?'Убрать из избранного':'Добавить в избранное';
-      star.addEventListener('click',()=>{const keepFocus=selected.category!=='Избранное';toggleFavorite(t);
+      star.addEventListener('click',()=>{
+        const keepFocus=selected.category!=='Избранное';toggleFavorite(t);
         if(keepFocus)root.querySelector(`[data-favorite-id="${t.id}"]`)?.focus({preventScroll:true});
+        else categories.querySelector('.chip.active')?.focus({preventScroll:true});
       });
       row.append(button,star);list.append(row);
     }
     group.append(list);root.append(group);
   }
   const counter=$('#counter');if(counter)counter.textContent=`${matching.length} из ${tools.length}`;
-  $('#no-results').classList.toggle('hidden',matching.length>0);
-  sidebar.scrollTop=oldScroll;
+  const empty=$('#no-results');empty.classList.toggle('hidden',matching.length>0);
+  if(!matching.length){
+    const title=empty.querySelector('strong'),hint=empty.querySelector('p');
+    const noFavorites=selected.category==='Избранное'&&!favorites.size&&!selected.search;
+    title.textContent=noFavorites?'Избранное пока пусто':'Инструменты не найдены';
+    hint.textContent=noFavorites?'Нажмите ☆ рядом с инструментом, чтобы добавить его сюда.':'Попробуйте другой запрос или сбросьте фильтры.';
+  }
+  updateExpandControl();
+  root.scrollTop=oldScroll;
 }
 
 $('#search').addEventListener('input',e=>{
@@ -419,6 +502,16 @@ $('#search').addEventListener('input',e=>{
 $('#clear-search').addEventListener('click',()=>{
   const input=$('#search');input.value='';selected.search='';$('#clear-search').classList.add('hidden');renderCards();input.focus();
 });
+$('#reset-sidebar-filters').addEventListener('click',()=>{
+  selected.category='Все';selected.search='';$('#search').value='';
+  $('#clear-search').classList.add('hidden');updateFilters();renderCards();$('#search').focus({preventScroll:true});
+});
+$('#sidebar-expand-all').addEventListener('click',()=>{
+  const expand=!groupNames.every(name=>expandedGroups.has(name));
+  expandedGroups.clear();if(expand)groupNames.forEach(name=>expandedGroups.add(name));
+  saveGroups();renderCards();
+});
+$('#sidebar-recent-button').addEventListener('click',()=>{const last=getLastTool();if(last)openTool(last);});
 function closeWorkspace(){
   const focused=workspace.contains(document.activeElement);
   const toolId=currentTool?.id;
@@ -431,6 +524,16 @@ function closeWorkspace(){
 $('#close-workspace').addEventListener('click',closeWorkspace);
 $('#favorite-tool').addEventListener('click',()=>{if(currentTool)toggleFavorite(currentTool);});
 document.addEventListener('keydown',event=>{
+  if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){
+    event.preventDefault();setSidebarOpen(true);$('#search').focus({preventScroll:true});$('#search').select();return;
+  }
+  if(event.key==='Tab'&&isMobileSidebar()&&document.body.classList.contains('sidebar-open')){
+    const focusable=[...sidebar.querySelectorAll('button:not([disabled]),input:not([disabled]),a[href],summary')].filter(node=>node.getClientRects().length);
+    const first=focusable[0],last=focusable[focusable.length-1];
+    if(first&&last&&(event.shiftKey&&document.activeElement===first||!event.shiftKey&&document.activeElement===last)){
+      event.preventDefault();(event.shiftKey?last:first).focus();return;
+    }
+  }
   if(event.key==='Escape'&&document.body.classList.contains('sidebar-open')){event.preventDefault();setSidebarOpen(false);return;}
   if(event.key==='Escape'&&!workspace.classList.contains('hidden')&&event.target.closest?.('.studio-cue-list')===null){
     event.preventDefault();closeWorkspace();
