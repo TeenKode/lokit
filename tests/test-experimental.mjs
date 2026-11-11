@@ -3,7 +3,8 @@ import {experimentalEligibility,scaledSize,runWebCodecs,runFfmpeg,tryExperimenta
 const file=new File([new Uint8Array(1024)],'phone.mov',{type:'video/quicktime'});
 assert.equal(experimentalEligibility({files:[file],mode:'convert',options:{engine:'classic'}}).eligible,false);
 assert.equal(experimentalEligibility({files:[file,file],mode:'convert',options:{engine:'ffmpeg'}}).eligible,false);
-assert.equal(experimentalEligibility({files:[file],mode:'filter',options:{engine:'ffmpeg'}}).eligible,false);
+assert.equal(experimentalEligibility({files:[file],mode:'filter',options:{engine:'ffmpeg'}}).eligible,true);
+assert.equal(experimentalEligibility({files:[file],mode:'merge',options:{engine:'ffmpeg'}}).eligible,false);
 assert.equal(experimentalEligibility({files:[{name:'big.mp4',size:91*1024*1024}],mode:'compress',options:{engine:'ffmpeg'}}).eligible,false);
 assert.deepEqual(scaledSize(1920,1080,'720'),{width:1280,height:720});
 assert.deepEqual(scaledSize(1080,1920,'720'),{width:720,height:1280});
@@ -25,6 +26,8 @@ const seen=[];
 const result=await runWebCodecs({file,mode:'convert',options:{resolution:'720'},mediabunny:fake,onProgress:x=>seen.push(x)});
 assert.equal(result.method,'webcodecs');assert.equal(result.ext,'mp4');
 assert.equal(Conversion.options.video.width,1280);assert.equal(Conversion.options.video.height,720);
+assert.equal(Conversion.options.video.forceTranscode,undefined,'Plain conversion should use stream copy where possible');
+assert.equal(Conversion.options.video.hardwareAcceleration,'prefer-hardware');
 assert.equal(seen.some(x=>x.percent===50),true);
 Conversion.utilizedTracks=[{}];
 await assert.rejects(runWebCodecs({file,mode:'convert',options:{},mediabunny:fake}),/дорожки|WebCodecs/);
