@@ -58,6 +58,8 @@ function ffmpegPlan(data){
   const output=mode==='frame'?'lokit-frame.png':mode==='extract-audio'?'lokit-audio.m4a':'lokit-output.mp4';
   const args=['-hide_banner','-loglevel','error','-nostdin','-y'];
   if(mode==='trim')args.push('-ss',String(bounded(options.start,0,86400,0)));
+  if(mode==='frame')args.push('-ss',String(bounded(options.seconds,0,86400,0)));
+
   if(mode==='loop')args.push('-stream_loop',String(Math.round(bounded(options.loops,1,10,2))-1));
   args.push('-i',source);
   if(mode==='trim'){
