@@ -10,7 +10,7 @@ const width = {
   hint:'Например, 1920×1080 → 1280×720 при 720p; вертикальное 1080×1920 → 720×1280. Пропорции сохраняются, качество вверх не увеличивается.'
 };
 const engine={key:'engine',label:'Способ обработки',type:'select',choices:[['auto','Автоматически — быстрый доступный способ (рекомендуется)'],['classic','Встроенный кодировщик браузера — офлайн'],['webcodecs','WebCodecs — ускоренный экспорт при поддержке'],['ffmpeg','FFmpeg/WASM — резервный программный MP4 (медленнее)']],default:'auto',hint:'Сначала используем обработку без перекодирования. В автоматическом режиме WebCodecs запускается, только если библиотека уже есть в локальном кэше; иначе применяется встроенный кодировщик браузера. FFmpeg/WASM загружается по выбору. Файлы не отправляются на сервер.'};
-const fps = {key:'fps',label:'Частота кадров',type:'select',choices:[['original','Оригинальная (без изменения)'],['15','15 FPS'],['25','25 FPS'],['30','30 FPS']],default:'original'};
+const fps = {key:'fps',label:'Частота кадров',type:'select',choices:[['original','Исходная при копировании, иначе 30 FPS'],['15','15 FPS'],['25','25 FPS'],['30','30 FPS']],default:'original'};
 const asTime=(seconds)=>{const s=Math.max(0,Math.floor(seconds));return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;};
 const videoAccept='video/*,.mkv,.mov,.webm,.mp4';
 const tool = (id,title,desc,icon,mode,options=[],category='Видео',extra={})=>({id,title,description:desc,icon,category,accept:videoAccept,options:[...options],async run({files,values,progress,signal}){
