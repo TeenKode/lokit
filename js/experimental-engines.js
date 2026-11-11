@@ -4,12 +4,10 @@ export const EXPERIMENTAL_MODES = new Set(['convert','compress']);
 const FFMPEG_MODES = new Set(['convert','compress','trim','mute','speed','loop',
   'crop','flip-h','flip-v','rotate-90','rotate-180','rotate-270','filter','blur',
   'volume','extract-audio','frame','merge','split','watermark','vr']);
-export const DEPENDENCIES = Object.freeze({
-  mediabunny: 'https://cdn.jsdelivr.net/npm/mediabunny@1.65.2/dist/bundles/mediabunny.cjs',
-  ffmpegCore: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.js',
-  ffmpegWasm: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.wasm'
-});
-const CACHE='lokit-optional-codecs-v1';
+// The codec libraries are vendored into the site, not fetched from a CDN.
+import {DEPENDENCIES, fetchCodecBlob, CODEC_CACHE} from './codec-assets.js';
+export {DEPENDENCIES};
+const CACHE=CODEC_CACHE;
 const MAX_FFMPEG_BYTES=90*1024*1024;
 const abortError=()=>new DOMException('Операция отменена','AbortError');
 export function experimentalEligibility({files,mode,options={}}={}){
@@ -18,7 +16,7 @@ export function experimentalEligibility({files,mode,options={}}={}){
   if(!ENGINE_OPTIONS.includes(engine))return {eligible:false,reason:'Неизвестный способ экспорта'};
   const expected=engine==='ffmpeg'&&['merge','split'].includes(mode)?2:1;
   if(!files?.length||files.length!==expected||!(engine==='ffmpeg'?FFMPEG_MODES:EXPERIMENTAL_MODES).has(mode))return {eligible:false,reason:'Инструмент не поддерживается экспериментальным движком'};
-  if(!files[0]?.size)return {eligible:false,reason:'Выбранный файл пуст'};
+  if(files.some(item=>!item?.size))return {eligible:false,reason:'Один из исходных файлов пуст'};
   if((engine==='auto'||engine==='webcodecs')&&(typeof VideoEncoder==='undefined'||typeof VideoDecoder==='undefined'))
     return {eligible:false,reason:'Ваш браузер не поддерживает WebCodecs'};
   if(engine==='ffmpeg'&&files.reduce((total,f)=>total+f.size,0)>MAX_FFMPEG_BYTES)
@@ -26,29 +24,15 @@ export function experimentalEligibility({files,mode,options={}}={}){
   return {eligible:true,engine:engine==='auto'?'webcodecs':engine,automatic:engine==='auto'};
 }
 function aborted(signal){if(signal?.aborted)throw abortError();}
-// Only pin-listed public dependency URLs are allowed; no user-controlled URL or file content is sent.
-async function cachedBlob(url,{signal,onDownload=()=>{}}={}){
-  if(!Object.values(DEPENDENCIES).includes(url))throw new Error('Запрещённый источник библиотеки.');
-  aborted(signal);
-  const cache=typeof caches!=='undefined'?await caches.open(CACHE):null;
-  let response=await cache?.match(url);
-  if(!response){
-    if(typeof navigator!=='undefined' && navigator.onLine===false)throw new Error('Для первого запуска этого режима нужен интернет. Библиотека ещё не загружена.');
-    response=await fetch(url,{mode:'cors',credentials:'omit',cache:'force-cache',signal});
-    if(!response.ok||response.type==='opaque')throw new Error(`Не удалось загрузить компонент экспорта (${response.status}).`);
-    // Store only successfully fetched assets, never cache user data.
-    if(cache){try{await cache.put(url,response.clone());}catch{/* Cache quota may be limited. */}}
-  }
-  aborted(signal);
-  onDownload(response.headers.get('Content-Length')||'');
-  return response.blob();
-}
+// Only approved same-origin assets may be loaded; the dedicated loader
+// handles Cache Storage, offline availability, errors and abort.
+const cachedBlob=fetchCodecBlob;
 let mediabunnyPromise;
 async function loadMediabunny({signal,onProgress=()=>{}}={}){
   if(globalThis.Mediabunny)return globalThis.Mediabunny;
   if(typeof document==='undefined')throw new Error('WebCodecs можно использовать только в поддерживаемом браузере.');
   mediabunnyPromise ||= (async()=>{
-    onProgress({stage:'preparing',description:'Загружаем компонент WebCodecs (при первом запуске)…'});
+    onProgress({stage:'preparing',description:'Подготавливаем локальный компонент WebCodecs…'});
     const downloaded=await cachedBlob(DEPENDENCIES.mediabunny,{signal});
     const url=URL.createObjectURL(new Blob([downloaded],{type:'text/javascript'}));
     try{
@@ -139,7 +123,7 @@ export async function runFfmpeg({file,files,mode,options={},signal,onProgress=()
   if(typeof WorkerImpl!=='function')throw new Error('Этот браузер не поддерживает фоновые вычисления Web Workers.');
   if(!files.length||files.some(item=>!item?.size)||files.reduce((sum,item)=>sum+item.size,0)>MAX_FFMPEG_BYTES)
     throw new Error('FFmpeg/WASM: суммарный размер исходников больше 90 МиБ или отсутствует видео.');
-  onProgress({stage:'preparing',description:'Загружаем FFmpeg/WASM (около 31 МБ при первом запуске)…'});
+  onProgress({stage:'preparing',description:'Подготавливаем FFmpeg/WASM из файлов сайта (≈31 МБ)…'});
   const coreScript=await loadBlob(DEPENDENCIES.ffmpegCore,{signal});
   const coreWasm=await loadBlob(DEPENDENCIES.ffmpegWasm,{signal});
   aborted(signal);
@@ -190,8 +174,8 @@ export async function tryExperimental({files,mode,options={},onProgress=()=>{},s
     return null;
   }
   try{
-    // Auto selection must not delay offline work with CDN downloads.
-    // WebCodecs starts automatically only when the muxer has been cached.
+    // Auto selection never downloads optional code. WebCodecs starts
+    // automatically only after the bundled muxer has been cached.
     if(eligibility.automatic&&!globalThis.Mediabunny){
       if(typeof caches==='undefined')return null;
       const cached=await (await caches.open(CACHE)).match(DEPENDENCIES.mediabunny);
