@@ -60,7 +60,7 @@ function geometry(options,split=false){
   }
   return {width:Math.max(2,Math.round(w/2)*2),height:Math.max(2,Math.round(h/2)*2)};
 }
-const safeExt=name=/\.([a-z0-9]{2,5})$/i.exec(name||'')?.[1]?.toLowerCase()||'bin';
+const safeExt=name=>/\.([a-z0-9]{2,5})$/i.exec(name||'')?.[1]?.toLowerCase()||'bin';
 function encoderArgs(args,{audio=true}={}){
   args.push('-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p','-crf','24');
   if(audio)args.push('-c:a','aac','-ar','48000','-ac','2','-b:a','160k');
@@ -146,7 +146,6 @@ function runWatermark(core,inputs,options){
   const source=inputs[0];
   const args=['-hide_banner','-loglevel','error','-nostdin','-y','-i',source,
     '-i','lokit-watermark.png'];
-  const {width,height}=geometry(options);
   const resolution=options.resolution==='original'||!options.resolution?null:Number(options.resolution);
   const base=Number.isFinite(resolution)&&resolution>=144&&resolution<=2160
     ?'scale=w=if(gte(iw\\,ih)\\,-2\\,min(iw\\,'+resolution+
