@@ -22,6 +22,19 @@ for(const theme of BACKGROUND_THEMES) {
     assert.notEqual(first,generateBackgroundSvg(theme,today+86_400_000),theme+' does not regenerate');
     assert.ok(first.length<80_000,theme+' is too large: '+first.length);
     assert.ok(!/<script|<foreignObject|<image/i.test(first),theme);
+    assert.ok(!/NaN|Infinity|undefined/.test(first),theme+' has invalid SVG geometry');
+    const expected = {
+      topography:['<path',29],
+      constellations:['<circle',54],
+      flow:['<path',21],
+      lenses:['<ellipse',15],
+      geometry:['<polygon',150],
+      dust:['<circle',148],
+      interference:['<ellipse',72],
+      polygons:['<polygon',160],
+    }[theme];
+    const count = first.split(expected[0]).length-1;
+    assert.ok(count>=expected[1],theme+' unexpectedly sparse: '+count);
   }
 }
 const aurora=generateAuroraPositions(today);
