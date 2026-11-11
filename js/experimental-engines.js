@@ -95,13 +95,16 @@ export async function runWebCodecs({file,mode,options,signal,onProgress=()=>{},m
     // MOV/MKV/WebM into MP4 when the container accepts them. Never force
     // transcoding for a plain conversion. Compression, resizing and FPS
     // overrides will still encode the video as required.
-    const video={hardwareAcceleration:'prefer-hardware'};
+    // MP4 can *contain* HEVC/VP9/AV1 but many external players cannot decode
+    // those streams. Request the portable AVC/AAC pair; Mediabunny can still
+    // copy existing AVC/AAC packets without touching their bitstreams.
+    const video={codec:'avc',hardwareAcceleration:'prefer-hardware'};
     if(mode==='compress')video.forceTranscode=true;
     if(size.width!==width||size.height!==height){Object.assign(video,{width:size.width,height:size.height,fit:'contain'});}
     if(mode==='compress'&&Quality)video.quality=new Quality({bitrate:Math.max(200000,Math.min(10000000,Number(options.bitrate)||650000))});
     if(mode==='convert'&&Number(options.fps)>0)video.frameRate=Number(options.fps);
     onProgress({stage:'preparing',description:'Проверка кодеков и дорожек WebCodecs…'});
-    conversion=await Conversion.init({input,output,video,tracks:'all'});
+    conversion=await Conversion.init({input,output,video,audio:{codec:'aac'},tracks:'all'});
     if(!conversion.isValid||conversion.discardedTracks.length||conversion.utilizedTracks.length!==videoTracks.length+audioTracks.length)
       throw new Error('WebCodecs не может сохранить все дорожки; выполняется резервный экспорт.');
     aborted(signal);
@@ -122,7 +125,7 @@ export async function runWebCodecs({file,mode,options,signal,onProgress=()=>{},m
     }finally{try{verification.dispose?.();}catch{}}
     aborted(signal);
     onProgress({stage:'complete',percent:100,description:'WebCodecs: MP4 готов.'});
-    return {blob,ext:'mp4',method:'webcodecs',fast:false,info:mode==='convert'?'Mediabunny: совместимые дорожки копируются; остальные кодируются через WebCodecs. Аудио и видео проверены.':'WebCodecs: видео сжато, исходная аудиодорожка сохранена, когда это возможно.'};
+    return {blob,ext:'mp4',method:'webcodecs',fast:false,info:mode==='convert'?'Mediabunny: H.264/AAC копируются, когда возможно; прочие кодеки преобразуются в H.264/AAC. Дорожки проверены.':'WebCodecs: видео сжато, исходная аудиодорожка сохранена, когда это возможно.'};
   }finally{
     if(abortHandler)signal?.removeEventListener('abort',abortHandler);
     // In recent Mediabunny releases Input.dispose frees backing decoders and resources.
