@@ -244,6 +244,8 @@ function openTool(tool){
   $('#tool-title').textContent=tool.title;
   $('#tool-description').textContent=tool.description;
   workspace.classList.remove('hidden');
+  // Opening from the mobile drawer should move focus into the now-visible workspace.
+  if(isMobileSidebar())$('#tool-title')?.focus({preventScroll:true});
 
   const form=document.createElement('form');form.noValidate=true;
   form.className='studio-form';

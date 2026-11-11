@@ -70,6 +70,7 @@ try:
    assert group.get_attribute('open') is not None,width
    page.locator('.tool-card[data-tool-id="video-trim"]').click()
    assert page.locator('#workspace').is_visible()
+   if mobile:assert page.locator('#tool-title').evaluate('(el)=>document.activeElement===el')
    page.locator('.studio-form input[type=file]').set_input_files(str(ROOT/'tests/fixtures/sample.webm'))
    assert page.locator('#sidebar-recent').is_visible() if not mobile else True
    assert page.locator('#sidebar-recent-name').text_content()=='Обрезка видео'
