@@ -249,7 +249,14 @@ async function compatibilityFallback(filesOrFile,mode,options,onProgress,signal,
   }
   if(mode==='watermark')parameters.watermarkPng=await watermarkBitmap(options.text,signal);
   onProgress({stage:'preparing',description:'Браузер не открыл исходник. Используем совместимый FFmpeg/WASM…'});
-  const converted=await tryExperimental({files,mode,options:parameters,onProgress,signal});
+  let converted;
+  try{
+    converted=await tryExperimental({files,mode,options:parameters,onProgress,signal,strict:true});
+  }catch(failure){
+    if(failure?.name==='AbortError'||signal?.aborted)throw failure;
+    throw new Error('FFmpeg/WASM не смог обработать файл: '+String(failure?.message||failure)+
+      '. Исходный браузерный декодер также отказал: '+String(error?.message||error));
+  }
   if(converted){
     if(['merge','split'].includes(mode))
       converted.info+=' Несовместимые источники нормализованы до H.264/AAC; звук и порядок дорожек сохранены.';
@@ -290,8 +297,11 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
       onProgress({stage:'preparing',description:'Подготовка второго видео…'});
       ensure(files[1], 'Этот инструмент требует два видеофайла.');
       try{secondary=await openVideo(files[1],signal);}
-      catch(error){return await compatibilityFallback(files,mode,
-        {...options,targetWidth:primary.width,targetHeight:primary.height},onProgress,signal,error);}
+      catch(error){
+        const dimensions={targetWidth:primary.width,targetHeight:primary.height};
+        primary.close(); // release decoder and media bytes before loading WASM
+        return await compatibilityFallback(files,mode,{...options,...dimensions},onProgress,signal,error);
+      }
     }
     const {width,height}=canvasSize(primary,mode,options);
     ensure(width*height<=16_000_000,'Слишком большое разрешение для браузерного экспорта. Выберите 1080p или 720p.');
