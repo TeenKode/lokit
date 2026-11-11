@@ -182,9 +182,10 @@ export async function runFfmpeg({file,files,mode,options={},signal,onProgress=()
     });
   }finally{clearTimeout(timeout);worker?.terminate();URL.revokeObjectURL(scriptUrl);URL.revokeObjectURL(wasmUrl);}
 }
-export async function tryExperimental({files,mode,options={},onProgress=()=>{},signal}={}){
+export async function tryExperimental({files,mode,options={},onProgress=()=>{},signal,strict=false}={}){
   const eligibility=experimentalEligibility({files,mode,options});
   if(!eligibility.eligible){
+    if(strict)throw new Error(eligibility.reason);
     if(options.engine&&options.engine!=='classic')onProgress({stage:'preparing',description:eligibility.reason+' — используем резервный движок.'});
     return null;
   }
@@ -200,7 +201,7 @@ export async function tryExperimental({files,mode,options={},onProgress=()=>{},s
     const task={file:files[0],files,mode,options,signal,onProgress};
     return eligibility.engine==='webcodecs'?await runWebCodecs(task):await runFfmpeg(task);
   }catch(e){
-    if(e?.name==='AbortError'||signal?.aborted)throw e;
+    if(e?.name==='AbortError'||signal?.aborted||strict)throw e;
     console.warn('Экспериментальный движок недоступен; используем проверенный экспорт:',e);
     onProgress({stage:'preparing',description:`${eligibility.engine==='ffmpeg'?'FFmpeg/WASM':'WebCodecs'} недоступен: ${e.message||e}. Используем резервный экспорт.`});
     return null;
