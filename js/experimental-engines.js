@@ -88,7 +88,12 @@ export async function runWebCodecs({file,mode,options,signal,onProgress=()=>{},m
     const size=scaledSize(width,height,options.resolution||'original');
     if(size.width*size.height>16_000_000)throw new Error('Для кодирования требуется 1080p или меньше.');
     const output=new Output({format:new Mp4OutputFormat(),target:new BufferTarget()});
-    const video={forceTranscode:true};
+    // Mediabunny can transmux H.264/AAC or AV1/VP9 streams directly from
+    // MOV/MKV/WebM into MP4 when the container accepts them. Never force
+    // transcoding for a plain conversion. Compression, resizing and FPS
+    // overrides will still encode the video as required.
+    const video={hardwareAcceleration:'prefer-hardware'};
+    if(mode==='compress')video.forceTranscode=true;
     if(size.width!==width||size.height!==height){Object.assign(video,{width:size.width,height:size.height,fit:'contain'});}
     if(mode==='compress'&&Quality)video.quality=new Quality({bitrate:Math.max(200000,Math.min(10000000,Number(options.bitrate)||650000))});
     if(mode==='convert'&&Number(options.fps)>0)video.frameRate=Number(options.fps);
@@ -114,7 +119,7 @@ export async function runWebCodecs({file,mode,options,signal,onProgress=()=>{},m
     }finally{try{verification.dispose?.();}catch{}}
     aborted(signal);
     onProgress({stage:'complete',percent:100,description:'WebCodecs: MP4 готов.'});
-    return {blob,ext:'mp4',method:'webcodecs',fast:false,info:'Экспериментальное кодирование WebCodecs; аудио и видео сохранены.'};
+    return {blob,ext:'mp4',method:'webcodecs',fast:false,info:mode==='convert'?'Mediabunny: совместимые дорожки копируются; остальные кодируются через WebCodecs. Аудио и видео проверены.':'WebCodecs: видео сжато, исходная аудиодорожка сохранена, когда это возможно.'};
   }finally{
     if(abortHandler)signal?.removeEventListener('abort',abortHandler);
     // In recent Mediabunny releases Input.dispose frees backing decoders and resources.
