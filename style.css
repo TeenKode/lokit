@@ -25,7 +25,60 @@ button,input,select,textarea{font:inherit}
 button{cursor:pointer}
 button:disabled{opacity:.48;cursor:not-allowed}
 :focus-visible{outline:3px solid rgba(130,197,255,.85);outline-offset:3px}
-.page-glow{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 20% 0%,rgba(85,160,240,.16),transparent 30%),radial-gradient(circle at 90% 10%,rgba(100,160,255,.08),transparent 26%),radial-gradient(circle at 50% 100%,rgba(84,118,188,.08),transparent 28%)}
+/* All backgrounds are static CSS/SVG layers, generated once per page load. */
+.page-glow{
+  --aurora-a-x:20%;--aurora-a-y:1%;--aurora-b-x:87%;--aurora-b-y:7%;
+  --aurora-c-x:14%;--aurora-c-y:90%;--aurora-d-x:86%;--aurora-d-y:91%;
+  --glow-a:rgba(57,130,230,.18);--glow-b:rgba(109,91,207,.12);
+  position:fixed;inset:0;pointer-events:none;overflow:hidden;
+  background:
+    radial-gradient(ellipse 64% 52% at var(--aurora-a-x) var(--aurora-a-y),var(--glow-a),transparent 76%),
+    radial-gradient(ellipse 53% 54% at var(--aurora-b-x) var(--aurora-b-y),var(--glow-b),transparent 78%),
+    radial-gradient(ellipse 55% 60% at var(--aurora-c-x) var(--aurora-c-y),rgba(37,148,164,.085),transparent 78%),
+    radial-gradient(ellipse 54% 57% at var(--aurora-d-x) var(--aurora-d-y),rgba(80,116,201,.075),transparent 80%);
+}
+.page-glow::before{
+  content:'';position:absolute;inset:0;
+  background-image:var(--lokit-pattern,none);
+  background-position:center;background-repeat:no-repeat;background-size:cover;
+  opacity:.8;
+  -webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,.65),#000 24%,#000 73%,rgba(0,0,0,.6));
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,.65),#000 24%,#000 73%,rgba(0,0,0,.6));
+}
+.page-glow[data-background-theme="aurora"]::before{
+  background-image:radial-gradient(circle,rgba(165,205,255,.21) .7px,transparent 1px);
+  background-size:34px 34px;opacity:.44;
+}
+.page-glow[data-background-theme="none"]{display:none}
+.page-glow[data-background-theme="topography"]{--glow-a:rgba(35,120,190,.16);--glow-b:rgba(105,94,197,.12)}
+.page-glow[data-background-theme="constellations"]{--glow-a:rgba(39,106,184,.13);--glow-b:rgba(64,99,168,.09)}
+.page-glow[data-background-theme="flow"]{--glow-a:rgba(26,145,155,.13);--glow-b:rgba(101,93,197,.13)}
+.page-glow[data-background-theme="lenses"]{--glow-a:rgba(31,146,189,.16);--glow-b:rgba(138,78,186,.15)}
+.page-glow[data-background-theme="geometry"]{--glow-a:rgba(51,113,195,.13);--glow-b:rgba(51,112,160,.10)}
+.page-glow[data-background-theme="dust"]{--glow-a:rgba(57,113,182,.11);--glow-b:rgba(55,94,170,.08)}
+.page-glow[data-background-theme="interference"]{--glow-a:rgba(70,91,205,.13);--glow-b:rgba(135,81,203,.15)}
+.page-glow[data-background-theme="polygons"]{--glow-a:rgba(37,147,150,.14);--glow-b:rgba(95,97,193,.15)}
+.background-control{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:2px 6px 2px 9px;border-radius:10px;
+  border:1px solid var(--line);background:rgba(20,34,53,.86);
+  color:var(--muted);font-size:12px;white-space:nowrap;
+}
+.background-control select{
+  font-size:12px;min-height:30px;max-width:148px;width:148px;
+  padding:3px 5px;border:0;border-radius:7px;background:#162942;
+  color:var(--ink);cursor:pointer;text-overflow:ellipsis;
+}
+.background-control select:hover{background:#213a58}
+.background-control select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+@media(max-width:650px){
+  .page-glow::before{opacity:.6}
+  .page-glow[data-background-theme="aurora"]::before{background-size:44px 44px;opacity:.38}
+  .background-control{padding:2px 5px;gap:5px;font-size:11px}
+  .background-control select{font-size:11px;width:124px;max-width:124px;min-height:28px}
+}
+@media(forced-colors:active){.page-glow{display:none}}
+@media(prefers-contrast:more){.page-glow{opacity:.40}}
 .wrap{position:relative;max-width:1180px;margin:auto;padding:0 24px}
 .header{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 0;margin-bottom:8px;background:rgba(10,16,27,.72);backdrop-filter:blur(14px);border-bottom:1px solid rgba(39,56,77,.8)}
 .header-left,.header-right{display:flex;align-items:center;gap:12px;min-width:0}
