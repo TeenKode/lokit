@@ -11,7 +11,7 @@ const root=join(dirname(fileURLToPath(import.meta.url)),'fixtures','generated');
 const dir=join(root,'results');mkdirSync(dir,{recursive:true});
 const manifest=JSON.parse(readFileSync(join(root,'manifest.json'),'utf8'));
 const {tryFastMp4}=await import('../js/mp4-fast.js');
-const file=(name)=>new File([readFileSync(join(root,name))],name,{type:name.endsWith('.webm')?'video/webm':'video/mp4'});
+const file=(name)=>new File([readFileSync(join(root,name))],name,{type:name.endsWith('.webm')?'video/webm':name.endsWith('.mov')?'video/quicktime':'video/mp4'});
 let result=[];
 async function execute(name,mode,options,files){
   const input=files||[file(name)];
@@ -44,10 +44,13 @@ for(const name of READY){
     assert.ok(approximate,`Expected approximate keyframe trim for ${name}`);
   }
 }
-// MOV is not silently relabelled MP4: unsupported input takes the normal path.
+// Verify genuine QuickTime H.264/AAC with real FFmpeg decode, not just extension matching.
 if(READY.has('h264-mov.mov')){
-  const mov=file('h264-mov.mov');
-  assert.equal(await tryFastMp4({file:mov,mode:'trim',options:{resolution:'original',start:.3,end:1.1}}),null);
+  const name='h264-mov.mov';
+  assert.ok(await execute(name,'trim',{resolution:'original',start:.45,end:1.55,cutMode:'exact'}));
+  assert.ok(await execute(name,'mute',{resolution:'original'}));
+  assert.ok(await execute(name,'convert',{resolution:'original',fps:'original',engine:'auto'}));
+  assert.ok(await execute(name,'loop',{resolution:'original',loops:2}));
 }
 if(READY.has('h264-silent.mp4')){
   const speed=await execute('h264-silent.mp4','speed',{resolution:'original',speed:1.5});
