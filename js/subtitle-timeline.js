@@ -12,10 +12,10 @@ export function adjustCue(cues,index,part,newTime){
   return next;
 }
 export function mountSubtitleTimeline(host,{onSelect=()=>{},onChange=()=>{}}={}){
-  const wrap=document.createElement('section');wrap.className='subtitle-lane-wrap';wrap.setAttribute('aria-label','Графическая шкала субтитров');
+  const wrap=document.createElement('section');wrap.className='subtitle-lane-wrap';wrap.setAttribute('aria-label','Временная шкала субтитров');
   const head=document.createElement('div');head.className='multi-heading';
-  const title=document.createElement('strong');title.textContent='Дорожка реплик';
-  const help=document.createElement('span');help.textContent='Перемещайте реплики и их границы · стрелки ±0,1 с';help.className='studio-hint';head.append(title,help);
+  const title=document.createElement('strong');title.textContent='Реплики на шкале';
+  const help=document.createElement('span');help.textContent='Перетаскивайте реплики и их края. Стрелки перемещают на 0,1 с.';help.className='studio-hint';head.append(title,help);
   const track=document.createElement('div');track.className='subtitle-lane';
   const ruler=document.createElement('div');ruler.className='multi-ruler';wrap.append(head,track,ruler);host.append(wrap);
   let cues=[],duration=1,active=-1,disabled=false;
