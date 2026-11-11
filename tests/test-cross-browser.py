@@ -22,6 +22,7 @@ try:
   page=ctx.new_page()
   page.on('pageerror',lambda error:errors.append(str(error)))
   page.goto(url,wait_until='domcontentloaded')
+  if args.mobile:page.locator('#sidebar-toggle').click()
   page.locator('.tool-card').first.wait_for(timeout=20000)
   assert page.locator('.tool-card').count()==24
   assert 'v'+APP_VERSION in page.locator('.version-pill').inner_text()
@@ -32,11 +33,13 @@ try:
   page.locator('[name=start]').fill('2.25')
   page.locator('[name=start]').blur()
   page.reload(wait_until='domcontentloaded')
+  if args.mobile:page.locator('#sidebar-toggle').click()
   page.locator('.tool-card').filter(has_text='Обрезка видео').first.click()
   assert page.locator('[name=start]').input_value()=='2.25','Settings not restored'
   page.locator('.studio-reset-settings').click()
   assert page.locator('[name=start]').input_value()=='0'
   page.locator('#close-workspace').click()
+  if args.mobile:page.locator('#sidebar-toggle').click()
   page.locator('.tool-card').filter(has_text='SRT ⇄ VTT').first.click()
   page.locator('#tool-content input[type=file]').set_input_files(str(root/'tests/fixtures/sample.srt'))
   page.locator('.studio-cue-list .studio-cue textarea').first.wait_for(timeout=15000)

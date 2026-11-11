@@ -22,7 +22,7 @@ def check_columns(page,width):
     }''')
     assert data['main']['width']>=200,(width,data)
     assert data['settings']['width']>=200,(width,data)
-    if width>850:
+    if width>1190:
         assert data['main']['right']<=data['settings']['left']+2,(width,data)
     else:
         assert data['main']['bottom']<=data['settings']['top']+2,(width,data)
@@ -35,16 +35,17 @@ try:
         for width in [320,390,768,1024,1440]:
             page.set_viewport_size({'width':width,'height':920})
             page.goto(URL+'/',wait_until='domcontentloaded')
+            if width<=900:page.locator('#sidebar-toggle').click()
             page.locator('.tool-card').first.wait_for(state='visible')
             assert page.locator('link[href="./layout-compact.css"]').count()==1
+            assert page.locator('link[href="./sidebar.css"]').count()==1
             document_fits(page,f'home {width}')
             header=page.locator('.header').bounding_box()
             assert header['height']<115,(width,header)
             if width<=650:
                 nav=page.locator('.header-right')
                 assert nav.evaluate('(el)=>getComputedStyle(el).overflowX')=='auto'
-                category=page.locator('#categories')
-                assert category.evaluate('(el)=>getComputedStyle(el).overflowX')=='auto'
+                assert page.locator('#tool-sidebar').is_visible()
             page.locator('.tool-card').filter(has=page.locator('strong',has_text='Обрезка видео')).first.click()
             assert page.locator('.studio-main .dropzone').count()==1
             assert page.locator('.studio-settings').count()==1
@@ -59,6 +60,7 @@ try:
             document_fits(page,f'trim {width}')
             page.screenshot(path=str(OUTPUT/f'layout-trim-{width}.png'))
             page.locator('#close-workspace').click()
+            if width<=900:page.locator('#sidebar-toggle').click()
             page.locator('.tool-card').filter(has=page.locator('strong',has_text='SRT ⇄ VTT')).first.click()
             page.locator('.studio-form input[type=file]').set_input_files(str(ROOT/'tests/fixtures/sample.srt'))
             page.locator('.subtitle-lane').first.wait_for(state='visible',timeout=8000)

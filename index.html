@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="./style.css">
   <link rel="stylesheet" href="./style-enhancements.css">
   <link rel="stylesheet" href="./layout-compact.css">
+  <link rel="stylesheet" href="./sidebar.css">
   <script type="module" src="./js/app.js"></script>
 </head>
 <body>
@@ -19,6 +20,7 @@
   <div class="wrap">
     <header class="header">
       <div class="header-left">
+        <button id="sidebar-toggle" class="sidebar-menu-toggle" type="button" aria-label="Открыть меню инструментов" aria-controls="tool-sidebar" aria-expanded="false"><span aria-hidden="true">☰</span><span class="sidebar-menu-label">Инструменты</span></button>
         <a class="brand" href="./" aria-label="На главную">
           <span class="brand-icon" aria-hidden="true">✦</span>
           <span class="brand-text">
@@ -26,7 +28,7 @@
             <span>локальные инструменты без лишнего</span>
           </span>
         </a>
-        <a class="version-pill" href="./about.html" title="Информация о версии и изменениях"><span data-app-version>v0.8.3</span><small data-app-stage>beta</small></a>
+        <a class="version-pill" href="./about.html" title="Информация о версии и изменениях"><span data-app-version>v0.8.4</span><small data-app-stage>beta</small></a>
       </div>
       <div class="header-right">
         <span class="status" id="network-status">Локальная обработка</span>
@@ -36,13 +38,36 @@
     </header>
 
     <main>
+      <div class="app-shell">
+      <aside id="tool-sidebar" class="tool-sidebar" aria-label="Навигация по инструментам">
+        <div class="sidebar-heading">
+          <div><span class="sidebar-eyebrow">КАТАЛОГ LOKIT</span><h2 id="tools-title">Инструменты</h2></div>
+          <button id="sidebar-close" class="sidebar-close" type="button" aria-label="Закрыть меню инструментов">✕</button>
+        </div>
+      <section class="toolbar" aria-label="Поиск и фильтрация">
+        <div class="search-row">
+          <label class="search-box" for="search">
+            <span class="search-icon" aria-hidden="true">⌕</span>
+            <input id="search" type="search" autocomplete="off" placeholder="Поиск по инструментам">
+            <button id="clear-search" class="clear-search hidden" type="button" aria-label="Очистить поиск">✕</button>
+          </label>
+          <span id="counter" class="counter"></span>
+        </div>
+        <div id="categories" class="categories" aria-label="Категории"></div>
+      </section>
+        <nav id="tool-grid" class="sidebar-groups" aria-labelledby="tools-title"></nav>
+        <p class="no-results hidden" id="no-results">Ничего не найдено. Попробуйте другой запрос.</p>
+        <div class="sidebar-footer"><a href="./batch.html">Пакетная обработка <span aria-hidden="true">↗</span></a><span>24 инструмента · без загрузки файлов на сервер</span></div>
+      </aside>
+      <button id="sidebar-backdrop" class="sidebar-backdrop" type="button" aria-label="Закрыть меню инструментов" tabindex="-1"></button>
+      <div class="app-content">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="eyebrow">PWA · ТЁМНАЯ ТЕМА · ОФЛАЙН</p>
           <h1 id="hero-title">Красивые и простые инструменты, которые работают прямо в браузере</h1>
           <p class="hero-desc">Обрезайте и изменяйте видео, извлекайте звук, записывайте экран и редактируйте субтитры. Всё делается локально: без сервера, без аккаунта и без рекламы.</p>
           <div class="hero-actions">
-            <a class="primary-link" href="#tools-title">Открыть каталог</a><a class="ghost-button" href="./batch.html">Обработать несколько файлов</a>
+            <a class="primary-link" href="#tool-sidebar" id="hero-open-tools">Открыть инструменты</a><a class="ghost-button" href="./batch.html">Обработать несколько файлов</a>
             <button class="ghost-button" id="hero-last-tool" type="button">Продолжить с последним</button>
           </div>
         </div>
@@ -53,17 +78,6 @@
         </div>
       </section>
 
-      <section class="toolbar" aria-label="Поиск и фильтрация">
-        <div class="search-row">
-          <label class="search-box" for="search">
-            <span class="search-icon" aria-hidden="true">⌕</span>
-            <input id="search" type="search" autocomplete="off" placeholder="Найти инструмент, например: обрезка видео или субтитры">
-            <button id="clear-search" class="clear-search hidden" type="button" aria-label="Очистить поиск">✕</button>
-          </label>
-          <span id="counter" class="counter"></span>
-        </div>
-        <div id="categories" class="categories" aria-label="Категории"></div>
-      </section>
 
       <section class="workspace hidden" id="workspace" aria-live="polite" aria-label="Рабочая область">
         <div class="workspace-heading">
@@ -79,17 +93,6 @@
         <div id="result-area" class="results"></div>
       </section>
 
-      <section class="tool-section" aria-labelledby="tools-title">
-        <div class="section-heading">
-          <div>
-            <h2 id="tools-title">Каталог инструментов</h2>
-            <p class="subtle">Выберите нужную задачу и откройте инструмент одним нажатием</p>
-          </div>
-          <span class="subtle small">Работают на вашем устройстве</span>
-        </div>
-        <div id="tool-grid" class="grid"></div>
-        <div class="no-results hidden" id="no-results">Инструменты не найдены. Попробуйте другой запрос или снимите фильтр.</div>
-      </section>
 
       <section class="benefits" aria-labelledby="benefits-title">
         <div class="section-heading compact">
@@ -107,6 +110,8 @@
         <p>Для преобразования видео браузер обычно записывает результат в WebM в реальном времени: обработка минутного ролика может занять примерно минуту. Поддерживаемые форматы зависят от браузера и устройства. Во время экспорта не закрывайте вкладку и не переводите устройство в сон.</p>
         <p>Для нескольких файлов используйте <a href="./batch.html">пакетную обработку</a>: единая очередь, прогресс и ZIP без сервера.</p><p>Для записи экрана и камеры нужно разрешение браузера и защищённое соединение (HTTPS). Интернет нужен только для первого открытия сайта и загрузки обновлений; затем сохранённые файлы интерфейса доступны офлайн.</p><p>Личная статистика сохраняется только в браузере. <a href="./analytics.html">Посмотреть историю использования</a>.</p>
       </section>
+      </div>
+      </div>
     </main>
 
     <footer class="footer">

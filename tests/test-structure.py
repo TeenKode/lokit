@@ -78,3 +78,12 @@ for page in ['index.html','batch.html']:
  html=(ROOT/page).read_text()
  assert 'https://cdn.jsdelivr.net' in html and 'wasm-unsafe-eval' in html
 print('Optional engines, strict opt-in assets and CSP — PASS')
+
+# The grouped tool menu must be a first-class offline asset.
+home=(ROOT/'index.html').read_text()
+assert 'id="tool-sidebar"' in home and 'id="sidebar-toggle"' in home
+assert 'id="tool-grid"' in home and 'id="categories"' in home
+assert './sidebar.css' in home
+assert "'./sidebar.css'" in sw
+assert (ROOT/'tests/test-sidebar.py').exists()
+print('Grouped sidebar, mobile drawer and offline assets — PASS')
