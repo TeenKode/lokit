@@ -1,6 +1,6 @@
 // Браузерный движок обработки пользовательских файлов. Не использует серверные API.
 import {renderVideoFrame,canvasSize} from './render.js';
-import {tryFastMp4,tryFastExtractAudio} from './mp4-fast.js';
+import {tryFastMp4,tryFastExtractAudio,inspectContainer} from './mp4-fast.js';
 import {tryExperimental} from './experimental-engines.js';
 const VIDEO_TYPES = [
   // Native H.264 may use hardware acceleration. MediaRecorder still decides
@@ -217,6 +217,21 @@ async function tryOriginalVideoCopy(file,options,signal){
     return null;
   }finally{item?.close();}
 }
+async function compatibilityFallback(file,mode,options,onProgress,signal,error){
+  if(error?.name==='AbortError'||signal?.aborted)throw error;
+  // The built-in browser decoder cannot load e.g. MKV/H.265/AVI. Fetch
+  // an optional FFmpeg core only after that decoder actually rejects the file.
+  // The codec is cached for subsequent offline runs, not the user media.
+  onProgress({stage:'preparing',description:'Браузер не открыл файл. Пробуем совместимый FFmpeg/WASM…'});
+  const converted=await tryExperimental({files:[file],mode,
+    options:{...options,engine:'ffmpeg'},onProgress,signal});
+  if(converted)return converted;
+  const limit=file?.size>90*1024*1024
+    ?' FFmpeg/WASM ограничен файлами до 90 МиБ из-за памяти.'
+    :' Для первого использования резервного кодека может потребоваться интернет.';
+  throw new Error('Браузер не смог декодировать этот формат или кодек. '+String(error?.message||'')+
+    ' Для совместимых MP4/MOV/WebM доступна обработка без перекодирования.'+limit);
+}
 export async function transformVideo({files, mode='convert', options={}, onProgress=()=>{}, signal}){
   // Use the selected clip order in both fast MP4 and ordinary export.
   if(mode==='merge'&&options.clipOrder==='reverse'&&files?.length===2)files=[files[1],files[0]];
@@ -234,7 +249,9 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
   const alternative=await tryExperimental({files,mode,options,onProgress,signal});
   if(alternative)return alternative;
   onProgress({stage:'preparing',description:'Чтение метаданных видео для обычного экспорта…'});
-  const primary=await openVideo(files[0],signal);
+  let primary;
+  try{primary=await openVideo(files[0],signal);}
+  catch(error){return compatibilityFallback(files[0],mode,options,onProgress,signal,error);}
   let secondary=null, audioCtx=null, stream=null, recorderPack=null;
   try {
     onAbort(signal);
@@ -343,7 +360,9 @@ export async function transformVideo({files, mode='convert', options={}, onProgr
 }
 
 export async function frameFromVideo(file, seconds=0, signal){
-  const item=await openVideo(file,signal);
+  let item;
+  try{item=await openVideo(file,signal);}
+  catch(error){return compatibilityFallback(file,'frame',{seconds},()=>{},signal,error);}
   try {
     onAbort(signal);
     await seek(item.video,clamp(Number(seconds)||0,0,Math.max(0,item.duration-.02)),signal);
@@ -356,6 +375,12 @@ export async function frameFromVideo(file, seconds=0, signal){
   } finally { item.close(); }
 }
 export async function inspectVideo(file,signal){
+  const container=await inspectContainer(file,signal);
+  if(container?.width>0&&container?.height>0&&container?.duration>0)
+    return {name:file.name,type:file.type||container.container,size:file.size,
+      width:container.width,height:container.height,duration:container.duration,
+      videoCodec:container.videoCodec,audioCodec:container.audioCodec,
+      modified:file.lastModified};
   const item=await openVideo(file,signal);
   try {return {name:file.name,type:file.type||'неизвестно',size:file.size,width:item.width,height:item.height,duration:item.duration,modified:file.lastModified};}
   finally {item.close();}
@@ -364,7 +389,10 @@ export async function extractAudio(file,{onProgress=()=>{},signal}={}){
   const fast=await tryFastExtractAudio({file,onProgress,signal});
   if(fast)return fast;
   onProgress({stage:'preparing',description:'Без потерь извлечь звук нельзя. Подготовка аудиокодера…'});
-  const item=await openVideo(file,signal);let context=null,pack=null;
+  let item;
+  try{item=await openVideo(file,signal);}
+  catch(error){return compatibilityFallback(file,'extract-audio',{},onProgress,signal,error);}
+  let context=null,pack=null;
   try{
     ensure(typeof AudioContext!=='undefined','Web Audio API не поддерживается.');
     item.video.muted=false;
