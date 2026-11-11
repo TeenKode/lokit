@@ -25,7 +25,99 @@ button,input,select,textarea{font:inherit}
 button{cursor:pointer}
 button:disabled{opacity:.48;cursor:not-allowed}
 :focus-visible{outline:3px solid rgba(130,197,255,.85);outline-offset:3px}
-.page-glow{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 20% 0%,rgba(85,160,240,.16),transparent 30%),radial-gradient(circle at 90% 10%,rgba(100,160,255,.08),transparent 26%),radial-gradient(circle at 50% 100%,rgba(84,118,188,.08),transparent 28%)}
+/* Quiet procedural backgrounds: tune each motif independently, never animate or blur. */
+.page-glow{
+  --aurora-a-x:20%;--aurora-a-y:1%;--aurora-b-x:87%;--aurora-b-y:7%;
+  --aurora-c-x:14%;--aurora-c-y:90%;--aurora-d-x:86%;--aurora-d-y:91%;
+  --glow-a:rgba(57,130,230,.18);--glow-b:rgba(109,91,207,.12);
+  --glow-c:rgba(37,148,164,.075);--glow-d:rgba(80,116,201,.070);
+  --pattern-opacity:.80;--mobile-pattern-opacity:.70;
+  position:fixed;inset:0;pointer-events:none;overflow:hidden;
+  background:
+    radial-gradient(ellipse 64% 52% at var(--aurora-a-x) var(--aurora-a-y),var(--glow-a),transparent 76%),
+    radial-gradient(ellipse 53% 54% at var(--aurora-b-x) var(--aurora-b-y),var(--glow-b),transparent 78%),
+    radial-gradient(ellipse 55% 60% at var(--aurora-c-x) var(--aurora-c-y),var(--glow-c),transparent 78%),
+    radial-gradient(ellipse 54% 57% at var(--aurora-d-x) var(--aurora-d-y),var(--glow-d),transparent 80%);
+}
+.page-glow::before{
+  content:'';position:absolute;inset:0;
+  background-image:var(--lokit-pattern,none);
+  background-position:center;background-repeat:no-repeat;background-size:cover;
+  opacity:var(--pattern-opacity);
+  -webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,.67),#000 22%,#000 75%,rgba(0,0,0,.6));
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,.67),#000 22%,#000 75%,rgba(0,0,0,.6));
+}
+.page-glow[data-background-theme="aurora"]{
+  --glow-a:rgba(62,141,236,.21);--glow-b:rgba(126,103,217,.15);
+  --glow-c:rgba(34,155,159,.085);--glow-d:rgba(73,113,208,.075);
+}
+.page-glow[data-background-theme="aurora"]::before{
+  background-image:radial-gradient(circle,rgba(166,205,255,.20) .7px,transparent 1px);
+  background-size:38px 38px;opacity:.42;
+}
+.page-glow[data-background-theme="none"]{display:none}
+/* Each drawing has its own light falloff, density and contrast budget. */
+.page-glow[data-background-theme="topography"]{
+  --glow-a:rgba(41,126,187,.13);--glow-b:rgba(97,92,185,.10);
+  --glow-c:rgba(31,120,135,.055);--glow-d:rgba(67,105,175,.06);
+  --pattern-opacity:.88;--mobile-pattern-opacity:.73;
+}
+.page-glow[data-background-theme="constellations"]{
+  --glow-a:rgba(37,97,172,.095);--glow-b:rgba(74,98,182,.065);
+  --glow-c:rgba(31,122,133,.045);--glow-d:rgba(65,113,177,.055);
+  --pattern-opacity:.92;--mobile-pattern-opacity:.86;
+}
+.page-glow[data-background-theme="flow"]{
+  --glow-a:rgba(29,145,161,.13);--glow-b:rgba(105,92,197,.12);
+  --glow-c:rgba(37,157,158,.07);--glow-d:rgba(70,115,204,.06);
+  --pattern-opacity:.89;--mobile-pattern-opacity:.74;
+}
+.page-glow[data-background-theme="lenses"]{
+  --glow-a:rgba(43,145,190,.14);--glow-b:rgba(140,83,192,.15);
+  --glow-c:rgba(33,138,143,.07);--glow-d:rgba(108,104,191,.07);
+  --pattern-opacity:.84;--mobile-pattern-opacity:.70;
+}
+.page-glow[data-background-theme="geometry"]{
+  --glow-a:rgba(42,111,190,.11);--glow-b:rgba(66,101,170,.085);
+  --glow-c:rgba(36,103,151,.045);--glow-d:rgba(75,116,187,.05);
+  --pattern-opacity:.75;--mobile-pattern-opacity:.66;
+}
+.page-glow[data-background-theme="dust"]{
+  --glow-a:rgba(40,105,178,.085);--glow-b:rgba(63,91,158,.065);
+  --glow-c:rgba(40,119,137,.045);--glow-d:rgba(71,108,163,.05);
+  --pattern-opacity:.98;--mobile-pattern-opacity:.90;
+}
+.page-glow[data-background-theme="interference"]{
+  --glow-a:rgba(69,92,203,.12);--glow-b:rgba(133,83,201,.14);
+  --glow-c:rgba(34,121,148,.05);--glow-d:rgba(80,101,176,.055);
+  --pattern-opacity:.73;--mobile-pattern-opacity:.62;
+}
+.page-glow[data-background-theme="polygons"]{
+  --glow-a:rgba(39,138,150,.10);--glow-b:rgba(95,98,184,.115);
+  --glow-c:rgba(32,117,141,.045);--glow-d:rgba(77,116,188,.055);
+  --pattern-opacity:.69;--mobile-pattern-opacity:.60;
+}
+.background-control{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:2px 6px 2px 9px;border-radius:10px;
+  border:1px solid var(--line);background:rgba(20,34,53,.86);
+  color:var(--muted);font-size:12px;white-space:nowrap;
+}
+.background-control select{
+  font-size:12px;min-height:30px;max-width:148px;width:148px;
+  padding:3px 5px;border:0;border-radius:7px;background:#162942;
+  color:var(--ink);cursor:pointer;text-overflow:ellipsis;
+}
+.background-control select:hover{background:#213a58}
+.background-control select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+@media(max-width:650px){
+  .page-glow::before{opacity:var(--mobile-pattern-opacity)}
+  .page-glow[data-background-theme="aurora"]::before{background-size:44px 44px;opacity:.36}
+  .background-control{padding:2px 5px;gap:5px;font-size:11px}
+  .background-control select{font-size:11px;width:124px;max-width:124px;min-height:28px}
+}
+@media(forced-colors:active){.page-glow{display:none}}
+@media(prefers-contrast:more){.page-glow{opacity:.40}}
 .wrap{position:relative;max-width:1180px;margin:auto;padding:0 24px}
 .header{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 0;margin-bottom:8px;background:rgba(10,16,27,.72);backdrop-filter:blur(14px);border-bottom:1px solid rgba(39,56,77,.8)}
 .header-left,.header-right{display:flex;align-items:center;gap:12px;min-width:0}

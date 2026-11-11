@@ -37,9 +37,27 @@ function updateFavoriteButton(){
   btn.setAttribute('aria-pressed',String(saved));
   btn.setAttribute('aria-label',saved?'Убрать инструмент из избранного':'Добавить инструмент в избранное');
 }
-const categoryNames=['Все','Избранное','Видео','Аудио','Изображения','Анализ','Запись','Субтитры'];
+const categoryNames=['Все','Избранное'];
+const groupNames=['Видео','Аудио','Изображения','Субтитры','Запись','Анализ'];
+const expandedGroups=new Set(groupNames);
 const categoryIcons={Все:'◈',Избранное:'★',Видео:'▣',Аудио:'♪',Изображения:'▧',Анализ:'ⓘ',Запись:'●',Субтитры:'≡'};
 let currentTool=null,controller=null,stopRecording=null,activeEditor=null,downloadUrls=[];
+const sidebar=$('#tool-sidebar');
+const sidebarToggle=$('#sidebar-toggle');
+function setSidebarOpen(open,{restoreFocus=true}={}){
+  const wasOpen=document.body.classList.contains('sidebar-open');
+  document.body.classList.toggle('sidebar-open',open);
+  sidebarToggle?.setAttribute('aria-expanded',String(open));
+  sidebarToggle?.setAttribute('aria-label',open?'Закрыть меню инструментов':'Открыть меню инструментов');
+  if(window.matchMedia('(max-width: 900px)').matches){const content=document.querySelector('.app-content');if(content)content.inert=open;}
+  if(open){sidebar?.querySelector('#search')?.focus({preventScroll:true});}
+  else if(wasOpen&&restoreFocus){sidebarToggle?.focus({preventScroll:true});}
+}
+sidebarToggle?.addEventListener('click',()=>setSidebarOpen(!document.body.classList.contains('sidebar-open')));
+$('#hero-open-tools')?.addEventListener('click',event=>{event.preventDefault();if(window.matchMedia('(max-width: 900px)').matches)setSidebarOpen(true);else{sidebar.querySelector('#search')?.focus({preventScroll:true});sidebar.scrollIntoView({block:'nearest',behavior:'smooth'});}});
+$('#sidebar-close')?.addEventListener('click',()=>setSidebarOpen(false));
+$('#sidebar-backdrop')?.addEventListener('click',()=>setSidebarOpen(false));
+window.matchMedia('(min-width: 901px)').addEventListener('change',event=>{if(event.matches)setSidebarOpen(false,{restoreFocus:false});});
 
 function escapeText(t){return String(t||'');}
 function formatDuration(seconds){
@@ -149,6 +167,8 @@ function makeField(def){
 
 function openTool(tool){
   resetWorkspace();currentTool=tool;saveLastTool(tool);recordEvent('open',tool.id);updateFavoriteButton();
+  document.body.classList.add('has-active-tool');
+  renderCards();setSidebarOpen(false,{restoreFocus:false});
   $('#tool-title').textContent=tool.title;
   $('#tool-description').textContent=tool.description;
   workspace.classList.remove('hidden');
@@ -170,7 +190,7 @@ function openTool(tool){
     input.multiple=Boolean(tool.maxFiles);input.required=true;
     zone.append(zoneTitle,zoneSubtitle,input);
     const hint=document.createElement('span');hint.className='filehint';hint.textContent='Файлы обрабатываются локально на вашем устройстве';zone.append(hint);
-    form.append(zone);
+    previewColumn.append(zone);
     input.addEventListener('change',()=>{
       hint.textContent=Array.from(input.files).map(f=>f.name).join(' · ')||'Файл не выбран';
       activeEditor?.update(Array.from(input.files));
@@ -344,28 +364,51 @@ function updateFilters(){
 }
 
 function renderCards(){
-  const match=tools.filter(t=>(selected.category==='Все'||(selected.category==='Избранное'?favorites.has(t.id):t.category===selected.category))&&
+  const matching=tools.filter(t=>(selected.category==='Все'||(selected.category==='Избранное'?favorites.has(t.id):t.category===selected.category))&&
     `${t.title} ${t.description} ${t.id} ${t.category}`.toLocaleLowerCase('ru').includes(selected.search));
+  const oldScroll=sidebar.scrollTop;
   root.replaceChildren();
-
-  for(const t of match){
-    const button=document.createElement('button');button.className='tool-card';button.type='button';button.dataset.toolId=t.id;button.setAttribute('aria-label',`${t.title}. ${t.description}`);
-    const top=document.createElement('div');top.className='tool-top';
-    const symbol=document.createElement('span');symbol.className='tool-symbol';symbol.textContent=t.icon;
-    const badge=document.createElement('span');badge.className='tool-category';
-    badge.textContent=favorites.has(t.id)?`★ ${t.category}`:t.category;
-    top.append(symbol,badge);
-
-    const heading=document.createElement('strong');heading.textContent=escapeText(t.title);
-    const desc=document.createElement('span');desc.className='desc';desc.textContent=escapeText(t.description);
-    const action=document.createElement('span');action.className='tool-action';action.textContent='Открыть инструмент →';
-    button.append(top,heading,desc,action);
-    button.addEventListener('click',()=>openTool(t));
-    root.append(button);
+  for(const category of (selected.category==='Избранное'?['Избранное']:groupNames)){
+    const matches=matching.filter(t=>category==='Избранное'?true:t.category===category);
+    if(!matches.length)continue;
+    const group=document.createElement('details');group.className='sidebar-group';group.dataset.group=category;
+    group.open=Boolean(selected.search)||selected.category==='Избранное'||expandedGroups.has(category);
+    const summary=document.createElement('summary');summary.className='sidebar-group-title';
+    const symbol=document.createElement('span');symbol.className='sidebar-group-icon';symbol.textContent=categoryIcons[category]||'•';
+    const label=document.createElement('strong');label.textContent=category;
+    const count=document.createElement('span');count.className='sidebar-group-count';count.textContent=String(matches.length);
+    const caret=document.createElement('span');caret.className='sidebar-chevron';caret.setAttribute('aria-hidden','true');caret.textContent='⌄';
+    summary.append(symbol,label,count,caret);
+    group.append(summary);
+    group.addEventListener('toggle',()=>{
+      if(selected.search||selected.category==='Избранное')return;
+      if(group.open)expandedGroups.add(category);else expandedGroups.delete(category);
+    });
+    const list=document.createElement('div');list.className='sidebar-tools';
+    for(const t of matches){
+      const row=document.createElement('div');row.className='sidebar-tool-row';row.dataset.toolId=t.id;
+      const button=document.createElement('button');button.className='tool-card sidebar-tool'+(currentTool?.id===t.id?' is-active':'');
+      button.type='button';button.dataset.toolId=t.id;button.title=t.description;
+      button.setAttribute('aria-label',`${t.title}. ${t.description}`);
+      if(currentTool?.id===t.id)button.setAttribute('aria-current','true');
+      const icon=document.createElement('span');icon.className='sidebar-tool-icon';icon.textContent=t.icon;icon.setAttribute('aria-hidden','true');
+      const heading=document.createElement('strong');heading.textContent=t.title;
+      button.append(icon,heading);button.addEventListener('click',()=>openTool(t));
+      const star=document.createElement('button');star.type='button';star.className='sidebar-favorite'+(favorites.has(t.id)?' is-favorite':'');
+      star.textContent=favorites.has(t.id)?'★':'☆';star.dataset.favoriteId=t.id;
+      star.setAttribute('aria-pressed',String(favorites.has(t.id)));
+      star.setAttribute('aria-label',`${favorites.has(t.id)?'Убрать из избранного':'Добавить в избранное'}: ${t.title}`);
+      star.title=favorites.has(t.id)?'Убрать из избранного':'Добавить в избранное';
+      star.addEventListener('click',()=>{const keepFocus=selected.category!=='Избранное';toggleFavorite(t);
+        if(keepFocus)root.querySelector(`[data-favorite-id="${t.id}"]`)?.focus({preventScroll:true});
+      });
+      row.append(button,star);list.append(row);
+    }
+    group.append(list);root.append(group);
   }
-
-  $('#counter').textContent=`${match.length} из ${tools.length} инструментов`;
-  $('#no-results').classList.toggle('hidden',match.length>0);
+  const counter=$('#counter');if(counter)counter.textContent=`${matching.length} из ${tools.length}`;
+  $('#no-results').classList.toggle('hidden',matching.length>0);
+  sidebar.scrollTop=oldScroll;
 }
 
 $('#search').addEventListener('input',e=>{
@@ -379,15 +422,16 @@ $('#clear-search').addEventListener('click',()=>{
 function closeWorkspace(){
   const focused=workspace.contains(document.activeElement);
   const toolId=currentTool?.id;
-  resetWorkspace();workspace.classList.add('hidden');currentTool=null;
+  resetWorkspace();workspace.classList.add('hidden');currentTool=null;document.body.classList.remove('has-active-tool');renderCards();
   if(focused){
     const target=[...root.querySelectorAll('.tool-card')].find(card=>card.dataset.toolId===toolId);
-    (target||$('#search')).focus({preventScroll:true});
+    (window.matchMedia('(max-width: 900px)').matches?sidebarToggle:(target||$('#search')))?.focus({preventScroll:true});
   }
 }
 $('#close-workspace').addEventListener('click',closeWorkspace);
 $('#favorite-tool').addEventListener('click',()=>{if(currentTool)toggleFavorite(currentTool);});
 document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&document.body.classList.contains('sidebar-open')){event.preventDefault();setSidebarOpen(false);return;}
   if(event.key==='Escape'&&!workspace.classList.contains('hidden')&&event.target.closest?.('.studio-cue-list')===null){
     event.preventDefault();closeWorkspace();
   }

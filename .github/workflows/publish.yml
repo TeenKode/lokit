@@ -113,6 +113,12 @@ jobs:
       - name: Broken-media recovery in Chromium
         if: matrix.browser == 'chromium' && matrix.mobile == false
         run: python tests/test-reliability-browser.py
+      - name: "Responsive layout: desktop, tablet, mobile, editor, batch"
+        if: matrix.browser == 'chromium' && matrix.mobile == false
+        run: python tests/test-layout.py
+      - name: Grouped sidebar, favorites and drawer responsiveness
+        if: matrix.browser == 'chromium' && matrix.mobile == false
+        run: python tests/test-sidebar.py
       - name: Full Chromium integration tests
         if: matrix.browser == 'chromium' && matrix.mobile == false
         run: python tests/test-browser.py

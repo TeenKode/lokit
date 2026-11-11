@@ -11,6 +11,8 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./style.css">
   <link rel="stylesheet" href="./style-enhancements.css">
+  <link rel="stylesheet" href="./layout-compact.css">
+  <script type="module" src="./js/background.js"></script>
   <script type="module" src="./js/analytics-page.js"></script>
 </head>
 <body>
@@ -21,8 +23,8 @@
         <span class="brand-icon" aria-hidden="true">✦</span>
         <span class="brand-text"><strong>Lokit</strong><span>локальные инструменты без лишнего</span></span>
       </a>
-      <a class="version-pill" href="./about.html" title="Информация о версии и изменениях"><span data-app-version>v0.8.2</span><small data-app-stage>beta</small></a>
-      <nav class="header-right" aria-label="Навигация"><a class="ghost-button" href="./">← Инструменты</a><a class="ghost-button" href="./batch.html">Пакетная обработка</a><span class="nav-active">Аналитика</span></nav>
+      <a class="version-pill" href="./about.html" title="Информация о версии и изменениях"><span data-app-version>v0.8.4</span><small data-app-stage>beta</small></a>
+      <nav class="header-right" aria-label="Навигация"><div data-background-control></div><a class="ghost-button" href="./">← Инструменты</a><a class="ghost-button" href="./batch.html">Пакетная обработка</a><span class="nav-active">Аналитика</span></nav>
     </header>
     <main class="analytics-main">
       <section class="analytics-intro">

@@ -1,0 +1,120 @@
+/* Lokit layout audit 2026-11-11. Loaded after all existing styles. */
+html{scroll-padding-top:90px}
+.wrap{max-width:1240px}
+.header{gap:10px;padding:9px 0;margin-bottom:5px}
+.header-left{gap:9px;flex:0 0 auto}
+.header-right{gap:6px;flex-wrap:nowrap;min-width:0;max-width:100%;overflow-x:auto;scrollbar-width:thin;justify-content:flex-end}
+.header-right>*{flex:0 0 auto}
+.header-right .small{display:none}
+.header .ghost-button,.header .nav-active{padding:7px 10px;white-space:nowrap;font-size:12px;min-height:35px}
+.header .status{white-space:nowrap;padding:6px 9px;font-size:11px}
+.brand{gap:9px}.brand-icon{width:36px;height:36px;border-radius:11px;font-size:21px}
+.brand-text strong{font-size:18px}.brand-text span{font-size:10px}
+.version-pill{padding:5px 8px;gap:5px}
+.hero{grid-template-columns:minmax(0,1.6fr) minmax(245px,.85fr);gap:13px;padding:14px 0 7px}
+.hero-copy{padding:24px;border-radius:19px}.hero-panel{padding:11px;border-radius:19px;gap:8px}
+.hero h1{font-size:clamp(29px,3.35vw,43px);line-height:1.13;letter-spacing:-1px}
+.hero-desc{font-size:14px;line-height:1.55;margin-top:12px}
+.hero .eyebrow{margin-bottom:9px}.hero-actions{gap:8px;margin-top:17px}
+.hero-actions .ghost-button,.hero-actions .primary-link{padding:9px 11px;font-size:13px;min-height:39px}
+.stat-card{padding:11px 13px;border-radius:12px}.stat-value{font-size:25px;line-height:1.18}.stat-label{font-size:12px;margin-top:2px}
+.toolbar{padding:12px 14px;border-radius:16px;margin:9px 0 18px}
+.search-box input{min-height:42px;font-size:13px}.search-box{border-radius:11px}
+.categories{gap:7px;margin-top:10px}.chip{padding:6px 10px;gap:6px;font-size:12px}.chip-count{font-size:10px;min-width:19px;height:19px}
+.section-heading{margin:8px 0 12px}.section-heading h2{font-size:21px}.section-heading p{font-size:13px}
+.grid{gap:11px}.tool-card{min-height:150px;padding:14px;border-radius:15px;gap:7px}
+.tool-symbol{width:36px;height:36px;border-radius:10px;font-size:19px}.tool-category{font-size:10px;padding:4px 7px}.tool-top{gap:7px}
+.tool-card strong{font-size:16px}.tool-card .desc{line-height:1.4;font-size:12px}.tool-action{font-size:12px}
+.benefits{margin:24px 0 12px}.benefit-grid{gap:10px}.benefit-card{padding:15px;border-radius:16px}.benefit-card h3{font-size:16px}.benefit-icon{width:33px;height:33px;border-radius:9px;margin-bottom:8px}
+.footnote{padding:18px;margin:25px 0 17px;border-radius:17px;font-size:13px}.footnote p{line-height:1.6}
+.footer{padding:15px 0 25px;font-size:12px}
+.workspace{padding:18px;margin:10px 0 23px;border-radius:18px;scroll-margin-top:85px}
+.workspace-heading{gap:12px;margin-bottom:12px}.workspace-heading h2{font-size:23px}.workspace-heading .eyebrow{margin-bottom:5px}
+.workspace-buttons{flex-shrink:0}.favorite-button{padding:7px 10px;font-size:12px}.icon-button{height:36px;width:36px}
+.studio-layout{grid-template-columns:minmax(0,1.65fr) minmax(260px,.87fr);gap:12px}
+.studio-main,.studio-settings{min-width:0}.studio-settings{top:78px;padding:14px;border-radius:14px}
+.studio-settings h3{font-size:16px;margin-bottom:11px}.studio-settings .field-grid{gap:10px;margin-bottom:12px}
+.field{gap:5px;font-size:12px}.field input,.field select,.field textarea{min-height:38px;padding:8px 10px;border-radius:9px}
+.studio-settings .actions{margin-top:13px;gap:7px}.studio-settings .actions button{min-height:39px;padding:8px 10px}
+.studio-settings-hint{font-size:12px;line-height:1.45;margin:7px 0}.studio-reset-settings{padding:7px 10px;margin-bottom:7px}
+.dropzone{padding:12px 15px;margin:0 0 11px;border-radius:13px}.dropzone-title{font-size:14px}.dropzone-subtitle{font-size:12px;margin-bottom:3px}.dropzone input{margin:6px auto 0;font-size:12px}.filehint{margin-top:5px;font-size:11px}
+.studio-shell{min-height:0;border-radius:15px}.studio-heading{padding:11px 13px;gap:7px}.studio-heading-info strong{font-size:14px}.studio-content{padding:12px}
+.studio-placeholder{padding:15px 10px;gap:4px}.studio-placeholder-icon{width:48px;height:48px;font-size:24px;margin-bottom:5px;border-radius:14px}.studio-placeholder p{font-size:12px}.studio-placeholder h3{font-size:15px}
+.studio-video-viewport{min-height:130px;border-radius:10px}
+.studio-controls{gap:6px;margin-top:8px}.studio-mini-button{padding:5px 8px;font-size:12px}.studio-play{height:34px;width:37px}.studio-time{font-size:12px;min-width:105px}.studio-resolution{font-size:11px}
+.studio-timeline{margin:9px 0 4px}.studio-frames{min-height:42px}.studio-frame canvas{height:42px}.studio-help{gap:5px;font-size:10px;line-height:1.35}
+.studio-trim{padding:10px;margin-top:8px}.studio-source-timeline{margin:7px 0}.studio-precise-host{margin-top:8px}
+.precision-editor{padding:10px;gap:8px}.precision-fields{gap:7px}.precision-field{min-width:0}
+.precision-field input,.precision-field select{min-height:34px;padding:6px;font-size:12px}
+.precision-toolbar{gap:5px}.precision-button{min-height:32px;padding:5px 8px;font-size:12px}.precision-ruler{min-height:30px}
+.studio-history-toolbar{gap:6px;margin-top:7px}.tt-strip{height:54px}.tt-readout{gap:7px;margin-top:9px}.tt-setbtn{padding:5px 7px}.tt-chip b{font-size:13px}.tt-chip .tt-chip-k{font-size:10px}
+.multi-timeline,.subtitle-lane-wrap{margin:9px 0;padding:10px}.multi-heading{gap:6px;margin-bottom:7px}.studio-wave-area{padding:10px;margin-top:8px}
+.studio-sub-controls{margin:9px 0;gap:6px}.studio-file-tabs{gap:5px;margin-bottom:8px}.studio-file-tab{padding:6px 8px;font-size:12px}
+.studio-cue-list{gap:7px}.studio-cue{padding:7px;gap:6px;min-width:0}.studio-cue-timing input{width:min(98px,calc(50% - 10px));max-width:100%;font-size:11px}.studio-sub-preview{min-height:62px;padding:10px}
+.progress-panel{padding:11px;margin-top:12px}.results{margin-top:11px}.download{padding:12px}
+.batch-main{padding:16px 0 27px}.batch-intro{margin-bottom:15px}.batch-intro h1{font-size:clamp(26px,3vw,36px);margin:8px 0 9px}.batch-layout{grid-template-columns:minmax(270px,.92fr) minmax(0,1.5fr);gap:12px}
+.batch-panel{padding:16px;border-radius:17px}.batch-heading{margin-bottom:13px;gap:8px}.batch-heading h2{font-size:17px}.batch-step{padding:4px 7px;font-size:11px}
+.batch-field{margin-bottom:10px;gap:5px;font-size:12px}.batch-field select,.batch-field input{min-height:38px;padding:7px 10px;border-radius:9px}
+.batch-dropzone{padding:15px 10px;margin:10px 0 8px;border-radius:12px}.batch-options{gap:8px;margin:11px 0}.batch-add-button{min-height:40px}
+.batch-overall{padding:12px;border-radius:12px}.batch-actions{margin:12px 0;gap:6px}.batch-actions button{font-size:12px;padding:7px 9px;min-height:34px}
+.batch-items{gap:7px;max-height:550px}.batch-job{padding:10px;border-radius:11px;gap:7px}.batch-export{margin-top:14px;padding-top:12px}.batch-help{margin-top:17px;padding:14px 18px}
+.analytics-main{padding-top:15px}.analytics-intro{margin:5px 0 14px}.analytics-panel{min-width:0}.analytics-toolbar{gap:9px;padding:10px;margin-bottom:11px}.analytics-stats{gap:9px}
+.about-main{padding:17px 0 30px}
+/* Shorter sticky header at tablet and mobile widths; navigation remains fully reachable via horizontal scroll. */
+@media(max-width:1100px){
+ .header{flex-wrap:wrap;align-items:center;gap:5px}
+ .header-left{width:100%;justify-content:space-between}
+ .header-right{width:100%;justify-content:flex-start;overflow-x:auto;padding-bottom:2px}
+ .hero{grid-template-columns:1fr}
+ .hero-panel{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .studio-layout{grid-template-columns:minmax(0,1.55fr) minmax(240px,.85fr)}
+}
+@media(max-width:850px){
+ .studio-layout{grid-template-columns:minmax(0,1fr)}
+ .studio-settings{position:static}
+ .studio-settings .field-grid{grid-template-columns:repeat(auto-fit,minmax(145px,1fr))}
+ .batch-layout{grid-template-columns:minmax(0,1fr)}
+ .batch-panel{padding:14px}
+ .header-right .status{order:-1}
+}
+@media(max-width:650px){
+ html{scroll-padding-top:115px}.wrap{padding:0 13px}
+ .header{padding:7px 0;gap:4px}.header-left{gap:7px;flex-wrap:nowrap}.brand-text span{display:none}.brand-icon{width:32px;height:32px}.brand-text strong{font-size:17px}
+ .header-right{gap:5px;flex-wrap:nowrap;width:100%;padding-bottom:3px}
+ .header-right .ghost-button,.header-right .nav-active{padding:5px 8px;font-size:11px;min-height:32px}
+ .header-right .status{padding:5px 7px;font-size:10px}
+ .version-pill{padding:4px 7px;font-size:11px}.version-pill small{font-size:9px}
+ .hero{padding:8px 0 4px;gap:8px}.hero-copy{padding:16px;border-radius:14px}.hero h1{font-size:clamp(26px,7vw,33px);line-height:1.16;letter-spacing:-.6px}
+ .hero-desc{font-size:13px;line-height:1.45;margin-top:10px}.hero-actions{margin-top:12px;gap:6px}
+ .hero-actions .ghost-button,.hero-actions .primary-link{font-size:12px;padding:7px 9px;min-height:34px}
+ .hero-panel{grid-template-columns:repeat(3,minmax(0,1fr));padding:7px;gap:5px;border-radius:12px}
+ .stat-card{padding:7px;border-radius:9px;min-width:0}.stat-value{font-size:19px}.stat-label{font-size:10px;line-height:1.25;overflow-wrap:anywhere}
+ .toolbar{padding:9px;border-radius:12px;margin:7px 0 13px}.search-row{gap:5px}.search-box input{min-height:39px}.counter{font-size:11px}
+ .categories{display:flex;flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x proximity;overscroll-behavior-inline:contain;gap:5px;padding:0 0 5px;margin-top:6px;scrollbar-width:thin}
+ .chip{flex:0 0 auto;scroll-snap-align:start;padding:5px 9px;font-size:11px}.chip-count{min-width:16px;height:16px;padding:0 4px}
+ .section-heading{margin:6px 0 9px}.section-heading h2{font-size:19px}.section-heading p,.section-heading>.subtle{font-size:12px}
+ .grid{grid-template-columns:1fr;gap:7px}.tool-card{min-height:117px;padding:11px;border-radius:12px;gap:5px}.tool-symbol{width:31px;height:31px;font-size:17px}.tool-card strong{font-size:15px}.tool-card .desc{font-size:12px;line-height:1.3}
+ .benefit-grid{grid-template-columns:1fr;gap:7px}.benefit-card{padding:11px}.benefit-icon{display:none}.benefit-card h3{font-size:14px;margin-bottom:3px}.benefit-card p{font-size:12px}
+ .workspace{padding:11px;margin:7px 0 15px;border-radius:13px;scroll-margin-top:112px}.workspace-heading{gap:7px;align-items:center}.workspace-heading h2{font-size:18px}
+ .workspace-buttons{width:auto;flex:0 0 auto;gap:4px}.favorite-button{font-size:0;padding:6px 8px;min-width:36px;min-height:33px}.favorite-button::first-letter{font-size:18px}.icon-button{height:34px;width:34px}
+ .studio-settings{padding:11px;border-radius:11px}.studio-settings .field-grid{grid-template-columns:repeat(auto-fit,minmax(125px,1fr))}
+ .studio-content{padding:9px}.studio-heading{padding:9px}.studio-heading-info strong{font-size:13px}.studio-eyebrow{letter-spacing:1px;font-size:9px}
+ .studio-video-viewport{min-height:120px}.studio-controls{gap:5px}.studio-controls .studio-resolution{margin-left:0}.studio-controls .studio-mini-button{padding:5px 6px}
+ .studio-controls .studio-mini-button[aria-pressed]{flex:1 1 100%;text-align:center}.studio-help{font-size:10px}
+ .precision-editor{padding:8px;gap:6px}.precision-toolbar{gap:3px}.precision-toolbar strong{flex:1 0 100%;font-size:12px}
+ .precision-toolbar .precision-button{padding:4px 6px;min-width:29px}.precision-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.precision-fields .precision-field{min-width:0;flex:none}.precision-fields .precision-field:nth-child(3){grid-column:1/-1}.precision-fields .precision-button{width:100%}
+ .precision-ruler .precision-tick:not(:first-child):not(:last-child){display:none}
+ .tt-readout{justify-content:space-between}.tt-keepchip{margin:0}.tt-chip b{font-size:12px}.tt-chip .tt-chip-k{font-size:9px}.tt-setbtn{font-size:11px}
+ .studio-cue{grid-template-columns:17px minmax(0,1fr) 26px;gap:4px}.studio-cue-timing{gap:3px;min-width:0}.studio-cue-timing input{width:calc(50% - 10px);max-width:100%;min-width:0;font-size:10px;padding:4px}.studio-cue-number{font-size:10px}
+ .batch-main{padding-top:10px}.batch-intro h1{font-size:26px}.batch-panel{padding:11px}.batch-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.batch-actions button{min-width:0}
+ .batch-job-top{align-items:flex-start}.batch-job-status{flex:0 0 auto}.batch-export{align-items:stretch;flex-direction:column;gap:9px}.batch-export-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ .analytics-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.analytics-toolbar{padding:8px}.analytics-bottom-actions{flex-wrap:wrap}
+ .about-main .analytics-panel,.analytics-panel{min-width:0}
+ .footer{gap:6px;padding:12px 0 18px}
+}
+@media(max-width:365px){
+ .wrap{padding:0 10px}.hero-copy{padding:13px}.hero h1{font-size:25px}
+ .workspace-heading h2{font-size:17px}.studio-controls .studio-time{min-width:0}
+ .studio-settings .field-grid{grid-template-columns:1fr}
+ .batch-actions{grid-template-columns:1fr 1fr}
+}

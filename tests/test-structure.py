@@ -49,10 +49,11 @@ for page in ['index.html','analytics.html','about.html','batch.html']:
  assert 'class="version-pill"' in html
  assert f'v{v}' in html
  assert './style-enhancements.css' in html
+ assert './layout-compact.css' in html
 assert f'lokit-v{v}' in sw
 assert "'./about.html'" in sw
 assert "'./js/version.js'" in sw
-for asset in ['js/render.js','js/mp4-fast.js','js/vendor/mp4-track-remux.js','js/vendor/mp4-flatten.js','js/vendor/mp4-copy-trim.js','js/vendor/webm-copy-trim.js','js/presets.js','style-enhancements.css']:
+for asset in ['js/render.js','js/mp4-fast.js','js/vendor/mp4-track-remux.js','js/vendor/mp4-flatten.js','js/vendor/mp4-copy-trim.js','js/vendor/webm-copy-trim.js','js/presets.js','style-enhancements.css','layout-compact.css']:
  assert (ROOT/asset).is_file(),asset
  assert "'./"+asset+"'" in sw,asset
 assert not (ROOT/'js/analytics-config.js').exists()
@@ -77,3 +78,12 @@ for page in ['index.html','batch.html']:
  html=(ROOT/page).read_text()
  assert 'https://cdn.jsdelivr.net' in html and 'wasm-unsafe-eval' in html
 print('Optional engines, strict opt-in assets and CSP — PASS')
+
+# The grouped tool menu must be a first-class offline asset.
+home=(ROOT/'index.html').read_text()
+assert 'id="tool-sidebar"' in home and 'id="sidebar-toggle"' in home
+assert 'id="tool-grid"' in home and 'id="categories"' in home
+assert './sidebar.css' in home
+assert "'./sidebar.css'" in sw
+assert (ROOT/'tests/test-sidebar.py').exists()
+print('Grouped sidebar, mobile drawer and offline assets — PASS')
