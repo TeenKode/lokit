@@ -13,7 +13,7 @@ export function clearLocalEvents(){save([]);}
 export function exportLocalEvents(){return JSON.stringify({format:'lokit-analytics-v1',exportedAt:new Date().toISOString(),events:localEvents()},null,2);}
 export function recordEvent(kind,tool='site',data={}){
   if(!KINDS.has(kind))return;
-  const event={id:crypto?.randomUUID?.()||`local-${Date.now()}-${Math.random()}`,ts:new Date().toISOString(),kind,
+  const event={id:(typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'?crypto.randomUUID():null)||`local-${Date.now()}-${Math.random()}`,ts:new Date().toISOString(),kind,
     tool:/^[a-z0-9-]{2,48}$/.test(tool)?tool:'site',
     durationMs:clamp(data.durationMs,86400000),inputBytes:clamp(data.inputBytes,20*1024**3),outputBytes:clamp(data.outputBytes,20*1024**3)};
   save([...localEvents(),event].slice(-MAX_HISTORY));

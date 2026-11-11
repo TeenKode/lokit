@@ -49,7 +49,7 @@ jobs:
           if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
             sudo apt-get update && sudo apt-get install -y ffmpeg
           fi
-          ffmpeg -version | head -n 1
+          ffmpeg -version | sed -n '1p'
       - name: Generate representative codec samples and verify decoded outputs
         run: python tests/test-formats.py
       - name: Save diagnostic manifest on failure

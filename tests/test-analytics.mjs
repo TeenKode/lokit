@@ -12,7 +12,17 @@ let requests=0;globalThis.fetch=()=>{requests++;throw new Error('No network anal
 const a=await import('./.tmp-modules/analytics.js');
 assert.equal(memory.has('lokit:analytics:queue:v1'),false);
 assert.equal(memory.has('lokit:analytics:share:v1'),false);
-a.recordEvent('view');a.recordEvent('open','video-trim');
+// In insecure HTTP contexts the Web Crypto global may be unavailable.
+const cryptoDescriptor=Object.getOwnPropertyDescriptor(globalThis,'crypto');
+try{
+  Object.defineProperty(globalThis,'crypto',{configurable:true,value:undefined});
+  a.recordEvent('view');
+  assert.match(a.localEvents()[0].id,/^local-\d+-/);
+}finally{
+  if(cryptoDescriptor)Object.defineProperty(globalThis,'crypto',cryptoDescriptor);
+  else delete globalThis.crypto;
+}
+a.recordEvent('open','video-trim');
 a.recordOperation('video-trim','success',[{size:1024}],{blob:{size:512}},2150);
 const summary=a.summarizeLocal(30);
 assert.equal(summary.kinds.find(e=>e.kind==='success').count,1);
