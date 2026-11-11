@@ -161,6 +161,11 @@ export async function runFfmpeg({file,mode,options,signal,onProgress=()=>{},Work
           const data=msg.data;
           if(!data?.byteLength){done(new Error('FFmpeg/WASM вернул пустой результат.'));return;}
           const ext=msg.ext||'mp4';
+          const header=new Uint8Array(data,0,Math.min(12,data.byteLength));
+          const valid=ext==='png'
+            ?header.length>=8&&[137,80,78,71,13,10,26,10].every((byte,i)=>header[i]===byte)
+            :header.length>=12&&String.fromCharCode(...header.subarray(4,8))==='ftyp';
+          if(!valid){done(new Error('FFmpeg/WASM вернул файл с повреждённым заголовком.'));return;}
           const mime=ext==='m4a'?'audio/mp4':ext==='png'?'image/png':'video/mp4';
           onProgress({stage:'complete',percent:100,description:'FFmpeg/WASM: '+ext.toUpperCase()+' готов.'});
           done(null,{blob:new Blob([data],{type:mime}),ext,method:'ffmpeg-wasm',fast:false,info:'Совместимый '+ext.toUpperCase()+' через FFmpeg/WASM, кодирование выполняется локально.'});
