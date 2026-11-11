@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0f1727">
   <meta name="description" content="Обрабатывайте несколько файлов в Lokit: общая очередь, прогресс и скачивание результатов одним ZIP.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https://cdn.jsdelivr.net; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
   <title>Пакетная обработка — Lokit</title>
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -23,7 +23,7 @@
     <header class="header">
       <div class="header-left">
         <a class="brand" href="./" aria-label="На главную Lokit"><span class="brand-icon" aria-hidden="true">✦</span><span class="brand-text"><strong>Lokit</strong><span>обработка файлов в браузере</span></span></a>
-        <a class="version-pill" href="./about.html"><span data-app-version>v0.8.4</span><small data-app-stage>beta</small></a>
+        <a class="version-pill" href="./about.html"><span data-app-version>v0.8.5</span><small data-app-stage>beta</small></a>
       </div>
       <nav class="header-right" aria-label="Навигация"><div data-background-control></div><a class="ghost-button" href="./">Инструменты</a><a class="ghost-button" href="./analytics.html">Статистика</a><span class="nav-active">Пакетная обработка</span></nav>
     </header>
@@ -83,7 +83,7 @@
         <p>Обычно одно задание обрабатывает один файл. Для склейки и других операций с двумя файлами порядок выбора определяет пары. Запись камеры и экрана доступна только в обычном режиме. Задания запускаются последовательно, чтобы не перегружать устройство. ZIP не сжимает видео повторно и может содержать не более 4 ГБ данных.</p>
       </section>
     </main>
-    <footer class="footer"><span>Lokit · <span data-app-version>v0.8.4</span> · пакетная обработка</span><span><a href="./about.html">Что нового</a> · <a href="./">Инструменты</a></span></footer>
+    <footer class="footer"><span>Lokit · <span data-app-version>v0.8.5</span> · пакетная обработка</span><span><a href="./about.html">Что нового</a> · <a href="./">Инструменты</a></span></footer>
   </div>
 </body>
 </html>

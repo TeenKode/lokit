@@ -1,12 +1,8 @@
 /** Optional client-side engines. The ordinary Lokit pipeline never loads these. */
 export const ENGINE_OPTIONS = ['classic','webcodecs','ffmpeg'];
 export const EXPERIMENTAL_MODES = new Set(['convert','compress']);
-export const DEPENDENCIES = Object.freeze({
-  mediabunny: 'https://cdn.jsdelivr.net/npm/mediabunny@1.65.2/dist/bundles/mediabunny.cjs',
-  ffmpegCore: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.js',
-  ffmpegWasm: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.wasm'
-});
-const CACHE='lokit-optional-codecs-v1';
+import {DEPENDENCIES, fetchCodecBlob} from './codec-assets.js';
+export {DEPENDENCIES};
 const MAX_FFMPEG_BYTES=90*1024*1024;
 const abortError=()=>new DOMException('Операция отменена','AbortError');
 export function experimentalEligibility({files,mode,options={}}={}){
@@ -22,29 +18,14 @@ export function experimentalEligibility({files,mode,options={}}={}){
   return {eligible:true,engine};
 }
 function aborted(signal){if(signal?.aborted)throw abortError();}
-// Only pin-listed public dependency URLs are allowed; no user-controlled URL or file content is sent.
-async function cachedBlob(url,{signal,onDownload=()=>{}}={}){
-  if(!Object.values(DEPENDENCIES).includes(url))throw new Error('Запрещённый источник библиотеки.');
-  aborted(signal);
-  const cache=typeof caches!=='undefined'?await caches.open(CACHE):null;
-  let response=await cache?.match(url);
-  if(!response){
-    if(typeof navigator!=='undefined' && navigator.onLine===false)throw new Error('Для первого запуска этого режима нужен интернет. Библиотека ещё не загружена.');
-    response=await fetch(url,{mode:'cors',credentials:'omit',cache:'force-cache',signal});
-    if(!response.ok||response.type==='opaque')throw new Error(`Не удалось загрузить компонент экспорта (${response.status}).`);
-    // Store only successfully fetched assets, never cache user data.
-    if(cache){try{await cache.put(url,response.clone());}catch{/* Cache quota may be limited. */}}
-  }
-  aborted(signal);
-  onDownload(response.headers.get('Content-Length')||'');
-  return response.blob();
-}
+// Load only same-origin media runtimes and store them for optional offline reuse.
+const cachedBlob = fetchCodecBlob;
 let mediabunnyPromise;
 async function loadMediabunny({signal,onProgress=()=>{}}={}){
   if(globalThis.Mediabunny)return globalThis.Mediabunny;
   if(typeof document==='undefined')throw new Error('WebCodecs можно использовать только в поддерживаемом браузере.');
   mediabunnyPromise ||= (async()=>{
-    onProgress({stage:'preparing',description:'Загружаем компонент WebCodecs (при первом запуске)…'});
+    onProgress({stage:'preparing',description:'Подготавливаем локальный компонент WebCodecs…'});
     const downloaded=await cachedBlob(DEPENDENCIES.mediabunny,{signal});
     const url=URL.createObjectURL(new Blob([downloaded],{type:'text/javascript'}));
     try{

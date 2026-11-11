@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "packages": {
+    "mediabunny": "1.65.2",
+    "ffmpeg": "0.12.10"
+  },
+  "files": [
+    {
+      "name": "mediabunny-1.65.2.cjs",
+      "bytes": 1652482,
+      "sha256": "346f3a2af124234aeb257c2eeb41cb572cfb6fbd254d153bb9f436abab4b17ff"
+    },
+    {
+      "name": "ffmpeg-core-0.12.10.js",
+      "bytes": 112059,
+      "sha256": "b266ab5b952555881dd6310663986994a182acb2b7ff25cf10a25f7a37ac2b21"
+    },
+    {
+      "name": "ffmpeg-core-0.12.10.wasm",
+      "bytes": 32232419,
+      "sha256": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7"
+    }
+  ]
+}
