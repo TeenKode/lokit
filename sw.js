@@ -52,7 +52,11 @@ self.addEventListener('fetch',event=>{
     if(fresh){
       try{
         const response=await fetch(req);
-        if(response.ok){await cache.put(req,response.clone());return response;}
+        if(response.ok){
+          // Cache storage may be full or disabled; keep online navigation usable.
+          try{await cache.put(req,response.clone());}catch{/* Best-effort offline cache. */}
+          return response;
+        }
       }catch{}
     }
     return (await cache.match(req,{ignoreSearch:true}))
