@@ -53,7 +53,7 @@ assert.ok(webmCut.blob.size>500);
 assert.equal(await tryFastMp4({file:webm,mode:'trim',options:{resolution:'original',start:.2,end:1.2,cutMode:'exact'}}),null,'Accurate WebM trim must not start earlier than requested');
 const keyframeCut=await tryFastMp4({file:webm,mode:'trim',options:{resolution:'original',start:.2,end:1.2,cutMode:'keyframe'}});
 assert.equal(keyframeCut.fast,true);
-assert.ok(keyframeCut.info.includes('ключевого'),keyframeCut.info);
+assert.ok(/ключев/.test(keyframeCut.info),keyframeCut.info);
 assert.equal(await tryFastMp4({file:source,mode:'speed',options:{resolution:'original',speed:2}}),null,'No audio dropping with speed');
 assert.equal(await tryFastMp4({file:source,mode:'mute',options:{resolution:720}}),null,'Resolution change must trigger reencode');
 assert.equal(await tryFastMp4({file:source,mode:'crop',options:{resolution:'original'}}),null);

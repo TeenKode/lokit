@@ -226,7 +226,7 @@ self.onmessage=async({data})=>{
     if(names.length!==(multi?2:1))throw new Error('Неверное количество исходников.');
     const mainScriptUrlOrBlob=data.coreScriptUrl+'#'+btoa(JSON.stringify({wasmURL:data.wasmUrl}));
     importScripts(data.coreScriptUrl);
-    if(typeof self.createFFmpegCore!=='function')throw new Error('FFmpeg core не инициализирован.');
+    if(typeof self.createFFmpegCore!=='function')throw new Error('Не удалось запустить FFmpeg.');
     const core=await self.createFFmpegCore({mainScriptUrlOrBlob});
     core.setProgress?.(({progress})=>{
       if(Number.isFinite(progress))self.postMessage({type:'progress',percent:Math.max(0,Math.min(99,progress*100))});
@@ -245,7 +245,7 @@ self.onmessage=async({data})=>{
       plan={output:single.output,ext:single.ext};
     }
     const result=core.FS.readFile(plan.output);
-    if(!result?.byteLength)throw new Error('FFmpeg вернул пустой файл.');
+    if(!result?.byteLength)throw new Error('FFmpeg не создал файл.');
     const owned=result.slice();
     self.postMessage({type:'done',data:owned.buffer,ext:plan.ext},[owned.buffer]);
   }catch(e){self.postMessage({type:'error',message:String(e?.message||e)});}

@@ -23,7 +23,7 @@ function seekVideo(video,target){if(!video||!Number.isFinite(video.duration))ret
 function makeStudioFrame(){
   const shell=el('section','studio-shell');shell.setAttribute('aria-label','Визуальный редактор');
   const top=el('div','studio-heading');const heading=el('div','studio-heading-info');
-  heading.append(el('span','studio-eyebrow','РАБОЧАЯ ОБЛАСТЬ'),el('strong','','Предпросмотр и редактирование'));
+  heading.append(el('span','studio-eyebrow','РЕДАКТОР'),el('strong','','Предпросмотр'));
   const badge=el('span','studio-badge','Локально');top.append(heading,badge);
   const content=el('div','studio-content');shell.append(top,content);return {shell,content,badge};
 }
@@ -34,12 +34,12 @@ function createCaptureStudio(root,tool){
   const icon=el('div','studio-placeholder-icon',tool.id==='screen-recorder'?'▣':'◎');
   placeholder.append(icon,el('h3','',tool.id==='screen-recorder'?'Запись экрана':'Запись камеры'));
   placeholder.append(el('p','',tool.id==='screen-recorder'?
-    'По нажатию «Начать запись» браузер предложит выбрать экран или вкладку.':'Браузер запросит доступ к камере и микрофону после нажатия «Начать запись».'));
-  placeholder.append(el('span','studio-hint','Во время записи отображается таймер и кнопка остановки.'));
+    'После нажатия «Начать запись» выберите экран, окно или вкладку.':'После нажатия «Начать запись» разрешите доступ к камере и микрофону.'));
+  placeholder.append(el('span','studio-hint','Во время записи вы увидите таймер и кнопку остановки.'));
   const live=el('div','studio-capture-live hidden');
-  const feed=el('video');feed.muted=true;feed.playsInline=true;feed.autoplay=true;feed.setAttribute('aria-label','Предпросмотр записываемого изображения');
+  const feed=el('video');feed.muted=true;feed.playsInline=true;feed.autoplay=true;feed.setAttribute('aria-label','Предпросмотр записи');
   const meterLabel=el('label','studio-hint','Уровень микрофона');
-  const meter=el('progress','studio-audio-meter');meter.max=100;meter.value=0;meter.setAttribute('aria-label','Уровень входного аудиосигнала');
+  const meter=el('progress','studio-audio-meter');meter.max=100;meter.value=0;meter.setAttribute('aria-label','Уровень звука микрофона');
   meterLabel.append(meter);live.append(feed,meterLabel);content.append(placeholder,live);
   let context=null,raf=null,destroyed=false;
   const stopMeter=()=>{if(raf!==null)cancelAnimationFrame(raf);raf=null;void context?.close().catch(()=>{});context=null;meter.value=0;};
@@ -69,21 +69,21 @@ function createCaptureStudio(root,tool){
 function videoStudio(root,tool,form){
   const {shell,content,badge}=makeStudioFrame();root.append(shell);
   const placeholder=el('div','studio-placeholder');
-  placeholder.append(el('div','studio-placeholder-icon','▣'),el('h3','','Файл ещё не выбран'),el('p','','Загрузите видео выше — здесь появятся предпросмотр, кадры и временная шкала.'));
+  placeholder.append(el('div','studio-placeholder-icon','▣'),el('h3','','Видео пока не выбрано'),el('p','','Выберите видео выше, чтобы открыть просмотр и временную шкалу.'));
   content.append(placeholder);
   const panel=el('div','studio-video-panel hidden');
   const viewport=el('div','studio-video-viewport');
   const surface=el('div','studio-video-surface');
-  const video=el('video','studio-player');video.preload='metadata';video.playsInline=true;video.controls=false;video.setAttribute('aria-label','Предпросмотр исходного видео');
+  const video=el('video','studio-player');video.preload='metadata';video.playsInline=true;video.controls=false;video.setAttribute('aria-label','Исходное видео');
   const second=el('video','studio-player studio-player-secondary hidden');second.preload='metadata';second.playsInline=true;second.muted=true;
   const watermark=el('span','studio-watermark hidden');
   const cropbox=el('div','studio-crop-box hidden');cropbox.append(el('span','studio-crop-handle tl'),el('span','studio-crop-handle tr'),el('span','studio-crop-handle bl'),el('span','studio-crop-handle br'));
-  const renderedCanvas=el('canvas','studio-rendered-canvas');renderedCanvas.setAttribute('aria-label','Предпросмотр итогового кадра после обработки');
+  const renderedCanvas=el('canvas','studio-rendered-canvas');renderedCanvas.setAttribute('aria-label','Предпросмотр результата');
   surface.append(video,second,renderedCanvas,watermark,cropbox);viewport.append(surface);
   const bar=el('div','studio-controls');
-  const back=button('−5с','studio-mini-button','Назад на 5 секунд');const play=button('▶','studio-play','Воспроизвести/пауза');const forward=button('+5с','studio-mini-button','Вперёд на 5 секунд');
+  const back=button('−5с','studio-mini-button','Назад на 5 секунд');const play=button('▶','studio-play','Воспроизвести или приостановить');const forward=button('+5с','studio-mini-button','Вперёд на 5 секунд');
   const time=el('span','studio-time','00:00 / 00:00');const resolution=el('span','studio-resolution','');
-  const toggleResult=button('Показать исходник','studio-mini-button','Переключить результат / исходник');
+  const toggleResult=button('Показать исходник','studio-mini-button','Переключить просмотр исходника и результата');
   toggleResult.setAttribute('aria-pressed','true');
   bar.append(back,play,forward,time,resolution,toggleResult);
   const timeline=el('div','studio-timeline'+(tool.id==='video-trim'?' hidden':''));
@@ -91,7 +91,7 @@ function videoStudio(root,tool,form){
   const seek=el('input','studio-seek');seek.type='range';seek.min='0';seek.max='1000';seek.step='1';seek.value='0';seek.setAttribute('aria-label','Позиция видео');
   const rangeIndicator=el('div','studio-range hidden');
   const track=el('div','studio-track');track.append(rangeIndicator,seek);timeline.append(frames,track);
-  const tips=el('div','studio-help');tips.append(el('span','','Пробел — пауза · J/K/L — назад/пауза/вперёд · [ и ] — поставить границы · Ctrl+Z — отменить'),el('span','','Предпросмотр кадра использует тот же Canvas-рендерер, что и экспорт · кодирование зависит от браузера'));
+  const tips=el('div','studio-help');tips.append(el('span','','Пробел — воспроизведение/пауза · J/K/L — управление · [ и ] — границы · Ctrl+Z — отмена'),el('span','','Предпросмотр показывает ожидаемый результат. Поддержка экспорта зависит от браузера.'));
   const multiHost=el('div','studio-multitrack-host');
   panel.append(viewport,bar,timeline,multiHost,tips);
   content.append(panel);
@@ -146,12 +146,12 @@ function videoStudio(root,tool,form){
     const waveArea=el('div','studio-wave-area');
     const waveButton=button('Показать форму звука','studio-mini-button');
     const waveCanvas=el('canvas','studio-wave-canvas');waveCanvas.height=84;
-    const waveStatus=el('span','studio-hint','График строится локально при поддержке декодирования');
+    const waveStatus=el('span','studio-hint','Звуковая дорожка появится, если браузер сможет её прочитать');
     waveArea.append(waveButton,waveCanvas,waveStatus);content.append(waveArea);
     waveButton.addEventListener('click',async()=>{
-      if(!objectFile){waveStatus.textContent='Выберите видеофайл';return;}
+      if(!objectFile){waveStatus.textContent='Сначала выберите видео';return;}
       stopAudioGraph();waveButton.disabled=true;
-      waveStatus.textContent='Анализ звука…';
+      waveStatus.textContent='Чтение звуковой дорожки…';
       const token=generation;let ctx=null;
       try{
         ctx=new (window.AudioContext||window.webkitAudioContext)();
@@ -172,7 +172,7 @@ function videoStudio(root,tool,form){
             const x=i*width/peaks.mins.length,lo=peaks.mins[i],hi=peaks.maxs[i];
             graph.fillRect(x,height*(1-hi)/2,Math.max(1,width/peaks.mins.length-1),Math.max(1,(hi-lo)*height/2));
           }
-          waveStatus.textContent='Форма звука построена';
+          waveStatus.textContent='Звуковая дорожка готова';
           await ctx.close();ctx=null;
         }else{
           const source=ctx.createMediaElementSource(video),analyser=ctx.createAnalyser();analyser.fftSize=1024;
@@ -189,9 +189,9 @@ function videoStudio(root,tool,form){
             }
             graph.stroke();state.frame=requestAnimationFrame(paint);
           };
-          paint();waveStatus.textContent='Живая аудиоволна: нажмите ▶ для прослушивания. Работает и с большими MP4.';
+          paint();waveStatus.textContent='Звуковая дорожка готова. Нажмите ▶ для прослушивания.';
         }
-      }catch{waveStatus.textContent='Аудиодорожка не декодируется этим браузером.';}
+      }catch{waveStatus.textContent='Браузер не может прочитать звуковую дорожку этого файла.';}
       finally{await ctx?.close().catch(()=>{});waveButton.disabled=false;}
     });
   }
@@ -411,7 +411,7 @@ function videoStudio(root,tool,form){
     showError('Второй клип не декодируется в браузере. Экспорт попробует FFmpeg/WASM без отправки видео на сервер.');
   });
   listen(video,'loadedmetadata',()=>{
-    if(!Number.isFinite(video.duration)||video.duration<=0){showError('Браузер не может прочитать длительность файла.');return;}
+    if(!Number.isFinite(video.duration)||video.duration<=0){showError('Не удалось определить длительность видео. Попробуйте другой формат.');return;}
     duration=video.duration;
     time.textContent=`00:00 / ${prettyTime(duration)}`;resolution.textContent=`${video.videoWidth} × ${video.videoHeight}`;
     rangeControls.classList.toggle('hidden',tool.id!=='video-trim');
@@ -465,7 +465,7 @@ function videoStudio(root,tool,form){
   listen(video,'play',()=>{if(!multiKind)play.textContent='Ⅱ';loopPreview();});
   listen(video,'pause',()=>{if(!multiKind)play.textContent='▶';stopPreviewLoop();paintPreview();});
   listen(video,'ended',()=>{if(!multiKind)play.textContent='▶';});
-  listen(play,'click',()=>{if(multiKind)toggleProject();else if(video.paused)video.play().catch(()=>showError('Не удалось воспроизвести видео.'));else video.pause();});
+  listen(play,'click',()=>{if(multiKind)toggleProject();else if(video.paused)video.play().catch(()=>showError('Не удалось воспроизвести файл в этом браузере.'));else video.pause();});
   listen(back,'click',()=>seekProject((multiKind?projectTime:video.currentTime)-5));listen(forward,'click',()=>seekProject((multiKind?projectTime:video.currentTime)+5));
   listen(seek,'input',()=>seekProject(Number(seek.value)/1000*projectDuration()));
   listen(viewport,'keydown',e=>{if(e.target instanceof HTMLInputElement)return;
@@ -526,10 +526,10 @@ function videoStudio(root,tool,form){
   function update(files){
     reset();
     const first=files?.[0];if(!isVideo(first)){
-      placeholder.classList.remove('hidden');panel.classList.add('hidden');badge.textContent='Ожидание файла';historyButtons();return;
+      placeholder.classList.remove('hidden');panel.classList.add('hidden');badge.textContent='Файл не выбран';historyButtons();return;
     }
     objectFile=first;
-    placeholder.classList.add('hidden');panel.classList.remove('hidden');badge.textContent='Реальное время';
+    placeholder.classList.add('hidden');panel.classList.remove('hidden');badge.textContent='Просмотр готов';
     url=URL.createObjectURL(first);video.src=url;video.load();showCanvasMode();
     if(files?.[1]&&isVideo(files[1])){secondFile=files[1];urlB=URL.createObjectURL(files[1]);second.src=urlB;second.classList.toggle('hidden',tool.id!=='split-screen');second.load();}
     else second.classList.add('hidden');
@@ -576,18 +576,18 @@ export function encodeSubtitle(cues,type='srt'){
 }
 function subtitleStudio(root,tool){
   const {shell,content,badge}=makeStudioFrame();root.append(shell);
-  const placeholder=el('div','studio-placeholder');placeholder.append(el('div','studio-placeholder-icon','≡'),el('h3','','Загрузите файл субтитров'),el('p','','После загрузки можно редактировать текст и таймкоды прямо здесь. Изменения используются при обработке.'));
+  const placeholder=el('div','studio-placeholder');placeholder.append(el('div','studio-placeholder-icon','≡'),el('h3','','Выберите файл субтитров'),el('p','','После выбора файла здесь появятся реплики. Измените текст или время — правки войдут в результат.'));
   content.append(placeholder);
   const panel=el('div','studio-subtitles hidden');
   const controls=el('div','studio-sub-controls');
-  const info=el('span','studio-hint','Изменения сохраняются только в текущей вкладке');
+  const info=el('span','studio-hint','Правки хранятся до закрытия или обновления вкладки');
   const fileTabs=el('div','studio-file-tabs');
   const cueTimelineHost=el('div','studio-cue-timeline');
   const add=button('+ Реплика','secondary');
   const undo=button('↶ Отменить','studio-mini-button','Отменить изменение субтитров');undo.dataset.action='sub-undo';
   const redo=button('↷ Повторить','studio-mini-button','Повторить изменение субтитров');redo.dataset.action='sub-redo';
   controls.append(info,add,undo,redo);
-  const preview=el('div','studio-sub-preview');const previewText=el('div','studio-sub-preview-text','Выберите реплику, чтобы увидеть её здесь.');preview.append(previewText);
+  const preview=el('div','studio-sub-preview');const previewText=el('div','studio-sub-preview-text','Выберите реплику для просмотра.');preview.append(previewText);
   const list=el('div','studio-cue-list');panel.append(fileTabs,cueTimelineHost,preview,controls,list);content.append(panel);
   const status=el('div','studio-notice hidden');content.append(status);
   let tracks=[],active=0,revision=0,destroyed=false,loading=Promise.resolve(),selectedCue=0;
@@ -621,7 +621,7 @@ function subtitleStudio(root,tool){
   });}
   function buildRows(){
     const track=tracks[active];list.replaceChildren();if(!track){refreshCueTimeline();return;}
-    badge.textContent=`${track.cues.length} реплик`;
+    badge.textContent=`Реплик: ${track.cues.length}`;
     for(const [i,cue] of track.cues.entries()){
       const row=el('div','studio-cue');
       const number=el('span','studio-cue-number',String(i+1));
@@ -646,7 +646,7 @@ function subtitleStudio(root,tool){
   });
   async function loadFiles(files){
     const marker=++revision;tracks=[];active=0;selectedCue=0;status.classList.add('hidden');list.replaceChildren();
-    if(!files?.length||!isSubtitle(files[0])){placeholder.classList.remove('hidden');panel.classList.add('hidden');badge.textContent='Ожидание файла';return;}
+    if(!files?.length||!isSubtitle(files[0])){placeholder.classList.remove('hidden');panel.classList.add('hidden');badge.textContent='Файл не выбран';return;}
     for(const file of files.slice(0,2)){
       if(!isSubtitle(file))continue;
       try{
@@ -655,18 +655,18 @@ function subtitleStudio(root,tool){
       }catch{ /* Показать понятное сообщение вместо падения */ }
     }
     if(destroyed||marker!==revision)return;
-    if(!tracks.length){status.textContent='Не найдены временные метки SRT/VTT. Исходный файл можно обработать, но визуальное редактирование недоступно.';status.classList.remove('hidden');badge.textContent='Нет реплик';return;}
+    if(!tracks.length){status.textContent='Не удалось найти реплики с корректным временем. Проверьте формат SRT/VTT: визуальное редактирование недоступно.';status.classList.remove('hidden');badge.textContent='Нет реплик';return;}
     placeholder.classList.add('hidden');panel.classList.remove('hidden');buildTabs();buildRows();
   }
   function update(files){loading=loadFiles(files);return loading;}
   async function getFiles(files){
     await loading;
-    if(destroyed)throw new Error('Редактор закрыт');
+    if(destroyed)throw new Error('Редактор уже закрыт');
     if(!tracks.length)return files;
     const found=new Map(tracks.map(track=>[track.file,track]));
     return files.map(file=>{
       const track=found.get(file);if(!track)return file;
-      if(track.cues.some(c=>c.invalid||!Number.isFinite(c.start)||!Number.isFinite(c.end)||c.end<=c.start))throw new Error('Исправьте временные метки реплик.');
+      if(track.cues.some(c=>c.invalid||!Number.isFinite(c.start)||!Number.isFinite(c.end)||c.end<=c.start))throw new Error('Проверьте начало и конец каждой реплики.');
       const source=window.SubtitleSerializer?.[track.type==='vtt'?'toVtt':'toSrt'](track.cues)||encodeSubtitle(track.cues,track.type);
       return new File([source],file.name,{type:'text/plain;charset=utf-8',lastModified:Date.now()});
     });
