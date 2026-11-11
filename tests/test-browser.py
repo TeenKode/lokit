@@ -1,5 +1,6 @@
 from pathlib import Path
 from playwright.sync_api import sync_playwright
+from sidebar_nav import click_sidebar_tool
 import subprocess, time, json, shutil, os, re
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -26,7 +27,7 @@ try:
   page.goto(URL,wait_until='networkidle')
   assert page.locator('a[href="./analytics.html"]').count()>=1
   page.screenshot(path=str(ARTIFACTS/'lokit-home-reviewed.png'),full_page=True)
-  page.locator('.tool-card').filter(has=page.locator('strong',has_text='SRT ⇄ VTT')).first.click()
+  click_sidebar_tool(page,'SRT ⇄ VTT')
   page.locator('#tool-content input[type=file]').set_input_files(str(ROOT/'tests/fixtures/sample.srt'))
   assert page.locator('.studio-shell').count()==1
   page.locator('#favorite-tool').click()
@@ -53,7 +54,7 @@ try:
   page.locator('#categories .chip').filter(has_text='Избранное').click()
   assert page.locator('.tool-card').count()==1,'Favorite must persist after reload'
   page.locator('#categories .chip').filter(has_text='Все').click()
-  page.locator('.tool-card').filter(has=page.locator('strong',has_text='Обрезка видео')).first.click()
+  click_sidebar_tool(page,'Обрезка видео')
   page.locator('#tool-content input[type=file]').set_input_files(str(ROOT/'tests/fixtures/sample.webm'))
   page.locator('.studio-video-panel:not(.hidden) .studio-rendered-canvas').first.wait_for(state='visible',timeout=15000)
   page.wait_for_function("() => document.querySelector('.studio-rendered-canvas').width > 0",timeout=15000)
@@ -106,7 +107,7 @@ try:
   assert page.locator('.download a').count()==0, 'Old video result must be removed when settings change'
   page.locator('#close-workspace').click()
   page.goto(URL,wait_until='networkidle')
-  page.locator('.tool-card').filter(has=page.locator('strong',has_text='Удалить звук')).first.click()
+  click_sidebar_tool(page,'Удалить звук')
   assert page.locator('select[name=resolution]').count()==1
   assert 'Как у исходного' in page.locator('select[name=resolution]').inner_text()
   assert '1280×720' in page.locator('.field small').filter(has_text='1920×1080').inner_text()
