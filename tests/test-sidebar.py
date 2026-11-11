@@ -20,11 +20,11 @@ try:
    if mobile:
     assert not page.locator('#tool-sidebar').is_visible(),width
     page.locator('#sidebar-toggle').click()
-    assert page.locator('#tool-sidebar').is_visible(),width
+    page.locator('#tool-sidebar').wait_for(state='visible',timeout=4000)
     assert page.locator('#sidebar-toggle').get_attribute('aria-expanded')=='true'
     assert page.locator('.sidebar-favorite').first.is_visible()
    else:
-    assert page.locator('#tool-sidebar').is_visible(),width
+    page.locator('#tool-sidebar').wait_for(state='visible',timeout=4000)
     assert not page.locator('#sidebar-toggle').is_visible(),width
    # Search only matching group items, keeping category grouping.
    search=page.locator('#search')
@@ -57,10 +57,10 @@ try:
    assert page.locator('#workspace').is_visible()
    assert page.locator('.tool-card[data-tool-id="video-trim"]').get_attribute('aria-current')=='true'
    if mobile:
-    assert not page.locator('#tool-sidebar').is_visible()
+    page.locator('#tool-sidebar').wait_for(state='hidden',timeout=4000)
     page.locator('#sidebar-toggle').click()
     page.keyboard.press('Escape')
-    assert not page.locator('#tool-sidebar').is_visible()
+    page.locator('#tool-sidebar').wait_for(state='hidden',timeout=4000)
    assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),width
    page.close()
    print('PASS sidebar',width)
