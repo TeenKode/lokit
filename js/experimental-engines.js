@@ -1,5 +1,5 @@
 /** Optional client-side engines. The ordinary Lokit pipeline never loads these. */
-export const ENGINE_OPTIONS = ['classic','webcodecs','ffmpeg'];
+export const ENGINE_OPTIONS = ['auto','classic','webcodecs','ffmpeg'];
 export const EXPERIMENTAL_MODES = new Set(['convert','compress']);
 export const DEPENDENCIES = Object.freeze({
   mediabunny: 'https://cdn.jsdelivr.net/npm/mediabunny@1.65.2/dist/bundles/mediabunny.cjs',
@@ -10,16 +10,16 @@ const CACHE='lokit-optional-codecs-v1';
 const MAX_FFMPEG_BYTES=90*1024*1024;
 const abortError=()=>new DOMException('Операция отменена','AbortError');
 export function experimentalEligibility({files,mode,options={}}={}){
-  const engine=options.engine||'classic';
+  const engine=options.engine||'auto';
   if(engine==='classic')return {eligible:false,reason:'Проверенный экспорт по умолчанию'};
   if(!ENGINE_OPTIONS.includes(engine))return {eligible:false,reason:'Неизвестный движок'};
   if(!EXPERIMENTAL_MODES.has(mode)||!files?.length||files.length!==1)return {eligible:false,reason:'Инструмент не поддерживается экспериментальным движком'};
   if(!files[0]?.size)return {eligible:false,reason:'Файл пустой'};
-  if(engine==='webcodecs'&&(typeof VideoEncoder==='undefined'||typeof VideoDecoder==='undefined'))
+  if((engine==='auto'||engine==='webcodecs')&&(typeof VideoEncoder==='undefined'||typeof VideoDecoder==='undefined'))
     return {eligible:false,reason:'WebCodecs не поддерживается браузером'};
   if(engine==='ffmpeg'&&files[0].size>MAX_FFMPEG_BYTES)
     return {eligible:false,reason:'FFmpeg/WASM ограничен файлами до 90 МиБ из-за расхода памяти'};
-  return {eligible:true,engine};
+  return {eligible:true,engine:engine==='auto'?'webcodecs':engine,automatic:engine==='auto'};
 }
 function aborted(signal){if(signal?.aborted)throw abortError();}
 // Only pin-listed public dependency URLs are allowed; no user-controlled URL or file content is sent.
@@ -166,6 +166,14 @@ export async function tryExperimental({files,mode,options={},onProgress=()=>{},s
     return null;
   }
   try{
+    // Auto selection must not delay offline work with CDN downloads.
+    // WebCodecs starts automatically only when the muxer has been cached.
+    if(eligibility.automatic&&!globalThis.Mediabunny){
+      if(typeof caches==='undefined')return null;
+      const cached=await (await caches.open(CACHE)).match(DEPENDENCIES.mediabunny);
+      if(!cached)return null;
+    }
+    aborted(signal);
     const task={file:files[0],mode,options,signal,onProgress};
     return eligibility.engine==='webcodecs'?await runWebCodecs(task):await runFfmpeg(task);
   }catch(e){
