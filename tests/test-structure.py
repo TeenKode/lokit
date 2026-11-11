@@ -97,6 +97,6 @@ for page in ['index.html','analytics.html','about.html','batch.html']:
  assert html.index('./glow.css')>html.index('./layout-compact.css'),page
  if page=='index.html':assert html.index('./glow.css')>html.index('./sidebar.css')
 assert 'box-shadow' in glow
-assert not re.search(r'@keyframes|animation\\s*:|filter\\s*:|backdrop-filter\\s*:',glow)
+assert not re.search(r'@keyframes|animation\s*:|filter\s*:|backdrop-filter\s*:',glow)
 assert '@media(forced-colors:active)' in glow
 print('UI glow: all pages, correct cascade, offline cache, no animations/filters — PASS')
