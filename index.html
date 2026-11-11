@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0f1727">
-  <meta name="description" content="Небольшие офлайн-инструменты для работы с видео, звуком и субтитрами. Всё выполняется локально в браузере.">
+  <meta name="description" content="Инструменты для видео, звука и субтитров. Обрабатывайте файлы в браузере, не отправляя их на сервер.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https://cdn.jsdelivr.net; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
-  <title>Lokit — локальные инструменты</title>
+  <title>Lokit — инструменты для видео, звука и субтитров</title>
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./style.css">
@@ -26,16 +26,16 @@
           <span class="brand-icon" aria-hidden="true">✦</span>
           <span class="brand-text">
             <strong>Lokit</strong>
-            <span>локальные инструменты без лишнего</span>
+            <span>обработка файлов в браузере</span>
           </span>
         </a>
-        <a class="version-pill" href="./about.html" title="Информация о версии и изменениях"><span data-app-version>v0.8.4</span><small data-app-stage>beta</small></a>
+        <a class="version-pill" href="./about.html" title="Версия и история изменений"><span data-app-version>v0.8.4</span><small data-app-stage>beta</small></a>
       </div>
       <div class="header-right">
-        <span class="status" id="network-status">Локальная обработка</span>
         <div data-background-control></div>
-        <span class="small subtle">Файлы не покидают устройство</span>
-        <a class="ghost-button" href="./batch.html">Пакетная обработка</a><a class="ghost-button" href="./analytics.html">Аналитика</a><button class="ghost-button" id="open-last-tool" type="button">Последний инструмент</button>
+        <span class="status" id="network-status">Локальная обработка</span>
+        <span class="small subtle">Файлы не отправляются на сервер</span>
+        <a class="ghost-button" href="./batch.html">Пакетная обработка</a><a class="ghost-button" href="./analytics.html">Статистика</a><button class="ghost-button" id="open-last-tool" type="button">Недавний инструмент</button>
       </div>
     </header>
 
@@ -43,14 +43,14 @@
       <div class="app-shell">
       <aside id="tool-sidebar" class="tool-sidebar" aria-label="Навигация по инструментам">
         <div class="sidebar-heading">
-          <div><span class="sidebar-eyebrow">КАТАЛОГ LOKIT</span><h2 id="tools-title">Инструменты</h2></div>
+          <div><span class="sidebar-eyebrow">КАТАЛОГ</span><h2 id="tools-title">Инструменты</h2></div>
           <button id="sidebar-close" class="sidebar-close" type="button" aria-label="Закрыть меню инструментов">✕</button>
         </div>
       <section class="toolbar" aria-label="Поиск и фильтрация">
         <div class="search-row">
           <label class="search-box" for="search">
             <span class="search-icon" aria-hidden="true">⌕</span>
-            <input id="search" type="search" autocomplete="off" placeholder="Поиск по инструментам">
+            <input id="search" type="search" autocomplete="off" placeholder="Найти инструмент">
             <button id="clear-search" class="clear-search hidden" type="button" aria-label="Очистить поиск">✕</button>
           </label>
           <span id="counter" class="counter"></span>
@@ -58,25 +58,25 @@
         <div id="categories" class="categories" aria-label="Категории"></div>
       </section>
         <nav id="tool-grid" class="sidebar-groups" aria-labelledby="tools-title"></nav>
-        <p class="no-results hidden" id="no-results">Ничего не найдено. Попробуйте другой запрос.</p>
-        <div class="sidebar-footer"><a href="./batch.html">Пакетная обработка <span aria-hidden="true">↗</span></a><span>24 инструмента · без загрузки файлов на сервер</span></div>
+        <p class="no-results hidden" id="no-results">Ничего не нашли. Измените запрос или выберите другую категорию.</p>
+        <div class="sidebar-footer"><a href="./batch.html">Пакетная обработка <span aria-hidden="true">↗</span></a><span>24 инструмента · файлы остаются на устройстве</span></div>
       </aside>
       <button id="sidebar-backdrop" class="sidebar-backdrop" type="button" aria-label="Закрыть меню инструментов" tabindex="-1"></button>
       <div class="app-content">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow">PWA · ТЁМНАЯ ТЕМА · ОФЛАЙН</p>
-          <h1 id="hero-title">Красивые и простые инструменты, которые работают прямо в браузере</h1>
-          <p class="hero-desc">Обрезайте и изменяйте видео, извлекайте звук, записывайте экран и редактируйте субтитры. Всё делается локально: без сервера, без аккаунта и без рекламы.</p>
+          <p class="eyebrow">БЕЗ РЕГИСТРАЦИИ · ЛОКАЛЬНАЯ ОБРАБОТКА</p>
+          <h1 id="hero-title">Видео, звук и субтитры — прямо в браузере</h1>
+          <p class="hero-desc">Обрезайте и объединяйте видео, извлекайте звук, записывайте экран и редактируйте субтитры. Ваши файлы обрабатываются на устройстве и не загружаются на сервер.</p>
           <div class="hero-actions">
-            <a class="primary-link" href="#tool-sidebar" id="hero-open-tools">Открыть инструменты</a><a class="ghost-button" href="./batch.html">Обработать несколько файлов</a>
-            <button class="ghost-button" id="hero-last-tool" type="button">Продолжить с последним</button>
+            <a class="primary-link" href="#tool-sidebar" id="hero-open-tools">Выбрать инструмент</a><a class="ghost-button" href="./batch.html">Обработать несколько файлов</a>
+            <button class="ghost-button" id="hero-last-tool" type="button">Открыть недавний</button>
           </div>
         </div>
         <div class="hero-panel" aria-label="Преимущества Lokit">
-          <div class="stat-card"><span class="stat-value" id="hero-tool-count">0</span><span class="stat-label">инструментов</span></div>
-          <div class="stat-card"><span class="stat-value">100%</span><span class="stat-label">локальная обработка</span></div>
-          <div class="stat-card"><span class="stat-value">0</span><span class="stat-label">передач файлов на сервер</span></div>
+          <div class="stat-card"><span class="stat-value" id="hero-tool-count">0</span><span class="stat-label">доступных инструментов</span></div>
+          <div class="stat-card"><span class="stat-value">100%</span><span class="stat-label">обработка на устройстве</span></div>
+          <div class="stat-card"><span class="stat-value">0</span><span class="stat-label">загрузок файлов на сервер</span></div>
         </div>
       </section>
 
@@ -88,7 +88,7 @@
             <h2 id="tool-title" tabindex="-1"></h2>
             <p id="tool-description" class="subtle"></p>
           </div>
-          <div class="workspace-buttons"><button id="favorite-tool" class="favorite-button" type="button" aria-pressed="false">☆ В избранное</button><button id="close-workspace" class="icon-button" type="button" aria-label="Закрыть">✕</button></div>
+          <div class="workspace-buttons"><button id="favorite-tool" class="favorite-button" type="button" aria-pressed="false">☆ Добавить в избранное</button><button id="close-workspace" class="icon-button" type="button" aria-label="Закрыть">✕</button></div>
         </div>
         <div id="tool-content"></div>
         <div id="tool-status" class="tool-status" role="status" aria-live="polite"></div>
@@ -98,27 +98,27 @@
 
       <section class="benefits" aria-labelledby="benefits-title">
         <div class="section-heading compact">
-          <h2 id="benefits-title">Почему это удобно</h2>
+          <h2 id="benefits-title">Работайте без лишних шагов</h2>
         </div>
         <div class="benefit-grid">
-          <article class="benefit-card"><span class="benefit-icon">⚡</span><h3>Быстрый старт</h3><p>Открыл сайт — выбрал инструмент — загрузил файл — получил результат.</p></article>
-          <article class="benefit-card"><span class="benefit-icon">☾</span><h3>Тёмная тема</h3><p>Интерфейс не режет глаза и одинаково хорошо выглядит на телефоне и компьютере.</p></article>
-          <article class="benefit-card"><span class="benefit-icon">🔒</span><h3>Локальная работа</h3><p>Файлы не загружаются в облако и не требуют регистрации или подключения к сторонним API.</p></article>
+          <article class="benefit-card"><span class="benefit-icon">⚡</span><h3>Сразу к делу</h3><p>Выберите инструмент, добавьте файл, настройте обработку и скачайте результат.</p></article>
+          <article class="benefit-card"><span class="benefit-icon">☾</span><h3>Простой интерфейс</h3><p>Тёмное оформление и понятные настройки для компьютера и телефона.</p></article>
+          <article class="benefit-card"><span class="benefit-icon">🔒</span><h3>Файлы остаются у вас</h3><p>Видео, звук и субтитры обрабатываются в браузере — без аккаунта и отправки исходников на сервер.</p></article>
         </div>
       </section>
 
       <section class="footnote">
-        <h2>Что важно знать</h2>
-        <p>Для преобразования видео браузер обычно записывает результат в WebM в реальном времени: обработка минутного ролика может занять примерно минуту. Поддерживаемые форматы зависят от браузера и устройства. Во время экспорта не закрывайте вкладку и не переводите устройство в сон.</p>
-        <p>Для нескольких файлов используйте <a href="./batch.html">пакетную обработку</a>: единая очередь, прогресс и ZIP без сервера.</p><p>Для записи экрана и камеры нужно разрешение браузера и защищённое соединение (HTTPS). Интернет нужен только для первого открытия сайта и загрузки обновлений; затем сохранённые файлы интерфейса доступны офлайн.</p><p>Личная статистика сохраняется только в браузере. <a href="./analytics.html">Посмотреть историю использования</a>.</p>
+        <h2>Перед началом работы</h2>
+        <p>Некоторые операции выполняются без перекодирования — быстрее и без потери качества исходного видео. Если требуется перекодирование, процесс может занять столько же времени, сколько длится ролик. Поддержка форматов зависит от браузера. До окончания обработки не закрывайте вкладку.</p>
+        <p>Нужно обработать несколько файлов? Добавьте их в <a href="./batch.html">общую очередь</a> и скачайте результаты по отдельности или одним ZIP.</p><p>Для записи экрана и камеры потребуются HTTPS и разрешение браузера. После первого посещения основные файлы сайта доступны без интернета; экспериментальные движки могут потребовать отдельной загрузки.</p><p>История использования хранится в этом браузере. <a href="./analytics.html">Открыть личную статистику</a>.</p>
       </section>
       </div>
       </div>
     </main>
 
     <footer class="footer">
-      <span>Lokit · браузерные офлайн-инструменты · <a href="./about.html">Что нового</a></span>
-      <span>Без аккаунта · без рекламы · <a href="./analytics.html">Статистика использования</a></span>
+      <span>Lokit · инструменты для работы с файлами · <a href="./about.html">Что нового</a></span>
+      <span>Без регистрации · без отправки файлов · <a href="./analytics.html">Моя статистика</a></span>
     </footer>
   </div>
 </body>

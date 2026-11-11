@@ -4,7 +4,7 @@ import {localEvents,recordEvent,clearLocalEvents,exportLocalEvents,summarizeLoca
 
 const $=selector=>document.querySelector(selector);
 const toolNames=new Map(tools.map(t=>[t.id,t.title]));
-const LABELS={view:'Просмотр сайта',open:'Открытие инструмента',success:'Успешно',error:'Ошибка',cancelled:'Отменено'};
+const LABELS={view:'Открытие страницы',open:'Выбор инструмента',success:'Успешно',error:'Ошибка',cancelled:'Отменено'};
 const nf=new Intl.NumberFormat('ru-RU');
 let days=30;
 const count=(stats,kind)=>Number(stats.kinds?.find(entry=>entry.kind===kind)?.count||0);
@@ -22,7 +22,7 @@ function renderMetrics(stats){
   const totalDuration=toolStats.reduce((sum,tool)=>sum+(Number(tool.durationMs)||0),0);
   const bytes=toolStats.reduce((sum,tool)=>sum+(Number(tool.inputBytes)||0),0);
   put('#metric-views',formatCount(views));put('#metric-opens',formatCount(opens));put('#metric-success',formatCount(success));
-  put('#metric-success-rate',completed?`${Math.round(success/completed*100)}% успешных завершений`:'Завершённых операций пока нет');
+  put('#metric-success-rate',completed?`${Math.round(success/completed*100)}% успешных завершений`:'Пока нет завершённых операций');
   put('#metric-time',completed?fmtDuration(totalDuration/completed):'—');
   put('#metric-errors',formatCount(errors));put('#metric-bytes',fmtBytes(bytes));
 }
@@ -40,7 +40,7 @@ function renderChart(stats){
   }
   const max=Math.max(1,...bars.map(item=>item.total));
   for(const item of bars){
-    const bar=document.createElement('div');bar.className='activity-day';bar.title=`${item.day}: всего ${item.total}, успешно ${item.success}, открытий ${item.open}`;
+    const bar=document.createElement('div');bar.className='activity-day';bar.title=`${item.day}: событий ${item.total}, успешных операций ${item.success}, открытий инструментов ${item.open}`;
     const stack=document.createElement('div');stack.className='activity-stack';
     for(const [key,label] of [['other','other'],['open','open'],['success','success']]){
       if(item[key]===0)continue;
@@ -50,12 +50,12 @@ function renderChart(stats){
     const label=document.createElement('span');label.className='activity-date';label.textContent=days===7?item.day.slice(5):item.day.slice(8);
     bar.append(label);root.append(bar);
   }
-  root.setAttribute('aria-label',`Активность за ${days} дней: ${bars.reduce((n,item)=>n+item.total,0)} событий`);
+  root.setAttribute('aria-label',`Активность за ${days} дней, событий: ${bars.reduce((n,item)=>n+item.total,0)}`);
 }
 function renderTools(stats){
   const body=$('#analytics-tools');body.replaceChildren();
   const values=[...(stats.tools||[])].sort((a,b)=>(b.opens+b.success)-(a.opens+a.success)||String(a.tool).localeCompare(String(b.tool)));
-  if(!values.length){body.append(emptyState('Нет данных за выбранный период.'));return;}
+  if(!values.length){body.append(emptyState('За этот период событий нет.'));return;}
   for(const item of values){
     const row=document.createElement('tr');
     const completed=Number(item.success||0)+Number(item.error||0)+Number(item.cancelled||0);
@@ -70,7 +70,7 @@ function renderHistory(){
   const today=new Date();today.setUTCHours(0,0,0,0);
   const start=today.getTime()-(days-1)*86400000;
   const values=localEvents().filter(e=>Date.parse(e.ts)>=start).slice(-40).reverse();
-  if(!values.length){body.append(emptyState('Пока нет сохранённых событий.'));return;}
+  if(!values.length){body.append(emptyState('История пока пуста.'));return;}
   for(const event of values){
     const row=document.createElement('tr');
     for(const value of [new Date(event.ts).toLocaleString('ru-RU'),LABELS[event.kind]||event.kind,toolNames.get(event.tool)||'Сайт',event.durationMs?fmtDuration(event.durationMs):'—']){
@@ -82,7 +82,7 @@ function renderHistory(){
 function refresh(){
   const stats=summarizeLocal(days);
   renderMetrics(stats);renderChart(stats);renderTools(stats);renderHistory();
-  status(`Личная статистика за ${days} дней. Данные находятся только в этом браузере.`);
+  status(`Статистика за ${days} дней. История хранится только в этом браузере.`);
 }
 $('#analytics-range').addEventListener('change',e=>{days=Number(e.target.value)||30;void refresh();});
 $('#analytics-refresh').addEventListener('click',refresh);
@@ -91,7 +91,7 @@ $('#analytics-export').addEventListener('click',()=>{
   const link=document.createElement('a');link.href=url;link.download='lokit-analytics.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
 });
 $('#analytics-clear').addEventListener('click',()=>{
-  if(!confirm('Удалить всю локальную статистику на этом устройстве?'))return;
+  if(!confirm('Удалить всю историю использования в этом браузере? Отменить действие нельзя.'))return;
   clearLocalEvents();void refresh();
 });
 window.addEventListener('lokit-analytics-updated',refresh);

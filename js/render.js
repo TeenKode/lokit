@@ -42,7 +42,7 @@ export function renderVideoFrame(ctx, a, b, mode, options, outWidth, outHeight) 
  */
 export function canvasSize(info, mode, options={}) {
   let w=Number(info.width),h=Number(info.height);
-  if(!Number.isFinite(w)||!Number.isFinite(h)||w<=0||h<=0)throw new Error('Не удалось определить размер исходного видео.');
+  if(!Number.isFinite(w)||!Number.isFinite(h)||w<=0||h<=0)throw new Error('Браузер не смог определить размеры исходного видео.');
   if(mode==='crop'){
     const p=clamp(Number(options.crop)||0,0,40)/100;
     w*=1-2*p;h*=1-2*p;
@@ -55,7 +55,7 @@ export function canvasSize(info, mode, options={}) {
   }
   const resolution=String(options.resolution ?? options.width ?? 'original');
   const target=resolution==='original'?null:Number(resolution);
-  if(target!==null&&(!Number.isFinite(target)||target<240||target>2160))throw new Error('Выберите допустимое разрешение: исходное, 360p, 480p, 720p, 1080p или 2160p.');
+  if(target!==null&&(!Number.isFinite(target)||target<240||target>2160))throw new Error('Выберите разрешение: исходное, 360p, 480p, 720p, 1080p или 2160p.');
   const scale=target===null?1:Math.min(1,target/Math.min(w,h));
   return {width:even(w*scale),height:even(h*scale)};
 }
