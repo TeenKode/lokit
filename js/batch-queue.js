@@ -8,9 +8,9 @@ export function isBatchTool(tool){return !!tool&&!tool.isCapture&&typeof tool.ru
 export function groupFiles(tool,files){
   if(!isBatchTool(tool))throw new Error('Запись экрана и камеры недоступна в пакетном режиме.');
   const size=Number(tool.requiredFiles||1);
-  if(!Number.isSafeInteger(size)||size<1||size>2)throw new Error('Неподдерживаемое число входных файлов.');
+  if(!Number.isSafeInteger(size)||size<1||size>2)throw new Error('Для этого инструмента требуется один или два файла.');
   const all=Array.from(files||[]);
-  if(!all.length)throw new Error('Сначала выберите файлы.');
+  if(!all.length)throw new Error('Сначала добавьте файлы.');
   if(all.length%size!==0)throw new Error(`Для «${tool.title}» файлы нужно выбирать группами по ${size}. Сейчас выбрано: ${all.length}.`);
   return Array.from({length:all.length/size},(_,index)=>all.slice(index*size,(index+1)*size));
 }
@@ -31,8 +31,8 @@ export class BatchQueue {
   }
   add(tool,files,values={}){
     const batches=groupFiles(tool,files);
-    if(this.jobs.length+batches.length>this.maxJobs)throw new Error(`В очереди может быть не более ${this.maxJobs} заданий. Очистите завершённые.`);
-    const created=batches.map(group=>({id:++nextJobId,tool,files:[...group],values:{...values},status:'pending',percent:0,description:'Ожидание',startedAt:null,endedAt:null,elapsedMs:0,result:null,error:'',abortPending:false}));
+    if(this.jobs.length+batches.length>this.maxJobs)throw new Error(`Можно добавить не более ${this.maxJobs} заданий. Сначала очистите завершённые.`);
+    const created=batches.map(group=>({id:++nextJobId,tool,files:[...group],values:{...values},status:'pending',percent:0,description:'В очереди',startedAt:null,endedAt:null,elapsedMs:0,result:null,error:'',abortPending:false}));
     this.jobs.push(...created);this.notify();return created;
   }
   async start(){
@@ -61,7 +61,7 @@ export class BatchQueue {
   retryFailed(){
     let count=0;
     for(const job of this.jobs)if(job.status==='error'||job.status==='cancelled'){
-      Object.assign(job,{status:'pending',percent:0,description:'Ожидание',startedAt:null,endedAt:null,elapsedMs:0,result:null,error:'',abortPending:false});count++;
+      Object.assign(job,{status:'pending',percent:0,description:'В очереди',startedAt:null,endedAt:null,elapsedMs:0,result:null,error:'',abortPending:false});count++;
     }
     if(count)this.notify();return count;
   }
@@ -77,19 +77,19 @@ export class BatchQueue {
         const job=this.jobs.find(x=>x.status==='pending');
         if(!job)break;
         const controller=new AbortController();this.active={id:job.id,controller};
-        job.status='running';job.percent=null;job.description='Подготовка…';job.startedAt=this.now();job.abortPending=false;this.notify();
+        job.status='running';job.percent=null;job.description='Подготавливаем…';job.startedAt=this.now();job.abortPending=false;this.notify();
         try{
           const result=await this.execute(job,controller.signal,info=>{
             if(job.status!=='running'||job.abortPending)return;
             const data=typeof info==='number'?{percent:info}:info||{};
             if(Number.isFinite(data.percent)&&data.percent!==null){job.percent=Math.max(job.percent||0,Math.min(99,Math.max(0,Number(data.percent))));}
             if(typeof data.description==='string')job.description=data.description.slice(0,150);
-            else if(data.stage==='finalizing')job.description='Завершение…';
-            else if(data.stage==='processing')job.description='Обработка…';
+            else if(data.stage==='finalizing')job.description='Сохраняем…';
+            else if(data.stage==='processing')job.description='Обрабатываем…';
             this.notify();
           });
           if(controller.signal.aborted||job.abortPending)throw abortError();
-          if(!result || !(result.blob instanceof Blob) && !Array.isArray(result.rows))throw new Error('Инструмент не создал результат.');
+          if(!result || !(result.blob instanceof Blob) && !Array.isArray(result.rows))throw new Error('Не удалось получить результат обработки.');
           job.result=result;job.status='success';job.description='Готово';job.percent=100;
         }catch(error){
           job.result=null;job.percent=100;

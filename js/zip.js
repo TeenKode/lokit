@@ -26,21 +26,21 @@ export function uniqueZipEntries(entries){
 }
 function view(n){return new DataView(new ArrayBuffer(n));}
 function u8(v){return new Uint8Array(v.buffer);}
-function validateSize(total){if(total>MAX_ZIP_SIZE)throw new RangeError('ZIP превышает 4 ГБ. Скачайте результаты по отдельности.');}
+function validateSize(total){if(total>MAX_ZIP_SIZE)throw new RangeError('Размер ZIP превышает 4 ГБ. Скачайте готовые файлы по отдельности.');}
 export async function createZip(entries,{signal,onProgress=()=>{},chunkSize=1024*1024}={}){
-  if(!Array.isArray(entries)||!entries.length)throw new Error('Нет готовых результатов для ZIP.');
+  if(!Array.isArray(entries)||!entries.length)throw new Error('Нет готовых файлов для ZIP-архива.');
   if(!Number.isSafeInteger(chunkSize)||chunkSize<1024)throw new RangeError('Неверный размер блока.');
   const files=uniqueZipEntries(entries);
   const totalBytes=files.reduce((n,f)=>n+f.blob.size,0);
-  if(!Number.isSafeInteger(totalBytes))throw new RangeError('Размер ZIP слишком велик.');
+  if(!Number.isSafeInteger(totalBytes))throw new RangeError('Не удалось создать ZIP: слишком большой размер.');
   let estimate=22;
   for(const f of files){
     const encoded=utf8.encode(f.name);
-    if(encoded.length>65535)throw new RangeError('Слишком длинное имя файла.');
-    if(f.blob.size>MAX_ZIP_SIZE)throw new RangeError('Файл слишком велик для ZIP32.');
+    if(encoded.length>65535)throw new RangeError('Не удалось создать ZIP: слишком длинное имя файла.');
+    if(f.blob.size>MAX_ZIP_SIZE)throw new RangeError('Этот файл слишком велик для ZIP-архива.');
     estimate+=f.blob.size+76+2*encoded.length;
   }
-  if(files.length>65535)throw new RangeError('Слишком много файлов.');
+  if(files.length>65535)throw new RangeError('Не удалось создать ZIP: слишком много файлов.');
   validateSize(estimate);
   const parts=[],central=[];
   let offset=0,hashed=0;
