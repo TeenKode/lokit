@@ -25,7 +25,16 @@ try:
     assert page.locator('.sidebar-favorite').first.is_visible()
    else:
     page.locator('#tool-sidebar').wait_for(state='visible',timeout=4000)
-    assert not page.locator('#sidebar-toggle').is_visible(),width
+    assert page.locator('#sidebar-toggle').is_visible(),width
+    page.locator('#sidebar-close').click()
+    assert not page.locator('#tool-sidebar').is_visible(),width
+    assert page.locator('#sidebar-toggle').get_attribute('aria-expanded')=='false'
+    page.locator('#sidebar-toggle').click()
+    page.locator('#tool-sidebar').wait_for(state='visible',timeout=4000)
+    assert page.locator('#sidebar-toggle').get_attribute('aria-expanded')=='true'
+   # Ctrl+K must focus the search regardless of previous focus.
+   page.keyboard.press('Control+k')
+   assert page.locator('#search').evaluate('(input)=>document.activeElement===input'),width
    # Search only matching group items, keeping category grouping.
    search=page.locator('#search')
    search.fill('субтитры')
@@ -55,12 +64,21 @@ try:
    assert group.get_attribute('open') is not None,width
    page.locator('.tool-card[data-tool-id="video-trim"]').click()
    assert page.locator('#workspace').is_visible()
+   assert page.locator('#sidebar-recent').is_visible() if not mobile else True
+   assert page.locator('#sidebar-recent-name').text_content()=='Обрезка видео'
    assert page.locator('.tool-card[data-tool-id="video-trim"]').get_attribute('aria-current')=='true'
    if mobile:
     page.locator('#tool-sidebar').wait_for(state='hidden',timeout=4000)
     page.locator('#sidebar-toggle').click()
+    assert page.locator('#sidebar-recent').is_visible()
+    # Focus remains inside the modal drawer when tabbing.
+    page.locator('#sidebar-close').focus()
     page.keyboard.press('Escape')
     page.locator('#tool-sidebar').wait_for(state='hidden',timeout=4000)
+    assert page.locator('#sidebar-toggle').get_attribute('aria-expanded')=='false'
+   else:
+    # Desktop catalog stays open while tools run.
+    assert page.locator('#tool-sidebar').is_visible()
    assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),width
    page.close()
    print('PASS sidebar',width)
