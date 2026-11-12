@@ -12,6 +12,7 @@ export function positionInWindow(time,view){return view.span?100*(time-view.star
 export function stepFrame(time,frameRate,direction,duration){
   const rate=Number(frameRate);
   if(!Number.isFinite(rate)||rate<=0||rate>240)throw new Error('Неподдерживаемая частота кадров');
+  if(direction!==-1&&direction!==1)throw new RangeError('Направление шага должно быть -1 или 1');
   return Math.round(clampTime(Number(time)+direction/rate,duration)*1000)/1000;
 }
 export function formatTimecode(seconds){
