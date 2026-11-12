@@ -12,6 +12,16 @@ let requests=0;globalThis.fetch=()=>{requests++;throw new Error('No network anal
 const a=await import('./.tmp-modules/analytics.js');
 assert.equal(memory.has('lokit:analytics:queue:v1'),false);
 assert.equal(memory.has('lokit:analytics:share:v1'),false);
+// HTTP and restricted browser contexts may not expose Web Crypto at all.
+const originalCrypto=globalThis.crypto;
+try {
+  Object.defineProperty(globalThis,'crypto',{configurable:true,value:undefined});
+  assert.doesNotThrow(()=>a.recordEvent('view','site'));
+  assert.match(a.localEvents().at(-1).id,/^local-\d+-/);
+} finally {
+  Object.defineProperty(globalThis,'crypto',{configurable:true,value:originalCrypto});
+}
+a.clearLocalEvents();
 a.recordEvent('view');a.recordEvent('open','video-trim');
 a.recordOperation('video-trim','success',[{size:1024}],{blob:{size:512}},2150);
 const summary=a.summarizeLocal(30);
