@@ -97,7 +97,9 @@ export const tools=[
 const parseStamp=str=>{
   const found=String(str).trim().match(/^(\d{1,2}):(\d\d):(\d\d)[,.](\d{3})$/);
   if(!found)return null;
-  return (Number(found[1])*3600+Number(found[2])*60+Number(found[3]))*1000+Number(found[4]);
+  const minutes=Number(found[2]),seconds=Number(found[3]);
+  if(minutes>59||seconds>59)return null;
+  return (Number(found[1])*3600+minutes*60+seconds)*1000+Number(found[4]);
 };
 const stamp=(ms,sep=',')=>{
   ms=Math.max(0,Math.round(ms));
@@ -127,7 +129,7 @@ function parseSrt(source){
     const match=lines[pos].match(/(\d{1,2}:\d\d:\d\d[,.]\d{3})\s+-->\s+(\d{1,2}:\d\d:\d\d[,.]\d{3})/);
     if(!match)return null;
     return {start:parseStamp(match[1]),end:parseStamp(match[2]),text:lines.slice(pos+1).join('\n')};
-  }).filter(c=>c&&c.start!==null&&c.end!==null);
+  }).filter(c=>c&&c.start!==null&&c.end!==null&&c.end>c.start);
 }
 function serializeSrt(cues){return cues.map((cue,i)=>`${i+1}\n${stamp(cue.start)} --> ${stamp(cue.end)}\n${cue.text}`).join('\n\n')+'\n';}
 function shiftSubtitle(text,seconds){
