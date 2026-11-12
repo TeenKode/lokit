@@ -8,6 +8,11 @@ export function timelineWindow(duration,zoom=1,center=0){
   const start=Math.min(Math.max(0,center-span/2),total-span);
   return {start,end:start+span,span,zoom:factor};
 }
+/** Clamp externally supplied trim bounds and keep their chronological order. */
+export function normalizeTimelineRange(start,end,duration){
+  const a=clampTime(start,duration),b=clampTime(end,duration);
+  return {start:Math.min(a,b),end:Math.max(a,b)};
+}
 export function positionInWindow(time,view){return view.span?100*(time-view.start)/view.span:0;}
 export function stepFrame(time,frameRate,direction,duration){
   const rate=Number(frameRate);
@@ -92,7 +97,7 @@ export function mountPrecisionTimeline(host,{duration=0,onSeek=()=>{},onRangeCha
   return {
     root,
     setDuration(value){total=Math.max(0,Number(value)||0);center=total/2;selected={start:0,end:total};current=0;markers();refreshInputs();},
-    setRange(start,end){selected={start:clampTime(start,total),end:clampTime(end,total)};markers();refreshInputs();},
+    setRange(start,end){selected=normalizeTimelineRange(start,end,total);markers();refreshInputs();},
     setPlayhead(time){current=clampTime(time,total);markers();},
     step:frame,
     zoomTo(factor){zoom=Math.min(32,Math.max(1,factor));center=current;markers();},
