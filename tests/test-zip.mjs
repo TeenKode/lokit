@@ -13,6 +13,20 @@ const samples=[
 ];
 const names=uniqueZipEntries(samples).map(x=>x.name);
 assert.equal(new Set(names).size,4);
+// A large batch of identically named files must stay linear rather than
+// repeatedly scanning every suffix from (2) for each additional file.
+const repeated=uniqueZipEntries(Array.from({length:2000},()=>({name:'duplicate.txt',blob:new Blob([])})));
+assert.equal(repeated[0].name,'duplicate.txt');
+assert.equal(repeated[1].name,'duplicate (2).txt');
+assert.equal(repeated.at(-1).name,'duplicate (2000).txt');
+assert.equal(new Set(repeated.map(entry=>entry.name)).size,2000);
+// Explicit suffixed filenames and case variants must never be overwritten.
+assert.deepEqual(uniqueZipEntries([
+  {name:'Report.txt',blob:new Blob([])},
+  {name:'report (2).txt',blob:new Blob([])},
+  {name:'REPORT.txt',blob:new Blob([])},
+  {name:'report.txt',blob:new Blob([])}
+]).map(entry=>entry.name),['Report.txt','report (2).txt','REPORT (3).txt','report (4).txt']);
 let percent=-1;
 const zip=await createZip(samples,{chunkSize:1024,onProgress:x=>{assert(x.percent>=percent);percent=x.percent;}});
 assert.equal(zip.type,'application/zip');assert.equal(percent,100);
