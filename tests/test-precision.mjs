@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {createEditHistory} from '../js/edit-history.js';
-import {clampTime,timelineWindow,positionInWindow,stepFrame,parseTimecode,formatTimecode} from '../js/precision-timeline.js';
+import {clampTime,normalizeTimelineRange,timelineWindow,positionInWindow,stepFrame,parseTimecode,formatTimecode} from '../js/precision-timeline.js';
 let now=1000;
 const history=createEditHistory({start:0,end:4},{limit:3,mergeWindow:200,clock:()=>now});
 assert.equal(history.canUndo,false);
@@ -39,4 +39,8 @@ assert.deepEqual(timelineWindow(20,4,0),{start:0,end:5,span:5,zoom:4});
 assert.deepEqual(timelineWindow(20,4,20),{start:15,end:20,span:5,zoom:4});
 assert.equal(positionInWindow(10,timelineWindow(20,4,10)),50);
 assert.equal(clampTime(25,20),20);
+assert.deepEqual(normalizeTimelineRange(8,2,10),{start:2,end:8},'Reverse range is ordered');
+assert.deepEqual(normalizeTimelineRange(-5,30,10),{start:0,end:10},'Out-of-bounds range is clamped');
+assert.deepEqual(normalizeTimelineRange(7,3,5),{start:3,end:5},'Clamp before sorting');
+assert.deepEqual(normalizeTimelineRange(2,8,10),{start:2,end:8},'Valid range stays unchanged');
 console.log('Precision timeline, timecodes, undo/redo, bounded history: PASS');
