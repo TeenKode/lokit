@@ -7,6 +7,9 @@ const TABLE=Uint32Array.from({length:256},(_,n)=>{
   return n>>>0;
 });
 const MAX_ZIP_SIZE=0xffffffff;
+// DOS ZIP timestamps cannot represent dates before 1980-01-01. Use a valid,
+// reproducible date instead of the invalid all-zero date/time fields.
+const ZIP_DOS_DATE=0x0021; // 1980-01-01
 const abort=()=>new DOMException('Создание ZIP отменено','AbortError');
 export function safeZipName(name){
   const cleaned=String(name||'result.bin').replace(/[\\/\x00-\x1f\x7f]/g,'_').replace(/^\.+/,'').trim();
@@ -60,13 +63,13 @@ export async function createZip(entries,{signal,onProgress=()=>{},chunkSize=1024
     crc=(crc^0xffffffff)>>>0;
     const local=view(30);
     local.setUint32(0,0x04034b50,true);local.setUint16(4,20,true);local.setUint16(6,0x0800,true);
-    local.setUint16(8,0,true);local.setUint32(10,0,true);local.setUint32(14,crc,true);
+    local.setUint16(8,0,true);local.setUint16(10,0,true);local.setUint16(12,ZIP_DOS_DATE,true);local.setUint32(14,crc,true);
     local.setUint32(18,file.blob.size,true);local.setUint32(22,file.blob.size,true);
     local.setUint16(26,name.length,true);
     parts.push(u8(local),name,file.blob);
     const entry=view(46);
     entry.setUint32(0,0x02014b50,true);entry.setUint16(4,20,true);entry.setUint16(6,20,true);entry.setUint16(8,0x0800,true);
-    entry.setUint16(10,0,true);entry.setUint32(12,0,true);entry.setUint32(16,crc,true);
+    entry.setUint16(10,0,true);entry.setUint16(12,0,true);entry.setUint16(14,ZIP_DOS_DATE,true);entry.setUint32(16,crc,true);
     entry.setUint32(20,file.blob.size,true);entry.setUint32(24,file.blob.size,true);
     entry.setUint16(28,name.length,true);entry.setUint32(42,offset,true);
     central.push(u8(entry),name);
