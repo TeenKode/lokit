@@ -30,6 +30,8 @@ assert.equal(parseTimecode('02:03,4'),123.4);
 assert.equal(parseTimecode('1.250'),1.25);
 assert.ok(Number.isNaN(parseTimecode('00:65.000')));
 assert.equal(formatTimecode(3723.045),'01:02:03.045');
+for(const invalid of [NaN,Infinity,-Infinity,1e308])assert.equal(formatTimecode(invalid),'00:00:00.000',`Invalid timecode: ${invalid}`);
+assert.equal(formatTimecode(-3),'00:00:00.000');
 assert.equal(stepFrame(2,25,1,4),2.04);
 assert.equal(stepFrame(0,30,-1,4),0);
 assert.equal(stepFrame(4,30,1,4),4);
