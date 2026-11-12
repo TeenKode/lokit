@@ -21,12 +21,16 @@ export function formatTimecode(seconds){
 }
 export function parseTimecode(text){
   const value=String(text??'').trim().replace(',','.');
-  if(/^\d+(?:\.\d{1,3})?$/.test(value))return Number(value);
+  if(/^\d+(?:\.\d{1,3})?$/.test(value)){
+    const seconds=Number(value);
+    return Number.isFinite(seconds)?seconds:NaN;
+  }
   const parts=value.match(/^(?:(\d+):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?$/);
   if(!parts)return NaN;
   const h=Number(parts[1]||0),m=Number(parts[2]),s=Number(parts[3]);
   if(m>59||s>59)return NaN;
-  return h*3600+m*60+s+Number((parts[4]||'0').padEnd(3,'0'))/1000;
+  const seconds=h*3600+m*60+s+Number((parts[4]||'0').padEnd(3,'0'))/1000;
+  return Number.isFinite(seconds)?seconds:NaN;
 }
 /** The DOM lane exposes seconds, but every seek/range input operates in whole milliseconds. */
 export function mountPrecisionTimeline(host,{duration=0,onSeek=()=>{},onRangeChange=()=>{},getPlayhead=()=>0}={}){
