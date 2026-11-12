@@ -18,7 +18,11 @@ const summary=a.summarizeLocal(30);
 assert.equal(summary.kinds.find(e=>e.kind==='success').count,1);
 assert.equal(summary.tools[0].inputBytes,1024);
 assert.equal(summary.tools[0].outputBytes,512);
-assert.equal(JSON.parse(a.exportLocalEvents()).events.length,3);
+// Invalid metadata from a partial or non-File input must not erase valid byte counts.
+a.recordOperation('video-trim','success',[{size:1024},{size:NaN},{size:-10},{size:512}],{blob:{size:0}},10);
+assert.equal(a.summarizeLocal(30).tools[0].inputBytes,2560);
+assert.equal(a.summarizeLocal(30).kinds.find(e=>e.kind==='success').count,2);
+assert.equal(JSON.parse(a.exportLocalEvents()).events.length,4);
 for(let i=0;i<1300;i++)a.recordEvent('open','video-trim');
 assert.equal(a.localEvents().length,1200);
 assert.equal(requests,0);
