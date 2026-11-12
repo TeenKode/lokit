@@ -19,7 +19,7 @@ assert.equal(zip.type,'application/zip');assert.equal(percent,100);
 const dir=mkdtempSync(join(tmpdir(),'lokit-zip-'));
 try{
   const filename=join(dir,'test.zip');writeFileSync(filename,new Uint8Array(await zip.arrayBuffer()));
-  const code=`import zipfile,sys\np=sys.argv[1]\nwith zipfile.ZipFile(p) as z:\n assert z.testzip() is None\n assert z.namelist()==['пример.srt','пример (2).srt','movie.mp4','empty.txt'],z.namelist()\n assert z.read('пример.srt')=='привет\\n'.encode('utf8')\n assert z.read('пример (2).srt')=='вторая запись\\n'.encode('utf8')\n assert z.read('movie.mp4')==bytes([0,0,1,2,3,254,255])\n assert z.read('empty.txt')==b''`;
+  const code=`import zipfile,sys\np=sys.argv[1]\nwith zipfile.ZipFile(p) as z:\n assert z.testzip() is None\n assert all(i.date_time==(1980,1,1,0,0,0) for i in z.infolist()),[i.date_time for i in z.infolist()]\n assert z.namelist()==['пример.srt','пример (2).srt','movie.mp4','empty.txt'],z.namelist()\n assert z.read('пример.srt')=='привет\\n'.encode('utf8')\n assert z.read('пример (2).srt')=='вторая запись\\n'.encode('utf8')\n assert z.read('movie.mp4')==bytes([0,0,1,2,3,254,255])\n assert z.read('empty.txt')==b''`;
   const py=spawnSync('python',['-c',code,filename],{encoding:'utf8'});
   assert.equal(py.status,0,py.stderr||py.stdout);
 }finally{rmSync(dir,{recursive:true,force:true});}
