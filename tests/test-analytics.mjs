@@ -17,7 +17,7 @@ const originalCrypto=globalThis.crypto;
 try {
   Object.defineProperty(globalThis,'crypto',{configurable:true,value:undefined});
   assert.doesNotThrow(()=>a.recordEvent('view','site'));
-  assert.match(a.localEvents().at(-1).id,/^local-\\d+-/);
+  assert.match(a.localEvents().at(-1).id,/^local-\d+-/);
 } finally {
   Object.defineProperty(globalThis,'crypto',{configurable:true,value:originalCrypto});
 }
