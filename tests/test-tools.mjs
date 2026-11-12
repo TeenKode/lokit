@@ -19,4 +19,15 @@ const shifted=await get('subtitle-shift').run({files:[file],values:{seconds:'2'}
 assert.match(await shifted.blob.text(),/00:00:03,100 --> 00:00:05,500/);
 const merged=await get('subtitle-merger').run({files:[file,new File([original.replace('Привет, мир!','Второй')],'x.srt')]});
 assert.match(await merged.blob.text(),/Второй/);
+
+// Invalid minute/second fields and non-positive cue durations are not valid SRT cues.
+const invalidClock='1\n00:61:01,000 --> 00:61:03,000\nInvalid minutes\n\n2\n00:00:70,000 --> 00:00:72,000\nInvalid seconds\n\n3\n00:00:05,000 --> 00:00:02,000\nReversed cue\n';
+await assert.rejects(
+  get('subtitle-shift').run({files:[new File([invalidClock],'invalid.srt')],values:{seconds:'1'}}),
+  /Не найдены корректные временные метки SRT/
+);
+const mixed=await get('subtitle-merger').run({files:[new File([invalidClock+original],'mixed.srt'),file]});
+assert.doesNotMatch(await mixed.blob.text(),/Invalid minutes|Invalid seconds|Reversed cue/);
+assert.match(await mixed.blob.text(),/Привет, мир!/);
+
 console.log('Tools tests: 24 unique executable definitions, SRT/VTT (including short timestamps), shifts, merge — PASS');
