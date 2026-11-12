@@ -39,4 +39,20 @@ assert.deepEqual(timelineWindow(20,4,0),{start:0,end:5,span:5,zoom:4});
 assert.deepEqual(timelineWindow(20,4,20),{start:15,end:20,span:5,zoom:4});
 assert.equal(positionInWindow(10,timelineWindow(20,4,10)),50);
 assert.equal(clampTime(25,20),20);
+
+// Invalid capacities must retain a valid current snapshot and a bounded undo stack.
+for(const badLimit of [0,-1,NaN,Infinity,1.5]){
+  const h=createEditHistory({step:0},{limit:badLimit});
+  for(let i=1;i<=100;i++)h.record({step:i});
+  assert.deepEqual(h.current,{step:100});
+  let undos=0;
+  while(h.canUndo){assert.ok(h.undo());undos++;}
+  assert.equal(undos,80,'Invalid history limit falls back to the default 80 snapshots');
+  assert.deepEqual(h.current,{step:20});
+}
+const tiny=createEditHistory({step:0},{limit:1});
+tiny.record({step:1});tiny.record({step:2});
+assert.deepEqual(tiny.undo(),{step:1});
+assert.equal(tiny.canUndo,false,'Valid limit of one retains exactly one undo step');
+
 console.log('Precision timeline, timecodes, undo/redo, bounded history: PASS');

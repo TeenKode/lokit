@@ -1,5 +1,7 @@
 /** Undo/redo state independent of DOM. Stores data only, never File objects. */
 export function createEditHistory(initial,{limit=80,mergeWindow=300,clock=()=>Date.now()}={}){
+  // Invalid limits must not evict the sole snapshot or disable history eviction.
+  const capacity=Number.isSafeInteger(limit)&&limit>=1?limit:80;
   const copy=value=>JSON.parse(JSON.stringify(value));
   let states=[copy(initial)],index=0,lastKey='',lastTime=-Infinity;
   const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
@@ -11,7 +13,7 @@ export function createEditHistory(initial,{limit=80,mergeWindow=300,clock=()=>Da
     else{
       states=states.slice(0,index+1);
       states.push(copy(value));
-      if(states.length>limit+1)states.shift();
+      if(states.length>capacity+1)states.shift();
       index=states.length-1;
     }
     lastKey=mergeKey;lastTime=now;
