@@ -19,7 +19,10 @@ export function recordEvent(kind,tool='site',data={}){
   save([...localEvents(),event].slice(-MAX_HISTORY));
 }
 export function recordOperation(tool,outcome,files,result,durationMs){
-  const inputBytes=Array.isArray(files)?files.reduce((s,f)=>s+(f?.size||0),0):0;
+  const inputBytes=Array.isArray(files)?files.reduce((sum,file)=>{
+    const size=Number(file?.size);
+    return sum+(Number.isFinite(size)&&size>=0?size:0);
+  },0):0;
   recordEvent(outcome,tool,{durationMs,inputBytes,outputBytes:result?.blob?.size||0});
 }
 export function summarizeLocal(days=30){
