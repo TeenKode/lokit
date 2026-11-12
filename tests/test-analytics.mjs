@@ -30,4 +30,15 @@ localStorage.setItem('lokit:analytics:v1',JSON.stringify([
 ]));
 assert.equal(a.summarizeLocal(7).kinds.find(e=>e.kind==='success').count,1);
 assert.equal(a.summarizeLocal(7).kinds.some(e=>e.kind==='error'),false);
+// Imported local history can contain JSON-valid non-string timestamps.
+// Date.parse(2020) is finite, but summarizeLocal() must never call .slice() on a number.
+localStorage.setItem('lokit:analytics:v1',JSON.stringify([
+ {id:'numeric',ts:2020,kind:'open',tool:'video-trim'},
+ {id:'null',ts:null,kind:'open',tool:'video-trim'},
+ {id:'object',ts:{},kind:'open',tool:'video-trim'},
+ {id:'valid',ts:new Date().toISOString(),kind:'success',tool:'video-trim'}
+]));
+assert.deepEqual(a.localEvents().map(e=>e.id),['valid']);
+assert.equal(a.summarizeLocal(7).kinds.find(e=>e.kind==='success').count,1);
+assert.equal(a.summarizeLocal(7).kinds.some(e=>e.kind==='open'),false);
 console.log('Local analytics: private, export, clear, history limit and time windows — PASS');
