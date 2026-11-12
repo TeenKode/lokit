@@ -13,12 +13,18 @@ const a=await import('./.tmp-modules/analytics.js');
 assert.equal(memory.has('lokit:analytics:queue:v1'),false);
 assert.equal(memory.has('lokit:analytics:share:v1'),false);
 a.recordEvent('view');a.recordEvent('open','video-trim');
+// Missing or malformed metadata must not prevent local tracking.
+a.recordEvent('view','site',null);
+a.recordEvent('view','site',undefined);
+a.recordEvent('view','site',42);
+assert.equal(a.localEvents().length,5);
+
 a.recordOperation('video-trim','success',[{size:1024}],{blob:{size:512}},2150);
 const summary=a.summarizeLocal(30);
 assert.equal(summary.kinds.find(e=>e.kind==='success').count,1);
 assert.equal(summary.tools[0].inputBytes,1024);
 assert.equal(summary.tools[0].outputBytes,512);
-assert.equal(JSON.parse(a.exportLocalEvents()).events.length,3);
+assert.equal(JSON.parse(a.exportLocalEvents()).events.length,6);
 for(let i=0;i<1300;i++)a.recordEvent('open','video-trim');
 assert.equal(a.localEvents().length,1200);
 assert.equal(requests,0);
