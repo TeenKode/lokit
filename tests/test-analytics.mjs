@@ -30,4 +30,16 @@ localStorage.setItem('lokit:analytics:v1',JSON.stringify([
 ]));
 assert.equal(a.summarizeLocal(7).kinds.find(e=>e.kind==='success').count,1);
 assert.equal(a.summarizeLocal(7).kinds.some(e=>e.kind==='error'),false);
+// Imported or legacy records may contain string, negative or overflowing durations.
+const now=new Date().toISOString();
+localStorage.setItem('lokit:analytics:v1',JSON.stringify([
+ {id:'string',ts:now,kind:'success',tool:'video-trim',durationMs:'125'},
+ {id:'negative',ts:now,kind:'error',tool:'video-trim',durationMs:-50},
+ {id:'invalid',ts:now,kind:'cancelled',tool:'video-trim',durationMs:'not-a-number'},
+ {id:'overflow',ts:now,kind:'success',tool:'video-trim',durationMs:1e100},
+ {id:'valid',ts:now,kind:'success',tool:'video-trim',durationMs:75}
+]));
+const durationSummary=a.summarizeLocal(7);
+assert.equal(durationSummary.tools[0].durationMs,86400200);
+assert.equal(typeof durationSummary.tools[0].durationMs,'number');
 console.log('Local analytics: private, export, clear, history limit and time windows — PASS');
