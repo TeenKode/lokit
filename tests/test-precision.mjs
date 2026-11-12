@@ -34,6 +34,10 @@ assert.equal(stepFrame(2,25,1,4),2.04);
 assert.equal(stepFrame(0,30,-1,4),0);
 assert.equal(stepFrame(4,30,1,4),4);
 assert.throws(()=>stepFrame(1,0,1,4));
+for(const invalid of [0,2,-2,NaN,Infinity,-Infinity,undefined,'1']){
+  assert.throws(()=>stepFrame(2,25,invalid,4),RangeError,`Invalid frame direction ${String(invalid)} must not corrupt the playhead`);
+}
+assert.equal(stepFrame(2,25,-1,4),1.96,'Valid backward frame step remains supported');
 assert.deepEqual(timelineWindow(20,4,10),{start:7.5,end:12.5,span:5,zoom:4});
 assert.deepEqual(timelineWindow(20,4,0),{start:0,end:5,span:5,zoom:4});
 assert.deepEqual(timelineWindow(20,4,20),{start:15,end:20,span:5,zoom:4});
