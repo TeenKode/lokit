@@ -20,4 +20,18 @@ assert.equal(fields.start.value,'0');assert.equal(fields.width.value,'720');
 assert.deepEqual(readPreset(tool),{});
 store.set('lokit:tool-settings:v1:video-trim',JSON.stringify({start:'2000',width:'invalid',unknown:'secret'}));
 assert.equal(applyPreset(tool,form),0,'Invalid and unknown options are ignored');
+// Invalid form values must never be persisted (including values that truncate to valid ones).
+fields.start.value='2000';
+fields.end.value='-1';
+fields.width.value='invalid';
+assert.equal(savePreset(tool,form),true);
+assert.deepEqual(readPreset(tool),{});
+fields.start.value=' '.repeat(81)+'2';
+fields.end.value='Infinity';
+fields.width.value='1080';
+assert.equal(savePreset(tool,form),true);
+assert.deepEqual(readPreset(tool),{width:'1080'});
+fields.start.value='2.5';
+fields.end.value='6.3';
+fields.width.value='720';
 console.log('Presets: save, restore, reset, validation, no file data — PASS');

@@ -29,9 +29,16 @@ export function savePreset(tool,form,store=globalThis.localStorage){
   const result={};
   for(const def of tool.options||[]){
     const field=form.elements.namedItem(def.key);if(!field)continue;
-    const value=String(field.value).slice(0,limit);
-    if(def.type==='number'&&(!value||!Number.isFinite(Number(value))))continue;
-    result[def.key]=value;
+    const raw=String(field.value);
+    // Reject rather than truncate: truncation can turn an invalid value into a valid one.
+    if(raw.length>limit)continue;
+    if(def.type==='select'&&!def.choices?.some(([choice])=>String(choice)===raw))continue;
+    if(def.type==='number'){
+      if(!raw.trim())continue;
+      const n=Number(raw);
+      if(!Number.isFinite(n)||(def.min!==undefined&&n<Number(def.min))||(def.max!==undefined&&n>Number(def.max)))continue;
+    }
+    result[def.key]=raw;
   }
   try{store.setItem(key(tool),JSON.stringify(result));return true;}catch{return false;}
 }
