@@ -34,7 +34,7 @@ export function summarizeLocal(days=30){
       const item=tools.get(event.tool)||{tool:event.tool,opens:0,success:0,error:0,cancelled:0,durationMs:0,inputBytes:0,outputBytes:0};
       if(event.kind==='open')item.opens++;
       if(['success','error','cancelled'].includes(event.kind)){
-        item[event.kind]++;item.durationMs+=event.durationMs||0;
+        item[event.kind]++;item.durationMs+=clamp(event.durationMs,86400000);
         if(event.kind==='success'){item.inputBytes+=event.inputBytes||0;item.outputBytes+=event.outputBytes||0;}
       }
       tools.set(event.tool,item);
