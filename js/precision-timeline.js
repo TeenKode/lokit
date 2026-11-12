@@ -16,7 +16,8 @@ export function stepFrame(time,frameRate,direction,duration){
 }
 export function formatTimecode(seconds){
   const value=Number(seconds);
-  const ms=Number.isFinite(value)?Math.max(0,Math.round(value*1000)):0;
+  const milliseconds=Math.round(value*1000);
+  const ms=Number.isFinite(milliseconds)?Math.max(0,milliseconds):0;
   const h=Math.floor(ms/3600000),m=Math.floor(ms/60000)%60,s=Math.floor(ms/1000)%60;
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms%1000).padStart(3,'0')}`;
 }
