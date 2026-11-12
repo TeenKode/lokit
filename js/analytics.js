@@ -8,7 +8,7 @@ const save=value=>{try{localStorage.setItem(KEY,JSON.stringify(value));}catch{}n
 const clamp=(n,max)=>Number.isFinite(Number(n))?Math.max(0,Math.min(max,Math.round(Number(n)))):0;
 // От прежней опциональной внешней статистики не остаётся очереди отправки.
 if(typeof localStorage!=='undefined')for(const key of ['lokit:analytics:queue:v1','lokit:analytics:share:v1','lokit:analytics:global-snapshot:v1'])try{localStorage.removeItem(key);}catch{}
-export function localEvents(){return read().filter(e=>e&&KINDS.has(e.kind)&&Number.isFinite(Date.parse(e.ts)));}
+export function localEvents(){return read().filter(e=>e&&KINDS.has(e.kind)&&typeof e.ts==='string'&&Number.isFinite(Date.parse(e.ts)));}
 export function clearLocalEvents(){save([]);}
 export function exportLocalEvents(){return JSON.stringify({format:'lokit-analytics-v1',exportedAt:new Date().toISOString(),events:localEvents()},null,2);}
 export function recordEvent(kind,tool='site',data={}){
