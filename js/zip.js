@@ -14,12 +14,21 @@ export function safeZipName(name){
 }
 export function uniqueZipEntries(entries){
   const counts=new Set();
+  // Track the next available suffix per original name to avoid rescanning
+  // thousands of occupied suffixes for large batches of identical filenames.
+  const nextSuffix=new Map();
   return entries.map((entry)=>{
     if(!(entry?.blob instanceof Blob))throw new TypeError('Для ZIP нужен результат Blob.');
     const name=safeZipName(entry.name),dot=name.lastIndexOf('.');
     const base=dot>0?name.slice(0,dot):name,ext=dot>0?name.slice(dot):'';
-    let candidate=name,n=2;
-    while(counts.has(candidate.toLocaleLowerCase('en')))candidate=`${base} (${n++})${ext}`;
+    const key=name.toLocaleLowerCase('en');
+    let candidate=name;
+    if(counts.has(key)){
+      let n=nextSuffix.get(key)??2;
+      do {candidate=`${base} (${n++})${ext}`;}
+      while(counts.has(candidate.toLocaleLowerCase('en')));
+      nextSuffix.set(key,n);
+    }
     counts.add(candidate.toLocaleLowerCase('en'));
     return {name:candidate,blob:entry.blob};
   });
