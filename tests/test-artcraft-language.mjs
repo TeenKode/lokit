@@ -57,6 +57,7 @@ const expected={
  cadcraft:['execute','ui.language',{lang:'ru'}],
  filmcraft:['execute','prefs.set',{key:'general.interfaceLanguage',value:'ru'}],
  effectcraft:['execute','prefs.set',{key:'general.language',value:'ru'}],
+ lightcraft:['command','ui.set',{language:'ru'}],
  vectorcraft:['execute','app.language',{lang:'ru'}],
  figcraft:['execute','pref.language',{language:'ru'}]
 };
@@ -66,7 +67,7 @@ for(const [name,[method,command,params]] of Object.entries(expected)){
  const window={[name]:{[method]:async(cmd,data)=>{
    hits++;
    assert.equal(cmd,command);
-   assert.deepEqual(data,params);
+   assert.deepEqual(name==='lightcraft'?JSON.parse(data):data,params);
    return {ok:true};
  }}};
  assert.equal(await applyNativeRussian(window,name,{attempts:2,sleep:async()=>{}}),true,name);
