@@ -1,0 +1,55 @@
+name: Deploy Lokit with PdfCraft to GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: lokit-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate PDF integration
+        run: |
+          python tests/test-pdfcraft.py
+          python tests/test-structure.py
+          node --check js/pdf-page.js
+          node scripts/release.mjs --check
+      - name: Retrieve pinned PdfCraft Web release
+        run: python scripts/vendor-pdfcraft.py
+      - name: Validate bundled WebAssembly assets
+        run: |
+          test -s pdfcraft/index.html
+          find pdfcraft -name '*.wasm' -size +1M -print -quit | grep -q .
+          test -s pdfcraft/offline-assets.json
+          test -s pdfcraft/NOTICE
+          test -s pdfcraft/LICENSE-MIT
+          test -s pdfcraft/LICENSE-APACHE
+      - name: Prepare static website
+        run: |
+          mkdir _site
+          cp .nojekyll *.html *.css sw.js manifest.webmanifest _site/
+          cp -a icons js assets pdfcraft _site/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - uses: actions/deploy-pages@v4
+        id: deployment

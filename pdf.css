@@ -1,0 +1,19 @@
+:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#0d1422;color:#e8edf8}
+*{box-sizing:border-box}html,body{height:100%;margin:0}body{display:flex;flex-direction:column;min-height:100dvh}
+a{color:#9cbcff;text-decoration:none}a:hover{text-decoration:underline}
+.pdf-header{display:flex;align-items:center;gap:14px;padding:12px 22px;border-bottom:1px solid #29364f;background:#111b2c;min-height:65px}
+.pdf-brand{display:flex;align-items:center;gap:9px;color:#f0f5ff;font-size:20px;font-weight:750;white-space:nowrap}
+.pdf-mark{color:#80a9ff}.pdf-separator{height:26px;width:1px;background:#35445e}
+h1{font-size:17px;margin:0;font-weight:650}.pdf-actions{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pdf-actions a,.pdf-actions button{border:1px solid #425574;background:#1b2a44;color:#e9efff;border-radius:10px;padding:9px 12px;font:inherit;font-size:13px;cursor:pointer}
+.pdf-actions a:hover,.pdf-actions button:hover:not(:disabled){background:#263c5e;text-decoration:none}
+.pdf-actions button:disabled{opacity:.55;cursor:not-allowed}
+.pdf-description{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 22px;background:#152137;color:#c5d2e6;font-size:12px}
+.pdf-attribution{white-space:nowrap}
+.pdf-main{flex:1;display:flex;position:relative;min-height:450px;background:#19191c}
+.pdf-main iframe{border:0;flex:1;width:100%;min-height:450px;background:#19191c}
+.pdf-main iframe[hidden]{display:none}
+.pdf-loading{margin:auto;max-width:560px;padding:26px;text-align:center;color:#b9c9e3;line-height:1.6}
+.pdf-footer{display:flex;justify-content:space-between;gap:12px;padding:9px 22px;background:#111b2c;border-top:1px solid #29364f;color:#afc0d9;font-size:12px}
+@media(max-width:860px){.pdf-header{flex-wrap:wrap;padding:12px}.pdf-actions{margin-left:0;width:100%;justify-content:flex-start}.pdf-description{padding:10px 12px;flex-direction:column;align-items:flex-start}.pdf-attribution{white-space:normal}.pdf-footer{padding:9px 12px}}
+@media(max-width:400px){.pdf-actions{gap:6px}.pdf-actions a,.pdf-actions button{font-size:12px;padding:8px}}
