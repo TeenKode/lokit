@@ -52,7 +52,7 @@ try:
   assert page.evaluate("getComputedStyle(document.querySelector('.page-glow')).animationName=='none'")
   if args.mobile:page.locator('#sidebar-toggle').click()
   page.locator('.tool-card').first.wait_for(timeout=20000)
-  assert page.locator('.tool-card').count()==24
+  assert page.locator('.tool-card').count()==25
   assert 'v'+APP_VERSION in page.locator('.version-pill').inner_text()
   assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),'Horizontal overflow'
   click_sidebar_tool(page,'Обрезка видео')

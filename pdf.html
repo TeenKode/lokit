@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f1727">
+  <meta name="description" content="PDF-редактор Lokit на базе оригинальной браузерной сборки PDFCraft. Файлы обрабатываются локально.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <title>PDF-редактор — Lokit</title>
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./pdf.css">
+  <script type="module" src="./js/pdf-page.js"></script>
+</head>
+<body>
+  <header class="pdf-header">
+    <a class="pdf-brand" href="./" aria-label="Вернуться к инструментам Lokit"><span class="pdf-mark">✦</span> Lokit</a>
+    <span class="pdf-separator" aria-hidden="true"></span>
+    <h1>Работа с PDF</h1>
+    <div class="pdf-actions">
+      <button id="offline-pdf" type="button" disabled>Сохранить для офлайна</button>
+      <a id="pdf-full" href="./pdfcraft/" target="_blank" rel="noopener" aria-label="Открыть редактор PDF на весь экран">В отдельной вкладке</a>
+      <a href="./">Все инструменты</a>
+    </div>
+  </header>
+  <div class="pdf-description">
+    <span>Просмотр, поиск, страницы, объединение, аннотации, формы, подписи и защита PDF.</span>
+    <span class="pdf-attribution">Движок: <a href="https://github.com/storytold/pdfcraft" target="_blank" rel="noopener noreferrer">PDFCraft</a> от ArtCraft · MIT / Apache-2.0</span>
+  </div>
+  <main class="pdf-main" aria-label="Рабочая область PDF">
+    <div id="pdf-loading" class="pdf-loading" role="status" aria-live="polite">Подключение локального PDF-движка…</div>
+    <iframe id="pdf-frame" title="PDFCraft — PDF-редактор" allow="fullscreen; clipboard-read; clipboard-write" allowfullscreen hidden></iframe>
+  </main>
+  <footer class="pdf-footer">
+    <span id="pdf-status" role="status" aria-live="polite">Обработка происходит в браузере, документы не передаются на сервер.</span>
+    <a href="https://github.com/TeenKode/lokit" target="_blank" rel="noopener noreferrer">Исходный код Lokit</a>
+  </footer>
+</body>
+</html>

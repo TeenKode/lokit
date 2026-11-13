@@ -6,3 +6,7 @@ tests/.tmp-modules/
 # Regenerated locally / in CI; do not publish large test videos
 tests/fixtures/generated/
 .test-output/
+
+# PdfCraft release is downloaded and verified during Pages deployment.
+pdfcraft/
+_site/

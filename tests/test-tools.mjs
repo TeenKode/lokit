@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {tools} from '../js/tools.js';
-assert.equal(tools.length,24);
+assert.equal(tools.length,25);
+assert.equal(tools.find(tool=>tool.id==='pdf-workbench')?.href,'./pdf.html');
 assert.equal(new Set(tools.map(t=>t.id)).size,tools.length);
 for(const tool of tools){
   assert(tool.id && tool.title && tool.description && tool.category && typeof tool.run==='function');
@@ -19,4 +20,4 @@ const shifted=await get('subtitle-shift').run({files:[file],values:{seconds:'2'}
 assert.match(await shifted.blob.text(),/00:00:03,100 --> 00:00:05,500/);
 const merged=await get('subtitle-merger').run({files:[file,new File([original.replace('Привет, мир!','Второй')],'x.srt')]});
 assert.match(await merged.blob.text(),/Второй/);
-console.log('Tools tests: 24 unique executable definitions, SRT/VTT (including short timestamps), shifts, merge — PASS');
+console.log('Tools tests: 25 unique executable definitions, SRT/VTT (including short timestamps), shifts, merge — PASS');

@@ -13,7 +13,7 @@ try:
   for width in (320,390,768,1024,1440):
    page=browser.new_page(viewport={'width':width,'height':850})
    page.goto(URL,wait_until='domcontentloaded')
-   assert page.locator('.sidebar-tool-row').count()==24,width
+   assert page.locator('.sidebar-tool-row').count()==25,width
    assert page.locator('.sidebar-group').count()>=5,width
    assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),width
    mobile=width<=900
@@ -44,9 +44,9 @@ try:
    # Search only matching group items, keeping category grouping.
    search=page.locator('#search')
    search.fill('субтитры')
-   assert 1<=page.locator('.tool-card').count()<24,width
+   assert 1<=page.locator('.tool-card').count()<25,width
    search.fill('')
-   assert page.locator('.tool-card').count()==24,width
+   assert page.locator('.tool-card').count()==25,width
    # Category controls are recreated after filtering; keyboard focus must persist.
    favorite_chip=page.locator('#categories .chip').filter(has_text='Избранное')
    favorite_chip.focus()
@@ -60,7 +60,7 @@ try:
    assert star.is_visible(),width
    star.click()
    assert star.get_attribute('aria-pressed')=='true',width
-   assert page.locator('.tool-card').count()==24,width
+   assert page.locator('.tool-card').count()==25,width
    page.locator('#categories .chip').filter(has_text='Избранное').click()
    assert page.locator('.tool-card').count()==1,width
    page.reload(wait_until='domcontentloaded')

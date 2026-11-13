@@ -33,6 +33,23 @@ jobs:
       - name: Unit, version and structure tests
         run: npm test
 
+  pdfcraft:
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit test the vendor archive validation
+        run: python tests/test-pdfcraft.py
+      - name: Verify the pinned official release can be packaged
+        run: |
+          python scripts/vendor-pdfcraft.py
+          test -s pdfcraft/index.html
+          test -s pdfcraft/NOTICE
+          test -s pdfcraft/offline-assets.json
+
   formats:
     needs: unit
     runs-on: ubuntu-latest
