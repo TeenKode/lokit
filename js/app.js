@@ -38,7 +38,7 @@ function updateFavoriteButton(){
   btn.setAttribute('aria-label',saved?'Убрать инструмент из избранного':'Добавить инструмент в избранное');
 }
 const categoryNames=['Все','Избранное'];
-const groupNames=['Видео','Аудио','Изображения','Субтитры','Запись','Анализ'];
+const groupNames=['Видео','Аудио','Изображения','Субтитры','Запись','Анализ','PDF'];
 const GROUPS_KEY='lokit:sidebar:groups:v1';
 const SIDEBAR_COLLAPSED_KEY='lokit:sidebar:collapsed:v1';
 function savedGroups(){
@@ -46,12 +46,12 @@ function savedGroups(){
     const value=JSON.parse(localStorage.getItem(GROUPS_KEY)||'null');
     if(Array.isArray(value))return new Set(value.filter(name=>groupNames.includes(name)));
   }catch{}
-  return new Set(['Видео']);
+  return new Set(['Видео','PDF']);
 }
 const expandedGroups=savedGroups();
 function saveGroups(){try{localStorage.setItem(GROUPS_KEY,JSON.stringify([...expandedGroups]));}catch{}}
 function savedSidebarCollapsed(){try{return localStorage.getItem(SIDEBAR_COLLAPSED_KEY)==='true';}catch{return false;}}
-const categoryIcons={Все:'◈',Избранное:'★',Видео:'▣',Аудио:'♪',Изображения:'▧',Анализ:'ⓘ',Запись:'●',Субтитры:'≡'};
+const categoryIcons={Все:'◈',Избранное:'★',Видео:'▣',Аудио:'♪',Изображения:'▧',Анализ:'ⓘ',Запись:'●',Субтитры:'≡',PDF:'▤'};
 const videoSections=[
   ['Монтаж',['video-trim','video-crop','video-merge','video-speed','video-loop','video-flip','video-rotate','split-screen']],
   ['Эффекты',['video-filter','video-blur','video-watermark','video-to-vr']],
@@ -235,6 +235,12 @@ function makeField(def){
 }
 
 function openTool(tool){
+  if(tool.href){
+    saveLastTool(tool);
+    recordEvent('open',tool.id);
+    window.location.assign(new URL(tool.href,document.baseURI).href);
+    return;
+  }
   if(currentTool?.id===tool.id&&!workspace.classList.contains('hidden')){
     if(isMobileSidebar())setSidebarOpen(false,{restoreFocus:false});
     workspace.scrollIntoView({block:'start',behavior:'smooth'});

@@ -19,6 +19,11 @@ const tool = (id,title,desc,icon,mode,options=[],category='Видео',extra={})
 },...extra});
 
 export const tools=[
+  {
+    id:'pdf-workbench',title:'PDF-редактор',description:'Просмотр и редактирование PDF: страницы, объединение, аннотации, формы, OCR и защита',
+    icon:'▤',category:'PDF',href:'./pdf.html',accept:'.pdf,application/pdf',options:[],
+    async run(){throw new Error('Откройте PDF-редактор в отдельном рабочем пространстве.');}
+  },
   tool('video-trim','Обрезка видео','Оставить выбранный фрагмент видео','✂','trim',[
     {key:'start',label:'Начало (сек.)',type:'number',default:'0',min:0,step:.001},
     {key:'end',label:'Конец (сек.; 0 — до конца)',type:'number',default:'0',min:0,step:.001},

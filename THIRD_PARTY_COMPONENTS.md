@@ -24,3 +24,13 @@ MP4TrackRemux в Lokit вызывается для удаления звука �
 - **Mediabunny 1.65.2 (MPL-2.0)** — https://github.com/Vanilagy/mediabunny/releases/tag/v1.65.2; локальная копия закреплена в `assets/codecs/` и собирается из npm. Не используется, пока пользователь не выбирает WebCodecs.
 - **@ffmpeg/core 0.12.10** — https://github.com/ffmpegwasm/ffmpeg.wasm; содержит ffmpeg-core.js/wasm, публикуемые вместе с Lokit и загружаемые только при выборе FFmpeg/WASM; лицензии некоторых встроенных кодеков могут иметь ограничения, см. исходный проект.
 - **Собственный Worker** `js/experimental-ffmpeg-worker.js` управляет ограничениями, отменой и запуском `libx264`/`aac`; сборка автоматически добавляет двоичные зависимости в GitHub-репозиторий для GitHub Pages.
+
+## PDFCraft Web v0.21.1
+
+Отдельное рабочее пространство PDF использует официальный неизменённый web-релиз
+[storytold/pdfcraft](https://github.com/storytold/pdfcraft) (MIT OR Apache-2.0).
+GitHub Actions скачивает и сверяет закреплённый архив по SHA-256. Файлы
+распространяются вместе с оригинальными LICENSE-MIT, LICENSE-APACHE, NOTICE
+и атрибуциями всех вложенных ресурсов, включая OCR-модели. ArtCraft —
+товарный знак авторов, не относится к брендингу Lokit.
+Подробности: [docs/pdfcraft-integration.md](docs/pdfcraft-integration.md).
