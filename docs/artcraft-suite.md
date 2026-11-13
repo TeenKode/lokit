@@ -83,3 +83,12 @@ Security note: the browser can access all same-origin applications' storage.
 These are official third-party applications: their published source and
 runtime behavior should be audited for external calls before handling
 sensitive data.
+
+## Russian interface
+
+Lokit applies native Russian interface settings through `js/craft-language.js`.
+It does not patch upstream binaries or claim that a canvas was translated by
+browser translation. 11 ArtCraft releases have Russian catalogs; the other
+four (SoundCraft, DeckCraft, TextureCraft, MaterialCraft) do not. Further
+information and the manual language switch fallback for some editors are
+in [Russian localization status](russian-locale.md).

@@ -1,5 +1,6 @@
 // Lokit hosts the original PdfCraft web release on the same origin.
 import {savePdfCraftOffline,PDFCRAFT_OFFLINE_CACHE} from './pdf-offline.js';
+import {applyNativeRussian,russianAppURL} from './craft-language.js';
 
 const root=new URL('./pdfcraft/',document.baseURI);
 const status=document.querySelector('#pdf-status');
@@ -18,8 +19,14 @@ async function start(){
     const response=await fetch(new URL('index.html',root),{cache:'no-store'});
     if(!response.ok||!(await response.text()).includes('id="pdfcraft"'))
       throw new Error('Статическая сборка PDFCraft ещё не опубликована.');
-    frame.addEventListener('load',()=>{loading.hidden=true;frame.hidden=false;},{once:true});
-    frame.src=root.href;
+    frame.addEventListener('load',()=>{
+      loading.hidden=true;frame.hidden=false;
+      void applyNativeRussian(frame.contentWindow,'pdfcraft').then(applied=>{
+        if(applied)report('Русский язык PDFCraft включён. Документы обрабатываются локально.');
+      });
+    },{once:true});
+    frame.src=russianAppURL(root.href,'pdfcraft');
+    document.querySelector('#pdf-full').href=russianAppURL(root.href,'pdfcraft');
     offlineButton.disabled=!('caches' in window)||!('serviceWorker' in navigator);
     report('Редактор загружен локально. Файлы обрабатываются на устройстве.');
   }catch(error){

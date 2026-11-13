@@ -72,3 +72,11 @@ its special brand licence requires removal of ArtCraft branding.
 
 Security: only pinned SHA-256-verified upstream binaries are included,
 the archive is path/symlink/bomb checked, and PDF data is processed locally.
+
+## Russian interface
+
+The page loads the official build with the supported `?control` flag,
+then calls the documented `window.pdfcraft.request('ui.set',
+{key:'language',value:'ru'})` API. It only reports successful activation
+after the API call resolves. The upstream PDFCraft WASM and license assets
+remain unmodified. More details: [localization status](russian-locale.md).

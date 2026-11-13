@@ -40,6 +40,9 @@ try:
             timeout=40000
         )
         assert page.locator("#craft-frame").is_visible()
+        assert page.locator("#craft-language").get_attribute("data-available")=="true"
+        assert page.evaluate("""() => JSON.parse(localStorage.getItem('photocraft.preferences')).interface.language""")=="ru"
+        assert "lang=ru" in page.locator("#craft-frame").get_attribute("src")
         assert page.locator("#craft-loader").is_hidden()
         assert "Offline ArtCraft fixture" in page.frame_locator("#craft-frame").locator("body").inner_text()
         cached=page.evaluate("""async () => {
