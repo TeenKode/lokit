@@ -78,7 +78,7 @@ async function main(){
   }else{
     language.textContent='Русский интерфейс: подготовка настроек…';
     language.dataset.available='true';
-    setRussianStoredPreference(name,window.localStorage);
+    try{setRussianStoredPreference(name,window.localStorage);}catch{/* Browser storage may be disabled. */}
   }
   $('#craft-direct').href=russianAppURL(root.href,name);
 

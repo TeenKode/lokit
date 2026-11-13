@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Lokit — offline-first browser tools",
   "scripts": {
-    "test": "node tests/test-background.mjs && node tests/test-tools.mjs && node tests/test-editor.mjs && node tests/test-precision.mjs && node tests/test-v081.mjs && node tests/test-media.mjs && node tests/test-experimental.mjs && node tests/test-ffmpeg-worker.mjs && node tests/test-offline-codecs.mjs && node tests/test-mp4-fast.mjs && node tests/test-resolution.mjs && node tests/test-analytics.mjs && node tests/test-render.mjs && node tests/test-presets.mjs && node tests/test-batch.mjs && node tests/test-zip.mjs && node tests/test-pdfcraft-offline.mjs && node tests/test-artcraft.mjs && node scripts/release.mjs --check && python tests/test-structure.py && python tests/test-pdfcraft.py && python tests/test-artcraft.py",
+    "test": "node tests/test-background.mjs && node tests/test-tools.mjs && node tests/test-editor.mjs && node tests/test-precision.mjs && node tests/test-v081.mjs && node tests/test-media.mjs && node tests/test-experimental.mjs && node tests/test-ffmpeg-worker.mjs && node tests/test-offline-codecs.mjs && node tests/test-mp4-fast.mjs && node tests/test-resolution.mjs && node tests/test-analytics.mjs && node tests/test-render.mjs && node tests/test-presets.mjs && node tests/test-batch.mjs && node tests/test-zip.mjs && node tests/test-pdfcraft-offline.mjs && node tests/test-artcraft.mjs && node tests/test-artcraft-language.mjs && node scripts/release.mjs --check && python tests/test-structure.py && python tests/test-pdfcraft.py && python tests/test-artcraft.py",
     "release": "node scripts/release.mjs",
     "vendor-codecs": "node scripts/vendor-codecs.mjs"
   },

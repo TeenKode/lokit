@@ -33,6 +33,7 @@ jobs:
           node --check js/pdf-page.js
           python tests/test-artcraft.py
           node tests/test-artcraft.mjs
+          node tests/test-artcraft-language.mjs
           node scripts/release.mjs --check
       - name: Retrieve pinned PdfCraft Web release
         run: python scripts/vendor-pdfcraft.py
