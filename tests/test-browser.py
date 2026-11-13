@@ -18,7 +18,7 @@ try:
   page=context.new_page()
   page.on('pageerror',lambda e: errors.append(str(e)))
   page.goto(URL,wait_until='networkidle')
-  assert page.locator('.tool-card').count()==25, f"Card count {page.locator('.tool-card').count()}"
+  assert page.locator('.tool-card').count()==40, f"Card count {page.locator('.tool-card').count()}"
   assert 'v'+APP_VERSION in page.locator('.version-pill').inner_text()
   page.locator('.version-pill').click()
   assert page.url.endswith('/about.html')
@@ -153,7 +153,7 @@ try:
    mobile_page.goto(url,wait_until='networkidle')
    assert mobile_page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'),url
   mobile.close()
-  print('PASS: 25 tools, version badge, about offline, favorites, input validation, busy lock, stale-result cleanup, SRT, personal analytics, mobile layout')
+  print('PASS: 40 tools, version badge, about offline, favorites, input validation, busy lock, stale-result cleanup, SRT, personal analytics, mobile layout')
   print('BROWSER ERRORS:',errors)
   assert not errors,errors
   context.close();browser.close()

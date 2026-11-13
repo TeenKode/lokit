@@ -50,6 +50,24 @@ jobs:
           test -s pdfcraft/NOTICE
           test -s pdfcraft/offline-assets.json
 
+  artcraft:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test ArtCraft archive and metadata validation
+        run: |
+          python tests/test-artcraft.py
+          node tests/test-artcraft.mjs
+      - name: Fetch and verify all 15 official web releases
+        run: |
+          python scripts/vendor-artcraft.py --workers 3
+          python scripts/verify-artcraft-bundles.py
+
   formats:
     needs: unit
     runs-on: ubuntu-latest
@@ -150,6 +168,9 @@ jobs:
       - name: PDFCraft offline caching and reload in Chromium
         if: matrix.browser == 'chromium' && matrix.mobile == false
         run: python tests/test-pdfcraft-offline-browser.py
+      - name: ArtCraft progress, offline reload and iframe smoke
+        if: matrix.browser == 'chromium' && matrix.mobile == false
+        run: python tests/test-artcraft-browser.py
       - name: Full Chromium integration tests
         if: matrix.browser == 'chromium' && matrix.mobile == false
         run: python tests/test-browser.py

@@ -1,0 +1,156 @@
+{
+  "schema": 1,
+  "source": "https://github.com/storytold",
+  "apps": [
+    {
+      "name": "photocraft",
+      "version": "0.23.1",
+      "sha256": "3a498eb517bca6cec89f9c6b1fc6448269a05428c8a3a4637c16817da157f03c",
+      "bytes": 16064050,
+      "title": "PhotoCraft",
+      "description": "Редактор фотографий, слоёв, масок и ретуши",
+      "category": "Изображения",
+      "icon": "▧"
+    },
+    {
+      "name": "vectorcraft",
+      "version": "0.24.1",
+      "sha256": "de31befd175476f252e3563b4b1fdc6c887d5842b33fb7d1f5fdf007dc7633aa",
+      "bytes": 38342892,
+      "title": "VectorCraft",
+      "description": "Векторные рисунки, SVG, кривые и иллюстрации",
+      "category": "Дизайн",
+      "icon": "◇"
+    },
+    {
+      "name": "filmcraft",
+      "version": "0.20.1",
+      "sha256": "1cf3072e3f3b6535fcd024d6f6ab2a16cf7776345d868037dc630de0ad0dbbb8",
+      "bytes": 15630847,
+      "title": "FilmCraft",
+      "description": "Многодорожечный видеомонтаж и экспорт",
+      "category": "Видео",
+      "icon": "▣"
+    },
+    {
+      "name": "lightcraft",
+      "version": "0.21.1",
+      "sha256": "57147383a46eaab3b0cc036acf9443b221450c6a19f5dc303ae165bb9678b8cb",
+      "bytes": 74569049,
+      "title": "LightCraft",
+      "description": "RAW, цветокоррекция и фотобиблиотека",
+      "category": "Изображения",
+      "icon": "◉"
+    },
+    {
+      "name": "effectcraft",
+      "version": "0.24.1",
+      "sha256": "8adc985f345d73207abc69a27938905aba1729b63c6c9b332d0244a7567424f1",
+      "bytes": 22524556,
+      "title": "EffectCraft",
+      "description": "Видеоэффекты, моушн-графика и композиции",
+      "category": "Видео",
+      "icon": "✧"
+    },
+    {
+      "name": "designcraft",
+      "version": "0.20.1",
+      "sha256": "50fb2bebce1f48065318953393626b84b25cd1736c556e523275dadc46ae6906",
+      "bytes": 27265672,
+      "title": "DesignCraft",
+      "description": "Макеты, печатные материалы и вёрстка страниц",
+      "category": "Дизайн",
+      "icon": "▦"
+    },
+    {
+      "name": "figcraft",
+      "version": "0.18.1",
+      "sha256": "2fbeb93f5022b0a7cc9d8528f1ed7e2b54c94d213ef79e65128aa898c399f02b",
+      "bytes": 10534024,
+      "title": "FigCraft",
+      "description": "Макеты интерфейсов, компоненты и прототипы",
+      "category": "Дизайн",
+      "icon": "▱"
+    },
+    {
+      "name": "texturecraft",
+      "version": "0.6.1",
+      "sha256": "6dea6a9f77a161cba3258ab4c6db591bdb4dd32b7385d16a7db997ab671a5f3b",
+      "bytes": 9488618,
+      "title": "TextureCraft",
+      "description": "Рисование текстур трёхмерных моделей",
+      "category": "3D и CAD",
+      "icon": "▧"
+    },
+    {
+      "name": "materialcraft",
+      "version": "0.4.1",
+      "sha256": "73b8c319881fd7218737d30b5eeb033801a17427bcf3d31920da32a1fbb1ffec",
+      "bytes": 5245824,
+      "title": "MaterialCraft",
+      "description": "Узловой редактор процедурных материалов",
+      "category": "3D и CAD",
+      "icon": "⬡"
+    },
+    {
+      "name": "soundcraft",
+      "version": "0.20.1",
+      "sha256": "ca7c03c53cf4b7ec9ae26ef2cbde5d86566d006127040fe694fb95f9773a34e4",
+      "bytes": 7179733,
+      "title": "SoundCraft",
+      "description": "Многодорожечный музыкальный и звуковой редактор",
+      "category": "Аудио",
+      "icon": "♫"
+    },
+    {
+      "name": "wordcraft",
+      "version": "0.18.1",
+      "sha256": "3daa7c2d1f209a7eeb2527fcefa3fe31e875848fb1970d68f54edae55fe0bc9f",
+      "bytes": 22536015,
+      "title": "WordCraft",
+      "description": "Текстовые документы, стили и экспорт",
+      "category": "Документы",
+      "icon": "▤"
+    },
+    {
+      "name": "deckcraft",
+      "version": "0.18.1",
+      "sha256": "3196e537fcfab538aaa2e88584bc74e29bb584459b916ab584ac22fbafe32db5",
+      "bytes": 11910503,
+      "title": "DeckCraft",
+      "description": "Редактор презентаций, слайды и анимации",
+      "category": "Документы",
+      "icon": "▣"
+    },
+    {
+      "name": "cadcraft",
+      "version": "0.20.1",
+      "sha256": "300e870c50b66d371055915ba95e3ddbfd4c45431466d5214743b5dcab95a0e1",
+      "bytes": 11420690,
+      "title": "CADCraft",
+      "description": "Чертежи, размеры и техническое проектирование",
+      "category": "3D и CAD",
+      "icon": "⌗"
+    },
+    {
+      "name": "gridcraft",
+      "version": "0.19.1",
+      "sha256": "48c5d1b101befebb3c5ba3b7a14914f01c3207934813ed07dc4251b7ae116a78",
+      "bytes": 9679862,
+      "title": "GridCraft",
+      "description": "Электронные таблицы, формулы и графики",
+      "category": "Документы",
+      "icon": "▦"
+    },
+    {
+      "name": "craft-anything",
+      "version": "0.6.1",
+      "sha256": "e87273b5c0181785ce9059f5348353be44e18b4ba6485203babc26ef17f71d84",
+      "bytes": 2667952,
+      "title": "Craft Anything",
+      "description": "Исследование программ и создание новых проектов",
+      "category": "Анализ",
+      "icon": "◇"
+    }
+  ]
+}

@@ -38,7 +38,7 @@ function updateFavoriteButton(){
   btn.setAttribute('aria-label',saved?'Убрать инструмент из избранного':'Добавить инструмент в избранное');
 }
 const categoryNames=['Все','Избранное'];
-const groupNames=['Видео','Аудио','Изображения','Субтитры','Запись','Анализ','PDF'];
+const groupNames=['Видео','Аудио','Изображения','Документы','Дизайн','3D и CAD','Субтитры','Запись','Анализ','PDF'];
 const GROUPS_KEY='lokit:sidebar:groups:v1';
 const SIDEBAR_COLLAPSED_KEY='lokit:sidebar:collapsed:v1';
 function savedGroups(){
@@ -51,7 +51,7 @@ function savedGroups(){
 const expandedGroups=savedGroups();
 function saveGroups(){try{localStorage.setItem(GROUPS_KEY,JSON.stringify([...expandedGroups]));}catch{}}
 function savedSidebarCollapsed(){try{return localStorage.getItem(SIDEBAR_COLLAPSED_KEY)==='true';}catch{return false;}}
-const categoryIcons={Все:'◈',Избранное:'★',Видео:'▣',Аудио:'♪',Изображения:'▧',Анализ:'ⓘ',Запись:'●',Субтитры:'≡',PDF:'▤'};
+const categoryIcons={Все:'◈',Избранное:'★',Видео:'▣',Аудио:'♪',Изображения:'▧',Анализ:'ⓘ',Запись:'●',Субтитры:'≡',PDF:'▤',Документы:'▤',Дизайн:'◇','3D и CAD':'⬡'};
 const videoSections=[
   ['Монтаж',['video-trim','video-crop','video-merge','video-speed','video-loop','video-flip','video-rotate','split-screen']],
   ['Эффекты',['video-filter','video-blur','video-watermark','video-to-vr']],

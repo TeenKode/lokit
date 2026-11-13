@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0f1727">
+  <meta name="description" content="15 редакторов ArtCraft в Lokit. Проверенные оригинальные WebAssembly-сборки, прогресс загрузки и работа без интернета после сохранения.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <title>Редактор ArtCraft — Lokit</title>
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./craft.css">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <script type="module" src="./js/craft-page.js"></script>
+</head>
+<body>
+  <header class="craft-header">
+    <a class="craft-brand" href="./" aria-label="На главную Lokit"><span class="craft-mark">✦</span> Lokit</a>
+    <span class="craft-divider"></span>
+    <div class="craft-caption"><h1 id="craft-title">Загрузка редактора</h1><span id="craft-version"></span></div>
+    <div class="craft-header-actions">
+      <a id="craft-direct" href="./" target="_blank" rel="noopener">На весь экран</a>
+      <a href="./">Каталог инструментов</a>
+    </div>
+  </header>
+  <main class="craft-main">
+    <section id="craft-loader" class="craft-loading" role="region" aria-label="Загрузка приложения">
+      <div class="craft-loading-inner">
+        <div class="craft-loader-icon" aria-hidden="true">✦</div>
+        <h2 id="craft-progress-title">Подготовка редактора</h2>
+        <p id="craft-progress-detail" role="status" aria-live="polite">Проверка установленной версии и доступных файлов…</p>
+        <div class="craft-progress-row"><span id="craft-progress-percent">0%</span><span id="craft-progress-bytes">Подготовка</span></div>
+        <progress id="craft-progress-bar" max="100" value="0" aria-label="Прогресс загрузки файлов"></progress>
+        <p id="craft-progress-files" class="craft-subtle">Файлы ещё не загружены</p>
+        <div class="craft-loader-buttons">
+          <button id="craft-open-now" type="button">Открыть без предварительного сохранения</button>
+          <button id="craft-retry" type="button" hidden>Повторить загрузку</button>
+        </div>
+        <p class="craft-explain">Файлы приложения загружаются только при открытии и сохраняются на этом устройстве. При следующем запуске уже сохранённые файлы используются повторно.</p>
+      </div>
+    </section>
+    <iframe id="craft-frame" title="ArtCraft — редактор" allow="fullscreen; clipboard-read; clipboard-write" allowfullscreen hidden></iframe>
+  </main>
+  <footer class="craft-footer">
+    <span id="craft-status" role="status" aria-live="polite">Подготовка файлов приложения…</span>
+    <span>Оригинальная веб-сборка <a id="craft-source" href="https://github.com/storytold" target="_blank" rel="noopener noreferrer">ArtCraft</a>. Сетевые функции отдельных приложений могут обращаться к внешним сервисам.</span>
+  </footer>
+</body>
+</html>

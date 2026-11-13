@@ -1,8 +1,8 @@
-// Refresh offline navigation assets; preserve v0.8.5 bundled codec caches.
-const CACHE='lokit-v0.8.5';
+// Refresh offline navigation assets; preserve bundled codec caches.
+const CACHE='lokit-v0.9.0';
 const FILES=[
-  './','./index.html','./pdf.html','./analytics.html','./about.html','./batch.html','./style.css','./style-enhancements.css','./layout-compact.css','./sidebar.css','./glow.css','./batch.css','./manifest.webmanifest',
-  './pdf.css','./js/pdf-page.js','./js/pdf-offline.js',
+  './','./index.html','./pdf.html','./craft.html','./analytics.html','./about.html','./batch.html','./style.css','./style-enhancements.css','./layout-compact.css','./sidebar.css','./glow.css','./batch.css','./manifest.webmanifest',
+  './pdf.css','./js/pdf-page.js','./js/pdf-offline.js','./craft.css','./js/craft-loader.js','./js/craft-page.js','./artcraft-releases.json',
   './icons/icon.svg','./icons/icon-192.png','./icons/icon-512.png',
   './js/app.js','./js/tools.js','./js/media.js','./js/analytics.js',
   './js/analytics-page.js','./js/background.js','./js/batch-queue.js','./js/batch-page.js','./js/zip.js','./js/editor.js','./js/edit-history.js','./js/multitrack.js','./js/subtitle-timeline.js','./js/precision-timeline.js','./js/render.js','./js/mp4-fast.js','./js/experimental-engines.js','./js/experimental-ffmpeg-worker.js','./js/codec-assets.js','./js/offline-codecs-page.js','./js/vendor/mp4-track-remux.js','./js/vendor/mp4-flatten.js','./js/vendor/mp4-copy-trim.js','./js/vendor/webm-copy-trim.js','./js/presets.js','./js/capabilities.js','./js/version.js',
@@ -18,6 +18,8 @@ const CODEC_PATHS=new Set([
 // The original PDFCraft web release is staged in Pages, not committed to Git.
 const PDFCRAFT_CACHE='lokit-pdfcraft-v0.21.1-r2';
 const PDFCRAFT_PATH=new URL("./pdfcraft/",self.registration.scope).pathname;
+const CRAFT_PATH=new URL("./craft-apps/",self.registration.scope).pathname;
+const CRAFT_CACHE_PREFIX="lokit-craft-v1-";
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting()));
 });
@@ -56,6 +58,36 @@ self.addEventListener('fetch',event=>{
         return response;
       }catch{
         return new Response('PDFCraft не сохранён для работы без интернета.',{status:503});
+      }
+    })());
+    return;
+  }
+  if(url.pathname.startsWith(CRAFT_PATH)){
+    const rest=url.pathname.slice(CRAFT_PATH.length);
+    const name=rest.split('/')[0];
+    if(!/^[a-z0-9-]{2,50}$/.test(name))return;
+    // The visible progress loader is the only writer while prefetching large
+    // official WebAssembly bundles; no concurrent Cache.put stream clones.
+    if(url.searchParams.has('lokit-craft-prefetch')){
+      event.respondWith(fetch(req));
+      return;
+    }
+    event.respondWith((async()=>{
+      const cache=await caches.open(CRAFT_CACHE_PREFIX+name);
+      const key=rest===name+'/'
+        ?new URL('index.html',self.location.origin+url.pathname).href
+        :req.url;
+      const cached=await cache.match(key,{ignoreSearch:true});
+      if(cached)return cached;
+      try{
+        const response=await fetch(req);
+        if(response.ok&&response.type!=='opaque'){
+          try{await cache.put(key,response.clone());}
+          catch{/* Full storage or interrupted stream; still return response. */}
+        }
+        return response;
+      }catch{
+        return new Response('ArtCraft не сохранён для работы без интернета.',{status:503});
       }
     })());
     return;

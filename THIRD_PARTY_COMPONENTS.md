@@ -34,3 +34,15 @@ GitHub Actions скачивает и сверяет закреплённый а�
 и атрибуциями всех вложенных ресурсов, включая OCR-модели. ArtCraft —
 товарный знак авторов, не относится к брендингу Lokit.
 Подробности: [docs/pdfcraft-integration.md](docs/pdfcraft-integration.md).
+
+## ArtCraft web editor suite
+
+The published site additionally includes unmodified, pinned web releases of
+PhotoCraft, VectorCraft, FilmCraft, LightCraft, EffectCraft, DesignCraft, FigCraft,
+TextureCraft, MaterialCraft, SoundCraft, WordCraft, DeckCraft, CADCraft, GridCraft
+and Craft Anything (all https://github.com/storytold/). The exact archive
+versions and SHA-256 digests are in `artcraft-releases.json`. The ArtCraft
+projects use MIT OR Apache-2.0 source licences, with independently protected
+ArtCraft marks; every original web bundle and legal notice remains unmodified.
+Refer to the upstream repositories for bundled third-party dependencies and
+individual licences. Lokit provides a separate launcher and local caching.
