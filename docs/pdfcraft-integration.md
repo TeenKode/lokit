@@ -49,9 +49,17 @@ application, never as Lokit branding.
 
 The Lokit service worker caches PdfCraft resources on use. In the PDF page,
 select "Сохранить для офлайна" to additionally cache every asset from
-offline-assets.json, including OCR models. Browser storage quotas can prevent
-complete caching, and private/incognito modes may discard the cache. The
-first download still needs network access. A browser with WebGPU or WebGL2
+offline-assets.json, including OCR models. Explicit prefetch requests bypass
+the service worker's cache writer, avoiding simultaneous Cache.put attempts.
+The page reads each response fully into memory before saving it in Cache Storage.
+Successfully saved resources are reused across retries. Failures display the
+filename, so the user can repeat the operation without redownloading earlier
+assets. The service worker aliases /pdfcraft/ to cached /pdfcraft/index.html.
+
+Browser storage quotas can still prevent complete caching, and private/incognito
+modes may discard the cache. The page requests persistent storage where the
+browser supports it, but permission is not guaranteed. The first download
+still needs network access. A browser with WebGPU or WebGL2
 and modern WASM support is required; upstream also offers a CPU fallback flag.
 
 ## Licences

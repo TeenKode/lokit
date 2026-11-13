@@ -65,7 +65,7 @@ page = (root / "pdf.html").read_text()
 script = (root / "js" / "pdf-page.js").read_text()
 sw = (root / "sw.js").read_text()
 assert 'src="./pdfcraft/"' not in page, "Frame must wait for deployment verification"
-assert "new URL('index.html', root)" in script
+assert "new URL('index.html',root)" in script
 assert "pdfcraft/" in sw
 assert "'./pdf.html'" in sw and "'./js/pdf-page.js'" in sw
 assert "PDF" in (root / "js" / "app.js").read_text()
