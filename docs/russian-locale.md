@@ -14,7 +14,7 @@ WASM и оригинальные файлы, а передаёт русский 
 | PhotoCraft | Есть | `photocraft.preferences.interface.language = "ru"` в localStorage |
 | VectorCraft | Есть | `?lang=ru`, команда `app.language {lang:"ru"}` |
 | FilmCraft | Есть | `prefs.set {key:"general.interfaceLanguage",value:"ru"}` |
-| LightCraft | Есть | Нативный выбор в меню «Изменить → Язык» / настройках; браузер определяет системный язык |
+| LightCraft | Есть | `window.lightcraft.command("ui.set",JSON.stringify({language:"ru"}))`, с повтором до инициализации WASM |
 | EffectCraft | Есть | `prefs.set {key:"general.language",value:"ru"}` |
 | DesignCraft | Частичный | Нативное меню Preferences → General → Interface Language; часть текста остаётся английской |
 | FigCraft | Есть | `pref.language {language:"ru"}` через `?control` |
