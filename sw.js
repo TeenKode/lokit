@@ -2,7 +2,7 @@
 const CACHE='lokit-v0.8.5';
 const FILES=[
   './','./index.html','./pdf.html','./analytics.html','./about.html','./batch.html','./style.css','./style-enhancements.css','./layout-compact.css','./sidebar.css','./glow.css','./batch.css','./manifest.webmanifest',
-  './pdf.css','./js/pdf-page.js',
+  './pdf.css','./js/pdf-page.js','./js/pdf-offline.js',
   './icons/icon.svg','./icons/icon-192.png','./icons/icon-512.png',
   './js/app.js','./js/tools.js','./js/media.js','./js/analytics.js',
   './js/analytics-page.js','./js/background.js','./js/batch-queue.js','./js/batch-page.js','./js/zip.js','./js/editor.js','./js/edit-history.js','./js/multitrack.js','./js/subtitle-timeline.js','./js/precision-timeline.js','./js/render.js','./js/mp4-fast.js','./js/experimental-engines.js','./js/experimental-ffmpeg-worker.js','./js/codec-assets.js','./js/offline-codecs-page.js','./js/vendor/mp4-track-remux.js','./js/vendor/mp4-flatten.js','./js/vendor/mp4-copy-trim.js','./js/vendor/webm-copy-trim.js','./js/presets.js','./js/capabilities.js','./js/version.js',
@@ -16,7 +16,7 @@ const CODEC_PATHS=new Set([
   './assets/codecs/ffmpeg-core-0.12.10.wasm'
 ].map(path=>new URL(path,self.registration.scope).pathname));
 // The original PDFCraft web release is staged in Pages, not committed to Git.
-const PDFCRAFT_CACHE='lokit-pdfcraft-v0.21.1';
+const PDFCRAFT_CACHE='lokit-pdfcraft-v0.21.1-r2';
 const PDFCRAFT_PATH=new URL("./pdfcraft/",self.registration.scope).pathname;
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting()));
@@ -34,14 +34,24 @@ self.addEventListener('fetch',event=>{
   const url=new URL(req.url);
   if(req.method!=='GET'||url.origin!==self.location.origin)return;
   if(url.pathname.startsWith(PDFCRAFT_PATH)){
+    // Prefetch has ONE cache writer: js/pdf-offline.js. Do not double-tee
+    // network streams through the Service Worker for large WASM/OCR files.
+    if(url.searchParams.has('lokit-pdfcraft-prefetch')){
+      event.respondWith(fetch(req));
+      return;
+    }
     event.respondWith((async()=>{
       const cache=await caches.open(PDFCRAFT_CACHE);
-      const cached=await cache.match(req,{ignoreSearch:true});
+      // The iframe uses /pdfcraft/ but prefetch includes /pdfcraft/index.html.
+      const key=url.pathname===PDFCRAFT_PATH
+        ?new URL('index.html',new URL('./pdfcraft/',self.registration.scope)).href
+        :req;
+      const cached=await cache.match(key,{ignoreSearch:true});
       if(cached)return cached;
       try{
         const response=await fetch(req);
         if(response.ok&&response.type!=='opaque'){
-          try{await cache.put(req,response.clone());}catch{/* Storage quota may be exhausted. */}
+          try{await cache.put(key,response.clone());}catch{/* Storage quota or stream interruption. */}
         }
         return response;
       }catch{
