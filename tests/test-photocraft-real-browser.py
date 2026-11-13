@@ -4,7 +4,6 @@ Unlike the small offline fixture this exercises upstream HTML, chunked
 WebAssembly boot and Lokit's iframe + Service Worker together.
 The CI artcraft job stages the official ZIP before running this test.
 """
-from contextlib import closing
 import http.server
 from pathlib import Path
 import socket
@@ -32,7 +31,7 @@ class Server(socketserver.ThreadingMixIn,http.server.HTTPServer):
     daemon_threads=True
     allow_reuse_address=True
 
-with closing(Server(("127.0.0.1",0),Handler)) as server:
+with Server(("127.0.0.1",0),Handler) as server:
     thread=threading.Thread(target=server.serve_forever,daemon=True)
     thread.start()
     try:
