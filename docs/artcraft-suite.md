@@ -92,3 +92,22 @@ browser translation. 11 ArtCraft releases have Russian catalogs; the other
 four (SoundCraft, DeckCraft, TextureCraft, MaterialCraft) do not. Further
 information and the manual language switch fallback for some editors are
 in [Russian localization status](russian-locale.md).
+
+## PhotoCraft's upstream web packaging error
+
+PhotoCraft v0.23.1 (and v0.17.0–v0.23.0) has a confirmed upstream
+packaging defect: `app/photocraft-web.js` imports `./snippets/…/inline0.js`
+relative to `app/`, but the official release ZIP includes that module
+only under top-level `snippets/`. Without a fix PhotoCraft stays
+on “Loading PhotoCraft…” indefinitely.
+
+Lokit verifies the original release ZIP checksum and **copies** only the
+referenced snippet into `app/snippets/` while staging GitHub Pages. The
+original file remains at top-level; no WASM, JS code or release
+archive is edited. The exact additional byte-identical file is listed
+in `lokit-assets.json` for both online and offline loading. A packaging
+regression test checks the resolved import, and CI runs the real release
+in headless Chromium, in addition to the existing small offline fixture.
+When upstream corrects its official ZIP layout, this repair becomes a no-op.
+
+Source: https://photocraft.im/download/web (known issue, v0.23.1).

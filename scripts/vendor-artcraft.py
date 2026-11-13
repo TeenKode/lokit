@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import io
 import json
+import re
 from pathlib import Path, PurePosixPath
 import shutil
 import stat
@@ -60,6 +61,41 @@ def download_release(app):
         except (OSError,ValueError) as error:
             last=error
     raise last
+
+
+
+def repair_photocraft_snippet_layout(staging,assets,version):
+    """Repair an upstream release packaging error without modifying any original files.
+
+    The JS module lives in app/, so its imports of './snippets/...' resolve
+    under app/snippets/, while v0.17.0–v0.23.1 package only root snippets/.
+    The official source and checksum-pinned ZIP remain unchanged. We add
+    byte-for-byte copies of only the imported JS modules to the deployed site.
+    """
+    glue=staging/"app"/"photocraft-web.js"
+    if not glue.is_file():
+        return
+    relative=set(re.findall(r"""["']\./snippets/([^"'?#]+\.js)["']""",
+                            glue.read_text(encoding="utf-8")))
+    if version=="0.23.1" and not relative:
+        raise ValueError("PhotoCraft v0.23.1 glue has no recognizable snippet imports")
+    for imported in sorted(relative):
+        item=PurePosixPath(imported)
+        if (item.is_absolute() or not item.parts
+                or any(p in (".","..") for p in item.parts)
+                or not re.fullmatch(r"[A-Za-z0-9_./-]+\.js",imported)):
+            raise ValueError("Unsafe PhotoCraft snippet import: "+imported)
+        source=staging.joinpath("snippets",*item.parts)
+        destination=staging.joinpath("app","snippets",*item.parts)
+        if destination.is_file():
+            if source.is_file() and destination.read_bytes()!=source.read_bytes():
+                raise ValueError("PhotoCraft snippet copies are inconsistent")
+            continue
+        if not source.is_file():
+            raise ValueError("Missing imported PhotoCraft helper: "+imported)
+        destination.parent.mkdir(parents=True,exist_ok=True)
+        shutil.copyfile(source,destination)
+        assets.append({"path":"./app/snippets/"+imported,"bytes":destination.stat().st_size})
 
 
 def install_release(app,blob,target):
@@ -134,6 +170,8 @@ def install_release(app,blob,target):
                 with archive.open(info) as source,output.open("wb") as dest:
                     shutil.copyfileobj(source,dest,1024*1024)
                 assets.append({"path":"./"+str(rel),"bytes":info.file_size})
+            if app["name"]=="photocraft":
+                repair_photocraft_snippet_layout(staging,assets,app["version"])
             # Store accurate uncompressed sizes for byte-weighted download UI.
             assets.sort(key=lambda x:(x["path"]!="./index.html",x["path"]))
             (staging/"lokit-assets.json").write_text(json.dumps({
@@ -143,7 +181,7 @@ def install_release(app,blob,target):
             if target.exists():
                 shutil.rmtree(target)
             shutil.move(str(staging),str(target))
-        return len(assets),total
+        return len(assets),sum(asset["bytes"] for asset in assets)
 
 
 def process(app,output):

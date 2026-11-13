@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check every published ArtCraft app is present and its manifest is accurate."""
 import json
+import re
 from pathlib import Path
 from importlib.util import spec_from_file_location, module_from_spec
 
@@ -31,6 +32,24 @@ for pin in vendor.pinned_apps():
         if not file.is_file() or file.stat().st_size!=asset["bytes"]:
             raise SystemExit("Missing or changed ArtCraft resource: "+str(file))
         count+=asset["bytes"]
+    if name=="photocraft":
+        # The official v0.23.1 ZIP lacks the relative app/snippets/ import
+        # target. It is a known upstream packaging defect, not a runtime
+        # problem with WebAssembly. Verify every deployed import before Pages.
+        glue=folder/"app"/"photocraft-web.js"
+        if glue.is_file():
+            names=set(re.findall(r"""["']\./snippets/([^"'?#]+\.js)["']""",
+                                 glue.read_text(encoding="utf-8")))
+            if pin["version"]=="0.23.1" and not names:
+                raise SystemExit("PhotoCraft expected snippet imports not found")
+            for rel in names:
+                path="./app/snippets/"+rel
+                target=folder/path[2:]
+                if not target.is_file() or path not in seen:
+                    raise SystemExit("PhotoCraft unresolved JS import: "+path)
+                original=folder/"snippets"/rel
+                if original.is_file() and target.read_bytes()!=original.read_bytes():
+                    raise SystemExit("PhotoCraft copied JS differs from release: "+path)
     if count!=manifest["totalBytes"]:
         raise SystemExit("Invalid total size: "+name)
     total+=count
