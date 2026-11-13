@@ -1,5 +1,5 @@
 // Refresh offline navigation assets; preserve bundled codec caches.
-const CACHE='lokit-v0.9.0';
+const CACHE='lokit-v0.9.1';
 const FILES=[
   './','./index.html','./pdf.html','./craft.html','./analytics.html','./about.html','./batch.html','./style.css','./style-enhancements.css','./layout-compact.css','./sidebar.css','./glow.css','./batch.css','./manifest.webmanifest',
   './pdf.css','./js/pdf-page.js','./js/pdf-offline.js','./craft.css','./js/craft-loader.js','./js/craft-page.js','./js/craft-language.js','./artcraft-releases.json',

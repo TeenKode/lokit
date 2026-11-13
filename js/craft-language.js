@@ -74,10 +74,10 @@ const ACTIONS=Object.freeze({
 });
 export function supportsNativeLanguageCommand(app){return Object.hasOwn(ACTIONS,app);}
 
-export async function applyNativeRussian(win,app,{attempts=7,sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){
+export async function applyNativeRussian(win,app,{attempts=30,sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){
   const action=ACTIONS[app];
   if(!action)return false;
-  const max=Math.max(1,Math.min(15,attempts));
+  const max=Math.max(1,Math.min(30,attempts));
   for(let n=0;n<max;n++){
     try{
       const api=win?.[app];
@@ -86,7 +86,7 @@ export async function applyNativeRussian(win,app,{attempts=7,sleep=ms=>new Promi
         return true;
       }
     }catch{/* The WASM application might still be starting. */}
-    if(n+1<max)await sleep(350);
+    if(n+1<max)await sleep(500);
   }
   return false;
 }
