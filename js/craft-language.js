@@ -65,6 +65,7 @@ export function russianAppURL(root,app){
 const ACTIONS=Object.freeze({
   vectorcraft:{method:'execute',command:'app.language',params:{lang:'ru'}},
   figcraft:{method:'execute',command:'pref.language',params:{language:'ru'}},
+  lightcraft:{method:'command',command:'ui.set',params:{language:'ru'},stringify:true},
   pdfcraft:{method:'request',command:'ui.set',params:{key:'language',value:'ru'}},
   wordcraft:{method:'execute',command:'ui.language',params:{value:'ru'}},
   gridcraft:{method:'execute',command:'app.language.set',params:{language:'ru'}},
@@ -82,7 +83,7 @@ export async function applyNativeRussian(win,app,{attempts=30,sleep=ms=>new Prom
     try{
       const api=win?.[app];
       if(api && typeof api[action.method]==='function'){
-        await api[action.method](action.command,action.params);
+        await api[action.method](action.command,action.stringify?JSON.stringify(action.params):action.params);
         return true;
       }
     }catch{/* The WASM application might still be starting. */}
