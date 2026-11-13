@@ -24,12 +24,14 @@ sample=dict(pins[0])
 pref=sample["name"]+"-web-"+sample["version"]+"/"
 
 
-def build_zip(prefix=pref,extra=None,symlink=False):
+def build_zip(prefix=pref,extra=None,symlink=False,additional=None):
     output=BytesIO()
     with ZipFile(output,"w") as z:
         z.writestr(prefix+"index.html","<!doctype html><title>Editor</title>")
         z.writestr(prefix+"app_bg.wasm",b"\0asm"+bytes(range(8)))
         z.writestr(prefix+"LICENSE-MIT","license")
+        for name,payload in (additional or {}).items():
+            z.writestr(prefix+name,payload)
         if extra:
             entry=ZipInfo(extra)
             if symlink:entry.external_attr=(stat.S_IFLNK|0o777)<<16
@@ -63,6 +65,40 @@ with tempfile.TemporaryDirectory() as folder:
             raise AssertionError("Accepted unsafe member: "+path)
         except ValueError:pass
     assert (dest/"index.html").exists(),"Rejected update destroyed current bundle"
+
+    # The current official PhotoCraft ZIP has an app-local import to a
+    # snippet packaged only at the root. Staging must repair the layout by
+    # copying that helper, adding it to the browser offline manifest.
+    snippet="eframe-abcdef0123456789/inline0.js"
+    module=f'import {{ x }} from "./snippets/{snippet}";'
+    extra_files={
+        "app/photocraft-web.js":module,
+        "snippets/"+snippet:"export const x=1;",
+    }
+    broken=build_zip(additional=extra_files)
+    repair_pin={**sample,"sha256":hashlib.sha256(broken).hexdigest()}
+    count,_=vendor.install_release(repair_pin,broken,Path(folder)/"repaired")
+    repaired=Path(folder)/"repaired"
+    assert (repaired/"app"/"snippets"/snippet).read_bytes()==(repaired/"snippets"/snippet).read_bytes()
+    repaired_manifest=json.loads((repaired/"lokit-assets.json").read_text())
+    assert count==6
+    assert "./app/snippets/"+snippet in {a["path"] for a in repaired_manifest["assets"]}
+    assert repaired_manifest["totalBytes"]==sum(x["bytes"] for x in repaired_manifest["assets"])
+    missing=build_zip(additional={"app/photocraft-web.js":module})
+    try:
+        vendor.install_release({**sample,"sha256":hashlib.sha256(missing).hexdigest()},missing,Path(folder)/"broken")
+        raise AssertionError("Accepted release with an unsatisfied ES module import")
+    except ValueError as err:
+        assert "Missing imported PhotoCraft helper" in str(err)
+    assert not (Path(folder)/"broken").exists()
+    already=build_zip(additional={
+        **extra_files,"app/snippets/"+snippet:"export const x=1;"
+    })
+    count,_=vendor.install_release(
+        {**sample,"sha256":hashlib.sha256(already).hexdigest()},
+        already,Path(folder)/"already"
+    )
+    assert count==6,"Already-fixed official releases should not duplicate snippet assets"
     plain=build_zip(prefix="")
     sample["sha256"]=hashlib.sha256(plain).hexdigest()
     assert vendor.install_release(sample,plain,Path(folder)/"rootless")[0]==3
