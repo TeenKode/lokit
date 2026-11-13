@@ -1,4 +1,5 @@
 import {prepareCraftAssets} from './craft-loader.js';
+import {applyNativeRussian,russianAppURL,russianCatalogStatus,setRussianStoredPreference,supportsNativeLanguageCommand} from './craft-language.js';
 
 const $=selector=>document.querySelector(selector);
 const loader=$('#craft-loader');
@@ -13,6 +14,7 @@ const frame=$('#craft-frame');
 const openNow=$('#craft-open-now');
 const retry=$('#craft-retry');
 const status=$('#craft-status');
+const language=$('#craft-language');
 let abort=null,launched=false,attempt=0;
 
 function formatBytes(value){
@@ -69,7 +71,16 @@ async function main(){
   $('#craft-version').textContent='ArtCraft v'+entry.version+' · веб-версия';
   $('#craft-source').href='https://github.com/storytold/'+name;
   const root=new URL('./craft-apps/'+name+'/',document.baseURI);
-  $('#craft-direct').href=root.href;
+  const russian=russianCatalogStatus(name);
+  if(russian==='missing'){
+    language.textContent='Русский перевод отсутствует в оригинальной версии этого редактора.';
+    language.dataset.available='false';
+  }else{
+    language.textContent='Русский интерфейс: подготовка настроек…';
+    language.dataset.available='true';
+    setRussianStoredPreference(name,window.localStorage);
+  }
+  $('#craft-direct').href=russianAppURL(root.href,name);
 
   function launch(){
     if(launched)return;
@@ -94,8 +105,24 @@ async function main(){
       frame.hidden=false;
       loader.hidden=true;
       status.textContent=entry.title+' открыт. Инициализация WASM может продолжаться.';
+      if(russian==='available'){
+        // The controls are installed by the WASM app after the iframe's load.
+        // A successful response confirms the switch; a missing endpoint does not.
+        void applyNativeRussian(frame.contentWindow,name).then(applied=>{
+          if(applied){
+            language.textContent='Русский язык интерфейса включён.';
+            status.textContent=entry.title+' открыт. Русский язык включён.';
+          }else if(supportsNativeLanguageCommand(name)){
+            language.textContent='Русский язык запрошен. При необходимости выберите «Русский» в настройках редактора.';
+          }else{
+            language.textContent='Русский язык выбран, если он поддерживается этой веб-сборкой. При необходимости переключите его в настройках.';
+          }
+        }).catch(()=>{
+          language.textContent='Русский язык можно выбрать в настройках редактора.';
+        });
+      }
     },{once:true});
-    frame.src=root.href;
+    frame.src=russianAppURL(root.href,name);
   }
   openNow.addEventListener('click',launch);
   async function prepare(){
