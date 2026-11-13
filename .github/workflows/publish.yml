@@ -147,6 +147,9 @@ jobs:
       - name: Grouped sidebar, favorites and drawer responsiveness
         if: matrix.browser == 'chromium' && matrix.mobile == false
         run: python tests/test-sidebar.py
+      - name: PDFCraft offline caching and reload in Chromium
+        if: matrix.browser == 'chromium' && matrix.mobile == false
+        run: python tests/test-pdfcraft-offline-browser.py
       - name: Full Chromium integration tests
         if: matrix.browser == 'chromium' && matrix.mobile == false
         run: python tests/test-browser.py
