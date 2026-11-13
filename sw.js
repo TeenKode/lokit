@@ -17,7 +17,7 @@ const CODEC_PATHS=new Set([
 ].map(path=>new URL(path,self.registration.scope).pathname));
 // The original PDFCraft web release is staged in Pages, not committed to Git.
 const PDFCRAFT_CACHE='lokit-pdfcraft-v0.21.1';
-const PDFCRAFT_PATH=new URL('./pdfcraft/',self.registration.scope).pathname;
+const PDFCRAFT_PATH=new URL("./pdfcraft/",self.registration.scope).pathname;
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting()));
 });
