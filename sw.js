@@ -44,7 +44,7 @@ self.addEventListener('fetch',event=>{
       const cache=await caches.open(PDFCRAFT_CACHE);
       // The iframe uses /pdfcraft/ but prefetch includes /pdfcraft/index.html.
       const key=url.pathname===PDFCRAFT_PATH
-        ?new URL('index.html',new URL('./pdfcraft/',self.registration.scope)).href
+        ?new URL('index.html',self.location.origin+PDFCRAFT_PATH).href
         :req;
       const cached=await cache.match(key,{ignoreSearch:true});
       if(cached)return cached;
