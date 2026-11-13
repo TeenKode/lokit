@@ -63,6 +63,8 @@ export function russianAppURL(root,app){
 // Only documented native settings endpoints. Never guess engine commands or
 // claim the language was changed when the app rejects a command.
 const ACTIONS=Object.freeze({
+  vectorcraft:{method:'execute',command:'app.language',params:{lang:'ru'}},
+  figcraft:{method:'execute',command:'pref.language',params:{language:'ru'}},
   pdfcraft:{method:'request',command:'ui.set',params:{key:'language',value:'ru'}},
   wordcraft:{method:'execute',command:'ui.language',params:{value:'ru'}},
   gridcraft:{method:'execute',command:'app.language.set',params:{language:'ru'}},
