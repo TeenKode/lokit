@@ -31,6 +31,8 @@ jobs:
           python tests/test-pdfcraft.py
           python tests/test-structure.py
           node --check js/pdf-page.js
+          python tests/test-artcraft.py
+          node tests/test-artcraft.mjs
           node scripts/release.mjs --check
       - name: Retrieve pinned PdfCraft Web release
         run: python scripts/vendor-pdfcraft.py
@@ -42,11 +44,18 @@ jobs:
           test -s pdfcraft/NOTICE
           test -s pdfcraft/LICENSE-MIT
           test -s pdfcraft/LICENSE-APACHE
+      - name: Retrieve 15 pinned ArtCraft web releases
+        run: python scripts/vendor-artcraft.py --workers 3
+      - name: Verify all ArtCraft web bundles
+        run: |
+          python scripts/verify-artcraft-bundles.py
+          du -sh craft-apps/
       - name: Prepare static website
         run: |
           mkdir _site
           cp .nojekyll *.html *.css sw.js manifest.webmanifest _site/
-          cp -a icons js assets pdfcraft _site/
+          cp -a icons js assets pdfcraft craft-apps _site/
+          cp artcraft-releases.json _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

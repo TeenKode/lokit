@@ -19,6 +19,21 @@ const tool = (id,title,desc,icon,mode,options=[],category='Видео',extra={})
 },...extra});
 
 export const tools=[
+  {id:'artcraft-photocraft',title:"PhotoCraft",description:"Редактор фотографий, слои, маски и ретушь",icon:"▧",category:"Изображения",href:'./craft.html?app=photocraft',accept:'*/*',options:[],async run(){throw new Error('Откройте редактор в отдельной рабочей области.');}},
+  {id:'artcraft-vectorcraft',title:"VectorCraft",description:"Векторная графика, SVG и кривые",icon:"◇",category:"Дизайн",href:'./craft.html?app=vectorcraft',accept:'*/*',options:[],async run(){throw new Error('Откройте редактор в отдельной рабочей области.');}},
+  {id:'artcraft-filmcraft',title:"FilmCraft",description:"Многодорожечный видеоредактор",icon:"▣",category:"Видео",href:'./craft.html?app=filmcraft',accept:'*/*',options:[],async run(){throw new Error('Откройте редактор в отдельной рабочей области.');}},
+  {id:'artcraft-lightcraft',title:"LightCraft",description:"RAW и цветокоррекция",icon:"◉",category:"Изображения",href:'./craft.html?app=lightcraft',accept:'*/*',options:[],async run(){throw new Error('Откройте редактор в отдельной рабочей области.');}},
+  {id:'artcraft-effectcraft',title:"EffectCraft",description:"Моушн-графика и визуальные эффекты",icon:"✧",category:"Видео",href:'./craft.html?app=effectcraft',accept:'*/*',options:[],async run(){throw new Error('Откройте редактор в отдельной рабочей области.');}},
+  {id:'artcraft-designcraft',title:"DesignCraft",description:"Вёрстка буклетов и макетов",icon:"▦",category:"Дизайн",href:'./craft.html?app=designcraft',accept:'*/*',options:[],async run(){throw new Error('Откройте редактор в отдельной рабочей области.');}},
+  {id:'artcraft-figcraft',title:"FigCraft",description:"Прототипирование и дизайн интерфейсов",icon:"▱",category:"Дизайн",href:'./craft.html?app=figcraft',accept:'*/*',options:[],async run(){throw new Error('Откройте редактор в отдельной рабочей области.');}},
+  {id:'artcraft-texturecraft',title:"TextureCraft",description:"Рисование 3D-текстур",icon:"▧",category:"3D и CAD",href:'./craft.html?app=texturecraft',accept:'*/*',options:[],async run(){throw new Error('Откройте редактор в отдельной рабочей области.');}},
+  {id:'artcraft-materialcraft',title:"MaterialCraft",description:"Редактор процедурных материалов",icon:"⬡",category:"3D и CAD",href:'./craft.html?app=materialcraft',accept:'*/*',options:[],async run(){throw new Error('Откройте редактор в отдельной рабочей области.');}},
+  {id:'artcraft-soundcraft',title:"SoundCraft",description:"Многодорожечная запись и монтаж звука",icon:"♫",category:"Аудио",href:'./craft.html?app=soundcraft',accept:'*/*',options:[],async run(){throw new Error('Откройте редактор в отдельной рабочей области.');}},
+  {id:'artcraft-wordcraft',title:"WordCraft",description:"Создание и редактирование документов",icon:"▤",category:"Документы",href:'./craft.html?app=wordcraft',accept:'*/*',options:[],async run(){throw new Error('Откройте редактор в отдельной рабочей области.');}},
+  {id:'artcraft-deckcraft',title:"DeckCraft",description:"Презентации, слайды и переходы",icon:"▣",category:"Документы",href:'./craft.html?app=deckcraft',accept:'*/*',options:[],async run(){throw new Error('Откройте редактор в отдельной рабочей области.');}},
+  {id:'artcraft-cadcraft',title:"CADCraft",description:"Чертежи и техническое проектирование",icon:"⌗",category:"3D и CAD",href:'./craft.html?app=cadcraft',accept:'*/*',options:[],async run(){throw new Error('Откройте редактор в отдельной рабочей области.');}},
+  {id:'artcraft-gridcraft',title:"GridCraft",description:"Таблицы, формулы и диаграммы",icon:"▦",category:"Документы",href:'./craft.html?app=gridcraft',accept:'*/*',options:[],async run(){throw new Error('Откройте редактор в отдельной рабочей области.');}},
+  {id:'artcraft-craft-anything',title:"Craft Anything",description:"Исследование и создание приложений",icon:"◇",category:"Анализ",href:'./craft.html?app=craft-anything',accept:'*/*',options:[],async run(){throw new Error('Откройте редактор в отдельной рабочей области.');}},
   {
     id:'pdf-workbench',title:'PDF-редактор',description:'Просмотр и редактирование PDF: страницы, объединение, аннотации, формы, OCR и защита',
     icon:'▤',category:'PDF',href:'./pdf.html',accept:'.pdf,application/pdf',options:[],

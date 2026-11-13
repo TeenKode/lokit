@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {tools} from '../js/tools.js';
-assert.equal(tools.length,25);
+assert.equal(tools.length,40);
 assert.equal(tools.find(tool=>tool.id==='pdf-workbench')?.href,'./pdf.html');
 assert.equal(new Set(tools.map(t=>t.id)).size,tools.length);
 for(const tool of tools){

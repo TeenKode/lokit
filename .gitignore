@@ -10,3 +10,6 @@ tests/fixtures/generated/
 # PdfCraft release is downloaded and verified during Pages deployment.
 pdfcraft/
 _site/
+
+# Fifteen ArtCraft WebAssembly apps are fetched in deployment only.
+craft-apps/
