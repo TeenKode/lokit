@@ -39,7 +39,9 @@ offlineButton.addEventListener('click', async () => {
   offlineButton.disabled = true;
   try {
     if (!('caches' in window)) throw new Error('Браузер не поддерживает Cache Storage.');
-    if ('serviceWorker' in navigator) await navigator.serviceWorker.ready;
+    if (!('serviceWorker' in navigator) || !(await navigator.serviceWorker.getRegistration('./'))) {
+      throw new Error('Для автономной работы необходимо разрешить Service Worker.');
+    }
     const response = await fetch(new URL('offline-assets.json', root), { cache: 'no-store' });
     if (!response.ok) throw new Error('Нет списка файлов автономной версии.');
     const manifest = await response.json();
@@ -64,6 +66,11 @@ offlineButton.addEventListener('click', async () => {
       done++;
       report('Сохранение PDF-движка и OCR для автономной работы: ' + done + ' из ' + manifest.files.length);
     }
+    // The iframe opens /pdfcraft/, while the manifest lists /pdfcraft/index.html.
+    // Cache the directory URL as well so a cold offline restart succeeds.
+    const entry = await cache.match(new URL('index.html', root).href);
+    if (!entry) throw new Error('Стартовая страница PDF-движка не сохранена.');
+    await cache.put(root.href, entry.clone());
     report('PDF-движок и модели распознавания сохранены для работы без интернета.');
   } catch (error) {
     report('Не удалось полностью сохранить офлайн-версию: ' + error.message);
