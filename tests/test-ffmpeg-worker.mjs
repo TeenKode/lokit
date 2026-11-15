@@ -74,6 +74,7 @@ let steps=await runComposite('merge',{targetWidth:640,targetHeight:360});
 assert.equal(steps.length,5,'Two audio probes, two encodes and concat copy');
 assert.ok(has(steps.at(-1),'concat')&&has(steps.at(-1),'copy'));
 assert.ok(steps.some(args=>has(args,'anullsrc')||has(args,'aresample')));
+assert.ok(steps.filter(args=>args.includes('-vf')).every(args=>args[args.indexOf('-filter_threads')+1]==='1'&&args[args.indexOf('-threads')+1]==='1'));
 steps=await runComposite('split',{offsetSeconds:2.5,targetWidth:640,targetHeight:360});
 assert.equal(steps.length,1);
 assert.ok(has(steps[0],'hstack=inputs=2')&&has(steps[0],'start_duration=2.5'));

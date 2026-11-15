@@ -88,7 +88,11 @@ function runMerge(core,inputs,options){
   const {width,height}=geometry(options),sources=[];
   for(let i=0;i<2;i++){
     const source=inputs[i],dest='lokit-clip-'+i+'.mp4',audio=audioExists(core,source);
-    const args=['-hide_banner','-loglevel','error','-nostdin','-y','-i',source];
+    // Keep the padded-audio filter in the same deterministic single-thread
+    // schedule as our WASM core. Native FFmpeg can otherwise emit an audio
+    // tail past the last video frame when apad and -shortest race.
+    const args=['-hide_banner','-loglevel','error','-nostdin','-y',
+      '-filter_threads','1','-threads','1','-i',source];
     if(!audio)args.push('-f','lavfi','-i','anullsrc=channel_layout=stereo:sample_rate=48000');
     args.push('-map','0:v:0','-map',audio?'0:a:0':'1:a:0',
       '-vf','scale='+width+':'+height+':force_original_aspect_ratio=decrease:flags=bicubic,pad='+
