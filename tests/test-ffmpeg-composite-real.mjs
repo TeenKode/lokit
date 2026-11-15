@@ -70,6 +70,14 @@ assert.equal(video(result).width,320);assert.equal(video(result).height,180);
 result=await run('merge',[b,a],{targetWidth:320,targetHeight:180});
 assert.equal(audio(result)?.codec_name,'aac','Silence at the beginning must remain a valid AAC track');
 assert.ok(Math.abs(duration(result)-(duration(pa)+duration(pb)))<.4,'Reverse order must preserve duration');
+// Repeat both orders: unconstrained native filter scheduling can produce
+// nondeterministic padded-audio tails despite -shortest.
+for(let repeat=0;repeat<2;repeat++){
+ for(const inputs of [[a,b],[b,a]]){
+  const merged=await run('merge',inputs,{targetWidth:320,targetHeight:180});
+  assert.ok(Math.abs(duration(merged)-(duration(pa)+duration(pb)))<.4,`Unexpected repeated merge duration: ${duration(merged)}`);
+ }
+}
 result=await run('split',[a,b],{targetWidth:320,targetHeight:180,offsetSeconds:.5});
 assert.equal(audio(result)?.codec_name,'aac','Split must keep first audio');
 assert.ok(Math.abs(duration(result)-Math.max(duration(pa),duration(pb)+.5))<.4,'Split offset or duration wrong');

@@ -1,3 +1,4 @@
+import {ensureServiceWorker} from './service-worker-ready.js';
 import {prepareCraftAssets} from './craft-loader.js';
 import {applyNativeRussian,russianAppURL,russianCatalogStatus,setRussianStoredPreference,supportsNativeLanguageCommand} from './craft-language.js';
 
@@ -132,17 +133,14 @@ async function main(){
     abort=new AbortController();
     const run=++attempt;
     try{
-      if('serviceWorker' in navigator) {
-        await navigator.serviceWorker.register('./sw.js');
-        await navigator.serviceWorker.ready;
-      }else throw new Error('Браузер не поддерживает Service Worker.');
+      await ensureServiceWorker({signal:abort.signal});
       if(run!==attempt||launched)return;
       await prepareCraftAssets({
         baseURL:root.href,
         app:entry.name,version:entry.version,
         cacheStorage:caches,signal:abort.signal,
         storageManager:navigator.storage,
-        onProgress:updateProgress
+        onProgress:info=>{if(run===attempt&&!launched)updateProgress(info);}
       });
       if(run===attempt&&!launched)launch();
     }catch(error){

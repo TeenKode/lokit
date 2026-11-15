@@ -2,12 +2,14 @@
 const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
 export function adjustCue(cues,index,part,newTime){
   const cue=cues[index];if(!cue)return null;
+  const start=Number(cue.start),end=Number(cue.end);
+  if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start)return null;
   const t=Number(newTime);
   if(!Number.isFinite(t)||t<0)return null;
   const next={...cue};
-  if(part==='start')next.start=clamp(t,0,Math.max(0,Number(cue.end)-.001));
-  else if(part==='end')next.end=Math.max(Number(cue.start)+.001,t);
-  else{const len=cue.end-cue.start;next.start=Math.max(0,t);next.end=next.start+len;}
+  if(part==='start')next.start=clamp(t,0,Math.max(0,end-.001));
+  else if(part==='end')next.end=Math.max(start+.001,t);
+  else{const len=end-start;next.start=Math.max(0,t);next.end=next.start+len;}
   if(next.end<=next.start)return null;
   return next;
 }
@@ -21,13 +23,14 @@ export function mountSubtitleTimeline(host,{onSelect=()=>{},onChange=()=>{}}={})
   let cues=[],duration=1,active=-1,disabled=false;
   function render(nextCues=[],selected=-1){
     cues=nextCues;active=selected;
-    duration=Math.max(1,...cues.map(c=>Number(c.end)||0));
+    duration=cues.reduce((max,c)=>Number.isFinite(Number(c.end))?Math.max(max,Number(c.end)):max,1);
     track.replaceChildren();ruler.replaceChildren();
     for(const [index,cue] of cues.entries()){
       const block=document.createElement('div');block.className='subtitle-cue-block'+(index===active?' selected':'');
       block.style.left=`${100*cue.start/duration}%`;block.style.width=`${Math.max(.4,100*(cue.end-cue.start)/duration)}%`;
-      block.tabIndex=0;block.setAttribute('role','group');block.setAttribute('aria-label',`Реплика ${index+1}: ${cue.text.slice(0,70)}`);
-      const label=document.createElement('span');label.textContent=cue.text||`Реплика ${index+1}`;
+      const text=typeof cue.text==='string'?cue.text:'';
+      block.tabIndex=0;block.setAttribute('role','group');block.setAttribute('aria-label',`Реплика ${index+1}: ${text.slice(0,70)}`);
+      const label=document.createElement('span');label.textContent=text||`Реплика ${index+1}`;
       const left=document.createElement('button'),right=document.createElement('button');
       left.type=right.type='button';left.className='subtitle-handle start';right.className='subtitle-handle end';
       left.setAttribute('aria-label',`Переместить начало реплики ${index+1}`);right.setAttribute('aria-label',`Переместить конец реплики ${index+1}`);

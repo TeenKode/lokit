@@ -115,9 +115,10 @@ export const tools=[
 ];
 
 const parseStamp=str=>{
-  const found=String(str).trim().match(/^(\d{1,2}):(\d\d):(\d\d)[,.](\d{3})$/);
-  if(!found)return null;
-  return (Number(found[1])*3600+Number(found[2])*60+Number(found[3]))*1000+Number(found[4]);
+  const found=String(str).trim().match(/^(\d+):(\d\d):(\d\d)[,.](\d{3})$/);
+  if(!found||Number(found[2])>59||Number(found[3])>59)return null;
+  const ms=(Number(found[1])*3600+Number(found[2])*60+Number(found[3]))*1000+Number(found[4]);
+  return Number.isSafeInteger(ms)?ms:null;
 };
 const stamp=(ms,sep=',')=>{
   ms=Math.max(0,Math.round(ms));
@@ -125,8 +126,9 @@ const stamp=(ms,sep=',')=>{
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}${sep}${String(rest).padStart(3,'0')}`;
 };
 function srtToVtt(text){
-  const lines=text.replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').split('\n').map(line=>line.replace(/^(\d\d:\d\d:\d\d),(\d{3})\s+-->\s+(\d\d:\d\d:\d\d),(\d{3})/,'$1.$2 --> $3.$4'));
-  return 'WEBVTT\n\n'+lines.join('\n').trim()+'\n';
+  const cues=parseSrt(text);
+  if(!cues.length)throw new Error('Не найдены корректные временные метки SRT.');
+  return 'WEBVTT\n\n'+cues.map((cue,i)=>`${i+1}\n${stamp(cue.start,'.')} --> ${stamp(cue.end,'.')}\n${cue.text}`).join('\n\n')+'\n';
 }
 function vttToSrt(text){
   const blocks=text.replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').replace(/^WEBVTT[^\n]*\n/i,'').trim().split(/\n\s*\n/);
@@ -134,20 +136,22 @@ function vttToSrt(text){
   return blocks.map(block=>{
     const lines=block.split('\n');const timeIndex=lines.findIndex(line=>line.includes('-->'));
     if(timeIndex<0)return null;
-    const t=lines[timeIndex].match(/((?:\d{2}:)?\d{2}:\d{2})[.,](\d{3})\s+-->\s+((?:\d{2}:)?\d{2}:\d{2})[.,](\d{3})/);
+    const t=lines[timeIndex].match(/^\s*((?:\d+:)?\d{2}:\d{2})[.,](\d{3})\s+-->\s+((?:\d+:)?\d{2}:\d{2})[.,](\d{3})/);
     if(!t)return null;
     const fullTime=time=>time.split(':').length===2?`00:${time}`:time;
-    return `${++i}\n${fullTime(t[1])},${t[2]} --> ${fullTime(t[3])},${t[4]}\n${lines.slice(timeIndex+1).join('\n')}`;
+    const start=parseStamp(fullTime(t[1])+','+t[2]),end=parseStamp(fullTime(t[3])+','+t[4]);
+    if(start===null||end===null||end<=start)return null;
+    return `${++i}\n${stamp(start)} --> ${stamp(end)}\n${lines.slice(timeIndex+1).join('\n')}`;
   }).filter(Boolean).join('\n\n')+'\n';
 }
 function parseSrt(source){
   return source.replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').trim().split(/\n\s*\n/).map(block=>{
     const lines=block.split('\n');const pos=lines.findIndex(l=>l.includes('-->'));
     if(pos<0)return null;
-    const match=lines[pos].match(/(\d{1,2}:\d\d:\d\d[,.]\d{3})\s+-->\s+(\d{1,2}:\d\d:\d\d[,.]\d{3})/);
+    const match=lines[pos].match(/^\s*(\d+:\d\d:\d\d[,.]\d{3})\s+-->\s+(\d+:\d\d:\d\d[,.]\d{3})/);
     if(!match)return null;
     return {start:parseStamp(match[1]),end:parseStamp(match[2]),text:lines.slice(pos+1).join('\n')};
-  }).filter(c=>c&&c.start!==null&&c.end!==null);
+  }).filter(c=>c&&c.start!==null&&c.end!==null&&c.end>c.start);
 }
 function serializeSrt(cues){return cues.map((cue,i)=>`${i+1}\n${stamp(cue.start)} --> ${stamp(cue.end)}\n${cue.text}`).join('\n\n')+'\n';}
 function shiftSubtitle(text,seconds){

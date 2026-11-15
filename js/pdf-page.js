@@ -43,7 +43,9 @@ offlineButton.addEventListener('click',async()=>{
       throw new Error('Браузер не поддерживает автономное хранение.');
     const registration=await navigator.serviceWorker.getRegistration('./');
     if(!registration)throw new Error('Service Worker не зарегистрирован.');
-    await registration.update();
+    // Updating the worker requires a network; an active worker can save/reuse
+    // the already cached editor while offline.
+    try{await registration.update();}catch{if(!registration.active)throw new Error('Нет активной автономной версии. Подключитесь к сети и повторите попытку.');}
     await navigator.serviceWorker.ready;
     await savePdfCraftOffline({
       baseURL:root.href,

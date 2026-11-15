@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {ensureServiceWorker} from '../js/service-worker-ready.js';
+const active={active:{}};
+assert.equal(await ensureServiceWorker({serviceWorker:{register:async()=>active}}),active);
+const ready={active:{}};
+assert.equal(await ensureServiceWorker({serviceWorker:{register:async()=>({}),ready:Promise.resolve(ready)}}),ready);
+await assert.rejects(ensureServiceWorker({serviceWorker:{register:async()=>({}),ready:new Promise(()=>{})},timeoutMs:5}),/автономный режим/);
+await assert.rejects(ensureServiceWorker({serviceWorker:{register:async()=>{throw Error('install failed');}}}),/install failed/);
+const controller=new AbortController();
+const waiting=ensureServiceWorker({serviceWorker:{register:async()=>({}),ready:new Promise(()=>{})},signal:controller.signal});
+controller.abort();
+await assert.rejects(waiting,{name:'AbortError'});
+let registrations=0;
+await assert.rejects(ensureServiceWorker({serviceWorker:{register(){registrations++;}},signal:controller.signal}),{name:'AbortError'});
+assert.equal(registrations,0);
+console.log('PASS bounded service worker registration, ready, failure and cancellation');

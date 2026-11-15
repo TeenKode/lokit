@@ -52,11 +52,7 @@ jobs:
           python scripts/verify-artcraft-bundles.py
           du -sh craft-apps/
       - name: Prepare static website
-        run: |
-          mkdir _site
-          cp .nojekyll *.html *.css sw.js manifest.webmanifest _site/
-          cp -a icons js assets pdfcraft craft-apps _site/
-          cp artcraft-releases.json _site/
+        run: python scripts/prepare-site.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

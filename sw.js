@@ -1,8 +1,8 @@
 // Refresh offline navigation assets; preserve bundled codec caches.
-const CACHE='lokit-v0.9.2';
+const CACHE='lokit-v0.9.3';
 const FILES=[
   './','./index.html','./pdf.html','./craft.html','./analytics.html','./about.html','./batch.html','./style.css','./style-enhancements.css','./layout-compact.css','./sidebar.css','./glow.css','./batch.css','./manifest.webmanifest',
-  './pdf.css','./js/pdf-page.js','./js/pdf-offline.js','./craft.css','./js/craft-loader.js','./js/craft-page.js','./js/craft-language.js','./artcraft-releases.json',
+  './pdf.css','./js/pdf-page.js','./js/pdf-offline.js','./craft.css','./js/craft-loader.js','./js/craft-page.js','./js/craft-language.js','./js/service-worker-ready.js','./artcraft-releases.json',
   './icons/icon.svg','./icons/icon-192.png','./icons/icon-512.png',
   './js/app.js','./js/tools.js','./js/media.js','./js/analytics.js',
   './js/analytics-page.js','./js/background.js','./js/batch-queue.js','./js/batch-page.js','./js/zip.js','./js/editor.js','./js/edit-history.js','./js/multitrack.js','./js/subtitle-timeline.js','./js/precision-timeline.js','./js/render.js','./js/mp4-fast.js','./js/experimental-engines.js','./js/experimental-ffmpeg-worker.js','./js/codec-assets.js','./js/offline-codecs-page.js','./js/vendor/mp4-track-remux.js','./js/vendor/mp4-flatten.js','./js/vendor/mp4-copy-trim.js','./js/vendor/webm-copy-trim.js','./js/presets.js','./js/capabilities.js','./js/version.js',
@@ -31,6 +31,8 @@ self.addEventListener('activate',event=>{
   })());
 });
 const files=new Set(FILES.map(path=>new URL(path,self.registration.scope).pathname));
+async function openOptionalCache(name){try{return await caches.open(name);}catch{return null;}}
+async function matchOptional(cache,key,options){try{return await cache?.match(key,options);}catch{return null;}}
 self.addEventListener('fetch',event=>{
   const req=event.request;
   const url=new URL(req.url);
@@ -43,16 +45,16 @@ self.addEventListener('fetch',event=>{
       return;
     }
     event.respondWith((async()=>{
-      const cache=await caches.open(PDFCRAFT_CACHE);
+      const cache=await openOptionalCache(PDFCRAFT_CACHE);
       // The iframe uses /pdfcraft/ but prefetch includes /pdfcraft/index.html.
       const key=url.pathname===PDFCRAFT_PATH
         ?new URL('index.html',self.location.origin+PDFCRAFT_PATH).href
         :req;
-      const cached=await cache.match(key,{ignoreSearch:true});
+      const cached=await matchOptional(cache,key,{ignoreSearch:true});
       if(cached)return cached;
       try{
         const response=await fetch(req);
-        if(response.ok&&response.type!=='opaque'){
+        if(cache&&response.ok&&response.type!=='opaque'){
           try{await cache.put(key,response.clone());}catch{/* Storage quota or stream interruption. */}
         }
         return response;
@@ -73,15 +75,15 @@ self.addEventListener('fetch',event=>{
       return;
     }
     event.respondWith((async()=>{
-      const cache=await caches.open(CRAFT_CACHE_PREFIX+name);
+      const cache=await openOptionalCache(CRAFT_CACHE_PREFIX+name);
       const key=rest===name+'/'
         ?new URL('index.html',self.location.origin+url.pathname).href
         :req.url;
-      const cached=await cache.match(key,{ignoreSearch:true});
+      const cached=await matchOptional(cache,key,{ignoreSearch:true});
       if(cached)return cached;
       try{
         const response=await fetch(req);
-        if(response.ok&&response.type!=='opaque'){
+        if(cache&&response.ok&&response.type!=='opaque'){
           try{await cache.put(key,response.clone());}
           catch{/* Full storage or interrupted stream; still return response. */}
         }
@@ -94,12 +96,12 @@ self.addEventListener('fetch',event=>{
   }
   if(CODEC_PATHS.has(url.pathname)){
     event.respondWith((async()=>{
-      const cache=await caches.open(CODEC_CACHE);
-      const saved=await cache.match(req);
+      const cache=await openOptionalCache(CODEC_CACHE);
+      const saved=await matchOptional(cache,req);
       if(saved)return saved;
       try{
         const response=await fetch(req);
-        if(response.ok&&!/text\/html/i.test(response.headers.get('Content-Type')||'')){
+        if(cache&&response.ok&&!/text\/html/i.test(response.headers.get('Content-Type')||'')){
           try{await cache.put(req,response.clone());}catch{/* Quota may be exhausted. */}
         }
         return response;
@@ -109,17 +111,20 @@ self.addEventListener('fetch',event=>{
   }
   if(!files.has(url.pathname))return;
   event.respondWith((async()=>{
-    const cache=await caches.open(CACHE);
+    const cache=await openOptionalCache(CACHE);
     // Страницы, настройки и скрипты обновляются при наличии сети.
     const fresh=['navigate','script','style','manifest'].includes(req.destination==='document'?'navigate':req.destination);
     if(fresh){
       try{
         const response=await fetch(req);
-        if(response.ok){await cache.put(req,response.clone());return response;}
+        if(response.ok){
+          try{await cache?.put(req,response.clone());}catch{/* Online assets must survive cache failures. */}
+          return response;
+        }
       }catch{}
     }
-    return (await cache.match(req,{ignoreSearch:true}))
-      ||(req.mode==='navigate'?await cache.match('./index.html'):null)
+    return (await matchOptional(cache,req,{ignoreSearch:true}))
+      ||(req.mode==='navigate'?await matchOptional(cache,'./index.html'):null)
       ||fetch(req);
   })());
 });

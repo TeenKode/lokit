@@ -39,7 +39,7 @@ try:
   page.locator('[data-action=sub-redo]').click()
   assert page.locator('.studio-cue-list .studio-cue textarea').first.input_value()=='Изменено в редакторе Lokit'
   assert page.locator('.studio-sub-preview').count()==1
-  page.locator('#tool-content button.primary').click()
+  page.locator('#tool-content form').evaluate("form => {form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));}")
   page.wait_for_function("() => document.querySelector('#tool-status').textContent.includes('Готово')",timeout=20000)
   assert page.locator('.progress-panel').get_attribute('data-stage')=='complete'
   with page.expect_download() as edited:
@@ -60,6 +60,11 @@ try:
   page.wait_for_function("() => document.querySelector('.studio-rendered-canvas').width > 0",timeout=15000)
   page.locator('.studio-source-timeline .tt-strip').wait_for(state='visible',timeout=12000)
   assert page.locator('.studio-player').count()>=1
+  # Clearing a selected video must reset its editor without a ReferenceError.
+  page.locator('#tool-content input[type=file]').set_input_files([])
+  assert page.locator('.studio-video-panel').is_hidden()
+  page.locator('#tool-content input[type=file]').set_input_files(str(ROOT/'tests/fixtures/sample.webm'))
+  page.wait_for_function("() => document.querySelector('.precision-editor') !== null",timeout=15000)
   assert page.locator('.studio-video-surface').evaluate('(el)=>el.classList.contains(\"studio-show-render\")')
   assert page.locator('.studio-trim-controls input[type=range]').count()==2
   # Zoomed millisecond lane must edit the same form values used for export.
@@ -153,6 +158,16 @@ try:
    mobile_page.goto(url,wait_until='networkidle')
    assert mobile_page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'),url
   mobile.close()
+  blocked=browser.new_context()
+  blocked.add_init_script("Object.defineProperty(window,'localStorage',{get(){throw new DOMException('Blocked','SecurityError');}})")
+  blocked_page=blocked.new_page()
+  blocked_page.on('pageerror',lambda e: errors.append(str(e)))
+  blocked_page.goto(URL,wait_until='networkidle')
+  assert blocked_page.locator('.tool-card').count()==40
+  click_sidebar_tool(blocked_page,'Обрезка видео')
+  assert blocked_page.locator('#tool-content form').count()==1
+  blocked_page.locator('.studio-reset-settings').click()
+  blocked.close()
   print('PASS: 40 tools, version badge, about offline, favorites, input validation, busy lock, stale-result cleanup, SRT, personal analytics, mobile layout')
   print('BROWSER ERRORS:',errors)
   assert not errors,errors

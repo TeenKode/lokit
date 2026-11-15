@@ -367,7 +367,7 @@ function openTool(tool){
     catch(error){showStatus(error?.message||'Не удалось применить параметры редактирования.',true);return;}
     if(!tool.isCapture&&files.length<(tool.requiredFiles||1)){showStatus(((tool.requiredFiles||1)===2?'Выберите два файла.':'Выберите файл.'),true);return;}
     if(files.length>(tool.maxFiles||1)){showStatus(((tool.maxFiles||1)===2?'Можно выбрать не более двух файлов.':'Можно выбрать только один файл.'),true);return;}
-    if(currentTool!==tool||!form.isConnected)return;
+    if(controller||currentTool!==tool||!form.isConnected)return;
     const startValue=Number(form.elements.namedItem('start')?.value||0);
     const endValue=Number(form.elements.namedItem('end')?.value||0);
     if(tool.id==='video-trim'&&endValue>0&&startValue>=endValue){
@@ -401,7 +401,7 @@ function openTool(tool){
     };
     const stopHandler=fn=>{if(!isCurrent())return;stopRecording=fn;stop.classList.toggle('hidden',!fn);if(fn)showStatus();};
     try{
-      const result=await tool.run({files,values,signal:runController.signal,stop:stopHandler,progress:handleProgress,captureStream:stream=>activeEditor?.setStream?.(stream)});
+      const result=await tool.run({files,values,signal:runController.signal,stop:stopHandler,progress:handleProgress,captureStream:stream=>{if(isCurrent())activeEditor?.setStream?.(stream);}});
       if(!runController.signal.aborted&&isCurrent()){
         addResult(result);
         recordOperation(tool.id,'success',files,result,(performance.now()-started));

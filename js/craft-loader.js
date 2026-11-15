@@ -4,6 +4,8 @@ export const CRAFT_CACHE_PREFIX='lokit-craft-v1-';
 export const CRAFT_PREFETCH='lokit-craft-prefetch';
 const MAX_ASSETS=10000;
 const MAX_BYTES=400*1024*1024;
+const cancelled=()=>new DOMException('Загрузка отменена','AbortError');
+function checkAbort(signal){if(signal?.aborted)throw cancelled();}
 
 export function cacheNameFor(app){
   if(!/^[a-z0-9-]{2,50}$/.test(app))throw new Error('Некорректное имя приложения.');
@@ -49,6 +51,7 @@ function showError(error){
 async function fetchComplete(url,{fetcher,signal,update=()=>{},attempts=2}){
   let last;
   for(let attempt=0;attempt<attempts;attempt++){
+    checkAbort(signal);
     update(0);
     try{
       const response=await fetcher(fetchURL(url),{cache:'no-store',signal});
@@ -59,22 +62,34 @@ async function fetchComplete(url,{fetcher,signal,update=()=>{},attempts=2}){
       let count=0;
       if(response.body?.getReader){
         const reader=response.body.getReader();
+        const cancel=()=>{void reader.cancel(signal?.reason).catch(()=>{});};
+        signal?.addEventListener('abort',cancel,{once:true});
         try{
+          checkAbort(signal);
           for(;;){
             const {value,done}=await reader.read();
+            checkAbort(signal);
             if(done)break;
             count+=value.byteLength;
             if(count>MAX_BYTES)throw new Error('Файл превышает максимальный размер');
             chunks.push(value);
             update(count);
           }
-        }finally{reader.releaseLock();}
+        }catch(error){
+          // Stop the response body too, including size-limit and progress errors.
+          await reader.cancel(error).catch(()=>{});
+          throw error;
+        }finally{
+          signal?.removeEventListener('abort',cancel);
+          reader.releaseLock();
+        }
       }else{
         const data=await response.arrayBuffer();
         count=data.byteLength;
         chunks.push(data);
         update(count);
       }
+      checkAbort(signal);
       return {chunks,count,contentType};
     }catch(error){
       last=error;
@@ -92,9 +107,19 @@ function blobResponse(file){
 /** Download, display byte-level progress, cache and retry an entire web app.
  * The caller can abort without deleting previously saved assets.
  */
-export async function prepareCraftAssets({
+export async function prepareCraftAssets(options={}){
+  const controller=new AbortController();
+  const cancel=()=>controller.abort(options.signal?.reason);
+  options.signal?.addEventListener('abort',cancel,{once:true});
+  if(options.signal?.aborted)cancel();
+  try{
+    checkAbort(controller.signal);
+    return await prepareAssets({...options,signal:controller.signal,stop:cancel});
+  }finally{options.signal?.removeEventListener('abort',cancel);}
+}
+async function prepareAssets({
   baseURL,app,version,fetcher=fetch,cacheStorage=caches,signal,
-  onProgress=()=>{},storageManager=null,concurrency=2
+  onProgress=()=>{},storageManager=null,concurrency=2,stop
 }={}){
   const root=new URL(baseURL);
   if(!/^https?:$/.test(root.protocol)||!root.pathname.endsWith('/'+app+'/'))
@@ -102,14 +127,15 @@ export async function prepareCraftAssets({
   const cache=await cacheStorage.open(cacheNameFor(app));
   try{await storageManager?.persist?.();}catch{/* Storage permission is optional. */}
   const manifestURL=new URL('lokit-assets.json',root);
-  let raw;
+  const old=await cache.match(manifestURL.href);
+  let raw,downloaded=true;
   try{
     raw=await fetchComplete(manifestURL.href,{fetcher,signal});
     if(raw.count>2*1024*1024)throw new Error('Список файлов слишком большой.');
-    await cache.put(manifestURL.href,blobResponse(raw));
+    checkAbort(signal);
   }catch(error){
     if(signal?.aborted)throw error;
-    const old=await cache.match(manifestURL.href);
+    downloaded=false;
     if(!old?.ok)throw new Error('Невозможно загрузить список файлов: '+showError(error));
     raw={chunks:[await old.arrayBuffer()]};
   }
@@ -117,6 +143,18 @@ export async function prepareCraftAssets({
   try{manifest=JSON.parse(await new Blob(raw.chunks).text());}
   catch{throw new Error('Невозможно прочитать список файлов.');}
   const {assets,total}=checkedAssets(manifest,app,version,root);
+  if(downloaded){
+    let previous;
+    try{previous=old?.ok?await old.json():null;}catch{/* Unreadable metadata cannot identify saved assets. */}
+    if(JSON.stringify(previous)!==JSON.stringify(manifest)){
+      // URLs stay constant between releases. Never mix old JS/WASM with a new
+      // validated manifest, even when an asset happens to have the same size.
+      const keys=await cache.keys();
+      await Promise.all(keys.map(key=>cache.delete(key)));
+    }
+    checkAbort(signal);
+    await cache.put(manifestURL.href,blobResponse(raw));
+  }
   const current=new Map();
   let completed=0,completedFiles=0,reused=0;
   function report(stage,file){
@@ -131,10 +169,11 @@ export async function prepareCraftAssets({
   let index=0;
   async function worker(){
     while(index<assets.length){
-      if(signal?.aborted)throw new DOMException('Загрузка отменена','AbortError');
+      checkAbort(signal);
       const item=assets[index++];
       let existing;
       try{existing=await cache.match(item.url);}catch{/* Treat as missing. */}
+      checkAbort(signal);
       if(existing?.ok){
         completed+=item.bytes;
         completedFiles++;
@@ -156,14 +195,18 @@ export async function prepareCraftAssets({
           throw new Error('Сервер вернул HTML вместо файла');
       }catch(error){
         current.delete(item.url);
+        checkAbort(signal);
         throw new Error('Ошибка загрузки '+item.path+': '+showError(error));
       }
       try{
+        checkAbort(signal);
         await cache.put(item.url,blobResponse(file));
       }catch(error){
         current.delete(item.url);
+        checkAbort(signal);
         throw new Error('Ошибка сохранения '+item.path+': '+showError(error));
       }
+      checkAbort(signal);
       current.delete(item.url);
       completed+=item.bytes;
       completedFiles++;
@@ -171,11 +214,17 @@ export async function prepareCraftAssets({
     }
   }
   try{
-    // Promise.all rejects immediately, so avoid leaving other workers running.
-    const workers=Array.from({length:Math.min(3,Math.max(1,Math.floor(concurrency)))},()=>worker());
-    const settled=await Promise.allSettled(workers);
-    const failed=settled.find(result=>result.status==='rejected');
-    if(failed)throw failed.reason;
+    // Abort sibling downloads immediately, then wait for their cleanup. Keep the
+    // original error (e.g. quota exceeded), rather than a sibling's AbortError.
+    const count=Number.isFinite(concurrency)?Math.min(3,Math.max(1,Math.floor(concurrency))):2;
+    let failure;
+    const workers=Array.from({length:count},()=>worker().catch(error=>{
+      if(!failure){failure=error;stop();}
+      throw error;
+    }));
+    await Promise.allSettled(workers);
+    if(failure)throw failure;
+    checkAbort(signal);
   }catch(error){
     report('error',showError(error));
     throw error;

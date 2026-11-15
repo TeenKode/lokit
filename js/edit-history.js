@@ -1,5 +1,6 @@
 /** Undo/redo state independent of DOM. Stores data only, never File objects. */
 export function createEditHistory(initial,{limit=80,mergeWindow=300,clock=()=>Date.now()}={}){
+  if(!Number.isSafeInteger(limit)||limit<1)limit=80;
   const copy=value=>JSON.parse(JSON.stringify(value));
   let states=[copy(initial)],index=0,lastKey='',lastTime=-Infinity;
   const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);

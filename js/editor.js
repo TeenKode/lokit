@@ -526,7 +526,7 @@ function videoStudio(root,tool,form){
   function update(files){
     reset();
     const first=files?.[0];if(!isVideo(first)){
-      placeholder.classList.remove('hidden');panel.classList.add('hidden');badge.textContent='Файл не выбран';historyButtons();return;
+      placeholder.classList.remove('hidden');panel.classList.add('hidden');badge.textContent='Файл не выбран';updateHistoryButtons();return;
     }
     objectFile=first;
     placeholder.classList.add('hidden');panel.classList.remove('hidden');badge.textContent='Просмотр готов';

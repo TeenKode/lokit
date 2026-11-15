@@ -4,9 +4,9 @@
 export const MAX_BATCH_JOBS=100;
 const FINISHED=new Set(['success','error','cancelled']);
 const abortError=()=>new DOMException('Операция отменена','AbortError');
-export function isBatchTool(tool){return !!tool&&!tool.isCapture&&typeof tool.run==='function';}
+export function isBatchTool(tool){return !!tool&&!tool.isCapture&&!tool.href&&typeof tool.run==='function';}
 export function groupFiles(tool,files){
-  if(!isBatchTool(tool))throw new Error('Запись экрана и камеры недоступна в пакетном режиме.');
+  if(!isBatchTool(tool))throw new Error('Пакетная обработка этого инструмента недоступна. Откройте его отдельно.');
   const size=Number(tool.requiredFiles||1);
   if(!Number.isSafeInteger(size)||size<1||size>2)throw new Error('Для этого инструмента требуется один или два файла.');
   const all=Array.from(files||[]);
@@ -38,7 +38,7 @@ export class BatchQueue {
   async start(){
     this.paused=false;
     if(this._loop){this.notify();return this._loop;}
-    this._loop=this._drain();
+    this._loop=Promise.resolve().then(()=>this._drain());
     try{return await this._loop;}finally{this._loop=null;this.notify();}
   }
   pause(){this.paused=true;this.notify();}

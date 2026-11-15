@@ -28,6 +28,15 @@ try{
   const abort=new AbortController();abort.abort();
   await assert.rejects(downloadAllCodecs({signal:abort.signal}),{name:'AbortError'});
   await assert.rejects(fetchCodecBlob('https://example.org/evil.js'),/Неизвестный/);
+  for(const cachesWithFailure of [
+    {async open(){throw new DOMException('Blocked','SecurityError');}},
+    {async open(){return {async match(){throw Error('read failed');},async put(){throw Error('write failed');}};}}
+  ]){
+    globalThis.caches=cachesWithFailure;
+    assert.equal((await fetchCodecBlob(DEPENDENCIES.ffmpegCore)).size,3,'Online loading survives unavailable CacheStorage');
+    assert.equal((await getCodecStatus()).supported,false);
+    await assert.rejects(downloadAllCodecs());
+  }
 }finally{globalThis.caches=originalCaches;globalThis.fetch=originalFetch;}
 const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
 assert(sw.includes('lokit-optional-codecs-v2'));

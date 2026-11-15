@@ -1,32 +1,36 @@
 /** Pure millisecond timeline geometry, plus an accessible zoomed navigation lane. */
-export function clampTime(time,duration){return Math.min(Math.max(0,Number(time)||0),Math.max(0,Number(duration)||0));}
+const finite=(value,fallback=0)=>Number.isFinite(Number(value))?Number(value):fallback;
+export function clampTime(time,duration){return Math.min(Math.max(0,finite(time)),Math.max(0,finite(duration)));}
 export function timelineWindow(duration,zoom=1,center=0){
-  const total=Math.max(0,Number(duration)||0);
-  const factor=Math.min(32,Math.max(1,Number(zoom)||1));
+  const total=Math.max(0,finite(duration));
+  const factor=Math.min(32,Math.max(1,finite(zoom,1)));
   if(!total)return {start:0,end:0,span:0,zoom:factor};
   const span=total/factor;
-  const start=Math.min(Math.max(0,center-span/2),total-span);
+  const start=Math.min(Math.max(0,finite(center)-span/2),total-span);
   return {start,end:start+span,span,zoom:factor};
 }
 export function positionInWindow(time,view){return view.span?100*(time-view.start)/view.span:0;}
 export function stepFrame(time,frameRate,direction,duration){
+  if(direction!==-1&&direction!==1)throw new RangeError('Направление шага должно быть -1 или 1');
   const rate=Number(frameRate);
   if(!Number.isFinite(rate)||rate<=0||rate>240)throw new Error('Неподдерживаемая частота кадров');
   return Math.round(clampTime(Number(time)+direction/rate,duration)*1000)/1000;
 }
 export function formatTimecode(seconds){
-  const ms=Math.max(0,Math.round((Number(seconds)||0)*1000));
+  const rounded=Math.round(finite(seconds)*1000);
+  const ms=Number.isFinite(rounded)?Math.max(0,rounded):0;
   const h=Math.floor(ms/3600000),m=Math.floor(ms/60000)%60,s=Math.floor(ms/1000)%60;
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms%1000).padStart(3,'0')}`;
 }
 export function parseTimecode(text){
   const value=String(text??'').trim().replace(',','.');
-  if(/^\d+(?:\.\d{1,3})?$/.test(value))return Number(value);
+  if(/^\d+(?:\.\d{1,3})?$/.test(value))return Number.isFinite(Number(value))?Number(value):NaN;
   const parts=value.match(/^(?:(\d+):)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?$/);
   if(!parts)return NaN;
   const h=Number(parts[1]||0),m=Number(parts[2]),s=Number(parts[3]);
   if(m>59||s>59)return NaN;
-  return h*3600+m*60+s+Number((parts[4]||'0').padEnd(3,'0'))/1000;
+  const seconds=h*3600+m*60+s+Number((parts[4]||'0').padEnd(3,'0'))/1000;
+  return Number.isFinite(seconds)?seconds:NaN;
 }
 /** The DOM lane exposes seconds, but every seek/range input operates in whole milliseconds. */
 export function mountPrecisionTimeline(host,{duration=0,onSeek=()=>{},onRangeChange=()=>{},getPlayhead=()=>0}={}){
@@ -51,7 +55,7 @@ export function mountPrecisionTimeline(host,{duration=0,onSeek=()=>{},onRangeCha
   fields.append(startLabel,endLabel,fpsLabel,backward,forward);
   const hint=make('p','precision-hint','Укажите начало и конец с точностью до миллисекунды. Реальная точность результата зависит от формата и способа экспорта.');
   root.append(toolbar,ruler,bar,fields,hint);host.append(root);
-  let total=Math.max(0,Number(duration)||0),zoom=1,center=total/2,selected={start:0,end:total},current=0,disabled=false;
+  let total=Math.max(0,finite(duration)),zoom=1,center=total/2,selected={start:0,end:total},current=0,disabled=false;
   const unsub=[];
   const listen=(node,event,fn)=>{node.addEventListener(event,fn);unsub.push([node,event,fn]);};
   const markers=()=>{
@@ -91,11 +95,11 @@ export function mountPrecisionTimeline(host,{duration=0,onSeek=()=>{},onRangeCha
   markers();refreshInputs();
   return {
     root,
-    setDuration(value){total=Math.max(0,Number(value)||0);center=total/2;selected={start:0,end:total};current=0;markers();refreshInputs();},
-    setRange(start,end){selected={start:clampTime(start,total),end:clampTime(end,total)};markers();refreshInputs();},
+    setDuration(value){total=Math.max(0,finite(value));center=total/2;selected={start:0,end:total};current=0;markers();refreshInputs();},
+    setRange(start,end){const a=clampTime(start,total),b=clampTime(end,total);selected={start:Math.min(a,b),end:Math.max(a,b)};markers();refreshInputs();},
     setPlayhead(time){current=clampTime(time,total);markers();},
     step:frame,
-    zoomTo(factor){zoom=Math.min(32,Math.max(1,factor));center=current;markers();},
+    zoomTo(factor){zoom=Math.min(32,Math.max(1,finite(factor,1)));center=current;markers();},
     setDisabled(value){disabled=Boolean(value);for(const node of [seek,startInput,endInput,fps,backward,forward])node.disabled=disabled;markers();},
     destroy(){for(const [node,event,fn] of unsub)node.removeEventListener(event,fn);root.remove();}
   };

@@ -21,3 +21,16 @@ assert.deepEqual(readPreset(tool),{});
 store.set('lokit:tool-settings:v1:video-trim',JSON.stringify({start:'2000',width:'invalid',unknown:'secret'}));
 assert.equal(applyPreset(tool,form),0,'Invalid and unknown options are ignored');
 console.log('Presets: save, restore, reset, validation, no file data — PASS');
+
+fields.start.value='-1';fields.end.value='2000';fields.width.value='invalid';
+assert.equal(savePreset(tool,form),true);
+assert.deepEqual(readPreset(tool),{});
+const storageDescriptor=Object.getOwnPropertyDescriptor(globalThis,'localStorage');
+Object.defineProperty(globalThis,'localStorage',{configurable:true,get(){throw new DOMException('Blocked','SecurityError');}});
+try{
+ assert.deepEqual(readPreset(tool),{});
+ assert.equal(applyPreset(tool,form),0);
+ assert.equal(savePreset(tool,form),false);
+ assert.doesNotThrow(()=>resetPreset(tool,form));
+ assert.equal(fields.start.value,'0');
+}finally{Object.defineProperty(globalThis,'localStorage',storageDescriptor);}

@@ -57,6 +57,11 @@ try:
           }));
         }""")
         assert all(status==200 and size>0 for status,size in assets),assets
+        page.locator('#offline-pdf').click()
+        page.wait_for_function(
+            "() => document.querySelector('#pdf-status').textContent.includes('сохранены для работы без интернета')",
+            timeout=25000
+        )
         assert not errors,errors
         context.close()
         browser.close()
