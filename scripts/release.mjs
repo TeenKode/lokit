@@ -16,6 +16,8 @@ if(!version)throw new Error('APP_VERSION не найден');
 function assert(condition,message){if(!condition)throw new Error(message);}
 function checkProject(expected=version){
  const code=read('sw.js');
+ const lock=JSON.parse(read('package-lock.json'));
+ assert(lock.version===expected&&lock.packages?.['']?.version===expected,'Версия package-lock.json отличается от приложения');
  assert(code.includes(`lokit-v${expected}`),'Номер PWA-кеша отличается от версии');
  assert(read('CHANGELOG.md').includes(`## v${expected}`),'Нет записи о текущей версии в CHANGELOG.md');
  assert(JSON.parse(read('package.json')).version===expected,'Версия package.json отличается от приложения');
@@ -50,6 +52,7 @@ let versionJs=read(VERSION_FILE).replace(VERSION_PATTERN,`APP_VERSION='${next}'`
  .replace(/RELEASE_DATE\s*=\s*['"][^'"]+['"]/,`RELEASE_DATE='${date}'`);
 write(VERSION_FILE,versionJs);
 const packageJson=JSON.parse(read('package.json'));packageJson.version=next;write('package.json',JSON.stringify(packageJson,null,2)+'\n');
+const lock=JSON.parse(read('package-lock.json'));lock.version=next;lock.packages[''].version=next;write('package-lock.json',JSON.stringify(lock,null,2)+'\n');
 write('sw.js',read('sw.js').replace(/lokit-v\d+\.\d+\.\d+/,`lokit-v${next}`));
 for(const p of PAGES){
  let html=read(p).replaceAll(`v${version}`,`v${next}`);

@@ -40,3 +40,17 @@ assert.deepEqual(timelineWindow(20,4,20),{start:15,end:20,span:5,zoom:4});
 assert.equal(positionInWindow(10,timelineWindow(20,4,10)),50);
 assert.equal(clampTime(25,20),20);
 console.log('Precision timeline, timecodes, undo/redo, bounded history: PASS');
+for(const value of [NaN,Infinity,-Infinity,Number.MAX_VALUE])assert.equal(formatTimecode(value),'00:00:00.000');
+assert.ok(Number.isNaN(parseTimecode('9'.repeat(400))));
+assert.ok(Number.isNaN(parseTimecode('9'.repeat(400)+':00:00.000')));
+assert.equal(parseTimecode('123:00:00.000'),442800);
+assert.deepEqual(timelineWindow(Infinity,4,10),{start:0,end:0,span:0,zoom:4});
+assert.deepEqual(timelineWindow(20,NaN,Infinity),{start:0,end:20,span:20,zoom:1});
+for(const direction of [undefined,0,2,NaN,Infinity,'1'])assert.throws(()=>stepFrame(1,30,direction,4),RangeError);
+for(const limit of [0,-1,NaN,Infinity,1.5]){
+ const bounded=createEditHistory(0,{limit});
+ for(let i=1;i<=100;i++)bounded.record(i);
+ let undos=0;while(bounded.canUndo){bounded.undo();undos++;}
+ assert.equal(undos,80,'Invalid capacity uses a bounded default');
+}
+const one=createEditHistory(0,{limit:1});one.record(1);assert.equal(one.undo(),0);

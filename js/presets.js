@@ -1,8 +1,9 @@
 const PREFIX='lokit:tool-settings:v1:';
 const limit=80;
 function key(tool){return PREFIX+tool.id;}
-export function readPreset(tool,store=globalThis.localStorage){
+export function readPreset(tool,store){
   try{
+    store??=globalThis.localStorage;
     const v=JSON.parse(store.getItem(key(tool))||'null');
     if(!v||typeof v!=='object'||Array.isArray(v))return {};
     const allowed=new Set((tool.options||[]).map(d=>d.key));
@@ -25,18 +26,20 @@ export function applyPreset(tool,form){
   }
   return found;
 }
-export function savePreset(tool,form,store=globalThis.localStorage){
+export function savePreset(tool,form,store){
   const result={};
   for(const def of tool.options||[]){
     const field=form.elements.namedItem(def.key);if(!field)continue;
-    const value=String(field.value).slice(0,limit);
-    if(def.type==='number'&&(!value||!Number.isFinite(Number(value))))continue;
+    const value=String(field.value);
+    if(value.length>limit)continue;
+    if(def.type==='select'&&!def.choices?.some(([key])=>String(key)===value))continue;
+    if(def.type==='number'&&(!value.trim()||!Number.isFinite(Number(value))||(def.min!==undefined&&Number(value)<Number(def.min))||(def.max!==undefined&&Number(value)>Number(def.max))))continue;
     result[def.key]=value;
   }
-  try{store.setItem(key(tool),JSON.stringify(result));return true;}catch{return false;}
+  try{(store??globalThis.localStorage).setItem(key(tool),JSON.stringify(result));return true;}catch{return false;}
 }
-export function resetPreset(tool,form,store=globalThis.localStorage){
-  try{store.removeItem(key(tool));}catch{}
+export function resetPreset(tool,form,store){
+  try{(store??globalThis.localStorage).removeItem(key(tool));}catch{}
   for(const def of tool.options||[]){
     const field=form.elements.namedItem(def.key);if(!field)continue;
     field.value=String(def.default??'');

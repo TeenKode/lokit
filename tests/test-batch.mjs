@@ -67,3 +67,20 @@ queue.clearFinished();assert.equal(queue.jobs.length,0);
 assert.throws(()=>queue.add(single,[f('1'),f('2'),f('3'),f('4'),f('5'),f('6')],{}),/не более/);
 assert(updates>10);
 console.log('PASS batch queue: grouping, mixed options, progress, pause, failures, retry, cancel, memory cleanup, limit');
+
+assert.equal(isBatchTool({href:'./craft.html',run(){}}),false,'External editors do not support queued files');
+assert.throws(()=>groupFiles({href:'./pdf.html',run(){}},[f('a')]),/недоступна/);
+const emptyQueue=new BatchQueue({execute:async()=>({blob:new Blob(['ok'])})});
+await emptyQueue.start();
+emptyQueue.add(single,[f('after-empty.srt')]);
+await emptyQueue.start();
+assert.equal(emptyQueue.jobs[0].status,'success','Starting an empty queue must not block future runs');
+let simultaneous=0,maxSimultaneous=0;
+const reentrant=new BatchQueue({execute:async()=>{
+ simultaneous++;maxSimultaneous=Math.max(maxSimultaneous,simultaneous);
+ await Promise.resolve();simultaneous--;return {blob:new Blob(['ok'])};
+}});
+reentrant.add(single,[f('one'),f('two')]);
+await Promise.all([reentrant.start(),reentrant.start()]);
+assert.equal(maxSimultaneous,1);
+assert.equal(reentrant.snapshot().counts.success,2);

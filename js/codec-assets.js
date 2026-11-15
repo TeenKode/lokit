@@ -16,13 +16,15 @@ function assertAsset(url) {
 }
 function checkAbort(signal) { if (signal?.aborted) throw cancelError(); }
 async function openCache() {
-  return typeof caches === 'undefined' ? null : caches.open(CODEC_CACHE);
+  try{return typeof caches === 'undefined' ? null : await caches.open(CODEC_CACHE);}
+  catch{return null;}
 }
 async function loadResponse(url, {signal, requireCache = false} = {}) {
   assertAsset(url); checkAbort(signal);
   const cache = await openCache();
   if (requireCache && !cache) throw new Error('Браузер не поддерживает офлайн-хранилище модулей.');
-  const stored = await cache?.match(url);
+  let stored;
+  try{stored=await cache?.match(url);}catch{/* Online loading remains available. */}
   if (stored) return stored;
   checkAbort(signal);
   let response;
@@ -56,7 +58,9 @@ export async function fetchCodecBlob(url, {signal} = {}) {
 export async function getCodecStatus() {
   const cache = await openCache();
   if (!cache) return {supported:false, cached:[], missing:[...CODEC_NAMES], complete:false};
-  const checks = await Promise.all(CODEC_NAMES.map(async name => Boolean(await cache.match(DEPENDENCIES[name]))));
+  let checks;
+  try{checks=await Promise.all(CODEC_NAMES.map(async name=>Boolean(await cache.match(DEPENDENCIES[name]))));}
+  catch{return {supported:false,cached:[],missing:[...CODEC_NAMES],complete:false};}
   const cached = CODEC_NAMES.filter((_, i) => checks[i]);
   return {supported:true, cached, missing:CODEC_NAMES.filter((_, i) => !checks[i]), complete:cached.length === CODEC_NAMES.length};
 }

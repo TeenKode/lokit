@@ -23,6 +23,8 @@ try:
   page.locator('#batch-tool option').first.wait_for(state='attached',timeout=20000)
   assert 'v'+json.loads((ROOT/'package.json').read_text())['version'] in page.locator('.version-pill').inner_text()
   assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),'Horizontal overflow in batch mode'
+  assert page.locator('#batch-tool option[value=artcraft-photocraft]').count()==0
+  assert page.locator('#batch-tool option[value=pdf-workbench]').count()==0
   page.locator('#batch-tool').select_option('subtitle-converter')
   first=(ROOT/'tests/fixtures/sample.srt').read_bytes()
   page.locator('#batch-files').set_input_files([

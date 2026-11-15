@@ -21,3 +21,16 @@ assert.match(await shifted.blob.text(),/00:00:03,100 --> 00:00:05,500/);
 const merged=await get('subtitle-merger').run({files:[file,new File([original.replace('Привет, мир!','Второй')],'x.srt')]});
 assert.match(await merged.blob.text(),/Второй/);
 console.log('Tools tests: 25 unique executable definitions, SRT/VTT (including short timestamps), shifts, merge — PASS');
+for(const hours of ['0','123']){
+ const input=new File([`1\n${hours}:00:01,100 --> ${hours}:00:03,500\nТест\n`],'hours.srt');
+ const output=await get('subtitle-converter').run({files:[input]});
+ assert.ok((await output.blob.text()).includes(`${hours.padStart(2,'0')}:00:01.100`));
+ const round=await get('subtitle-converter').run({files:[new File([await output.blob.text()],'hours.vtt')]});
+ assert.ok((await round.blob.text()).includes(`${hours.padStart(2,'0')}:00:01,100`));
+}
+for(const timing of ['00:61:01,000 --> 00:62:02,000','00:00:04,000 --> 00:00:01,000']){
+ const invalid=new File([`1\n${timing}\nОшибка\n`],'invalid.srt');
+ await assert.rejects(get('subtitle-shift').run({files:[invalid],values:{seconds:'1'}}),/корректные/);
+ const mixed=await get('subtitle-merger').run({files:[file,invalid]});
+ assert.ok(!(await mixed.blob.text()).includes('Ошибка'));
+}

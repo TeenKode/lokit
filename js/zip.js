@@ -9,18 +9,20 @@ const TABLE=Uint32Array.from({length:256},(_,n)=>{
 const MAX_ZIP_SIZE=0xffffffff;
 const abort=()=>new DOMException('Создание ZIP отменено','AbortError');
 export function safeZipName(name){
-  const cleaned=String(name||'result.bin').replace(/[\\/\x00-\x1f\x7f]/g,'_').replace(/^\.+/,'').trim();
+  let cleaned=String(name||'result.bin').replace(/[\\/<>:"|?*\x00-\x1f\x7f]/g,'_').replace(/^\.+/,'').trim().replace(/[. ]+$/,'');
+  if(/^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(cleaned))cleaned='_'+cleaned;
   return cleaned||'result.bin';
 }
 export function uniqueZipEntries(entries){
-  const counts=new Set();
+  const counts=new Set(),nextSuffix=new Map();
   return entries.map((entry)=>{
     if(!(entry?.blob instanceof Blob))throw new TypeError('Для ZIP нужен результат Blob.');
     const name=safeZipName(entry.name),dot=name.lastIndexOf('.');
     const base=dot>0?name.slice(0,dot):name,ext=dot>0?name.slice(dot):'';
-    let candidate=name,n=2;
+    const key=name.toLocaleLowerCase('en');
+    let candidate=name,n=nextSuffix.get(key)||2;
     while(counts.has(candidate.toLocaleLowerCase('en')))candidate=`${base} (${n++})${ext}`;
-    counts.add(candidate.toLocaleLowerCase('en'));
+    counts.add(candidate.toLocaleLowerCase('en'));nextSuffix.set(key,n);
     return {name:candidate,blob:entry.blob};
   });
 }
@@ -60,13 +62,13 @@ export async function createZip(entries,{signal,onProgress=()=>{},chunkSize=1024
     crc=(crc^0xffffffff)>>>0;
     const local=view(30);
     local.setUint32(0,0x04034b50,true);local.setUint16(4,20,true);local.setUint16(6,0x0800,true);
-    local.setUint16(8,0,true);local.setUint32(10,0,true);local.setUint32(14,crc,true);
+    local.setUint16(8,0,true);local.setUint16(10,0,true);local.setUint16(12,0x21,true);local.setUint32(14,crc,true);
     local.setUint32(18,file.blob.size,true);local.setUint32(22,file.blob.size,true);
     local.setUint16(26,name.length,true);
     parts.push(u8(local),name,file.blob);
     const entry=view(46);
     entry.setUint32(0,0x02014b50,true);entry.setUint16(4,20,true);entry.setUint16(6,20,true);entry.setUint16(8,0x0800,true);
-    entry.setUint16(10,0,true);entry.setUint32(12,0,true);entry.setUint32(16,crc,true);
+    entry.setUint16(10,0,true);entry.setUint16(12,0,true);entry.setUint16(14,0x21,true);entry.setUint32(16,crc,true);
     entry.setUint32(20,file.blob.size,true);entry.setUint32(24,file.blob.size,true);
     entry.setUint16(28,name.length,true);entry.setUint32(42,offset,true);
     central.push(u8(entry),name);

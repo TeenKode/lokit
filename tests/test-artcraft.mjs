@@ -37,6 +37,8 @@ assert.throws(()=>checkedAssets({...manifest,totalBytes:12345},'photocraft','0.2
 const entries=new Map();
 let puts=0,failPut=false,failFetchOnce=false;
 const cache={
+ async keys(){return [...entries.keys()];},
+ async delete(url){return entries.delete(String(url));},
  async match(url){return entries.get(String(url))?.clone();},
  async put(url,response){
    if(failPut && String(url).endsWith('.wasm'))throw new DOMException('Storage full','QuotaExceededError');
@@ -100,6 +102,8 @@ const parallelManifest={...manifest,assets:[...files,extra],totalBytes:total+2};
 const parallelEntries=new Map();
 let bodyCancelled=false,streamStarted=false,assetRequests=[];
 const parallelCache={
+ async keys(){return [...parallelEntries.keys()];},
+ async delete(url){return parallelEntries.delete(String(url));},
  async match(url){return parallelEntries.get(String(url))?.clone();},
  async put(url,response){
    if(String(url).endsWith('.wasm'))throw new DOMException('full','QuotaExceededError');
@@ -139,7 +143,7 @@ let cancelCalls=0;
 const cancelledProgress=[];
 const cancelledRun=prepareCraftAssets({
  baseURL:root.href,app:'photocraft',version:'0.23.1',signal:caller.signal,
- cacheStorage:{async open(){return {async match(){},async put(){}};}},
+ cacheStorage:{async open(){return {async match(){},async put(){},async keys(){return [];},async delete(){}};}},
  onProgress:info=>cancelledProgress.push(info),
  async fetcher(url){
    if(new URL(url).pathname.endsWith('lokit-assets.json'))return new Response(resources['lokit-assets.json']);
@@ -166,3 +170,20 @@ for(const concurrency of [NaN,Infinity,-Infinity]){
  assert.equal(entries.size,3);
 }
 console.log('ArtCraft cancellation: fail-fast siblings, blocked stream cleanup, caller abort and finite concurrency — PASS');
+
+// An update must not reuse assets from the previous release, even at equal size.
+const oldManifest={...manifest,version:'0.22.0'};
+entries.set(root+'lokit-assets.json',new Response(JSON.stringify(oldManifest)));
+entries.set(root+'app_bg.wasm',new Response(new Uint8Array(8).fill(9)));
+const updated=await prepareCraftAssets({baseURL:root.href,app:'photocraft',version:'0.23.1',fetcher,cacheStorage});
+assert.equal(updated.reused,0);
+assert.deepEqual(new Uint8Array(await entries.get(root+'app_bg.wasm').clone().arrayBuffer()),resources['app_bg.wasm']);
+// Invalid remote metadata must leave the last valid offline copy untouched.
+const validManifest=resources['lokit-assets.json'];
+resources['lokit-assets.json']=JSON.stringify({...manifest,totalBytes:1});
+await assert.rejects(prepareCraftAssets({baseURL:root.href,app:'photocraft',version:'0.23.1',fetcher,cacheStorage}),/размер/);
+assert.equal((await entries.get(root+'lokit-assets.json').clone().json()).totalBytes,total);
+resources['lokit-assets.json']=validManifest;
+const offline=await prepareCraftAssets({baseURL:root.href,app:'photocraft',version:'0.23.1',fetcher:async()=>{throw Error('offline');},cacheStorage});
+assert.equal(offline.reused,2);
+console.log('ArtCraft updates: discard previous release resources, validate before overwrite, offline reuse — PASS');

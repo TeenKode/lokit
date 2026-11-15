@@ -1,5 +1,6 @@
 // Единственный Canvas-рендерер для экспорта и предпросмотра Lokit.
 const clamp=(x,min,max)=>Math.min(max,Math.max(min,x));
+const numeric=(value,fallback)=>Number.isFinite(Number(value))?Number(value):fallback;
 const even=n=>Math.max(2,Math.round(n/2)*2);
 function renderFit(ctx, video, x, y, width, height) {
   if (!video || video.readyState < 2) return;
@@ -11,7 +12,7 @@ export function renderVideoFrame(ctx, a, b, mode, options, outWidth, outHeight) 
   const w=outWidth,h=outHeight;
   ctx.save();ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
   if (mode==='filter') ctx.filter=String(options.filter||'none');
-  if (mode==='blur') ctx.filter=`blur(${clamp(Number(options.blur)||4,0,35)}px)`;
+  if (mode==='blur') ctx.filter=`blur(${clamp(numeric(options.blur??4,4),0,35)}px)`;
   switch(mode) {
     case 'flip-h':ctx.translate(w,0);ctx.scale(-1,1);ctx.drawImage(a,0,0,w,h);break;
     case 'flip-v':ctx.translate(0,h);ctx.scale(1,-1);ctx.drawImage(a,0,0,w,h);break;
@@ -19,7 +20,7 @@ export function renderVideoFrame(ctx, a, b, mode, options, outWidth, outHeight) 
     case 'rotate-180':ctx.translate(w,h);ctx.rotate(Math.PI);ctx.drawImage(a,0,0,w,h);break;
     case 'rotate-270':ctx.translate(0,h);ctx.rotate(-Math.PI/2);ctx.drawImage(a,0,0,h,w);break;
     case 'crop':{
-      const p=clamp(Number(options.crop)||10,0,40)/100;
+      const p=clamp(numeric(options.crop??0,0),0,40)/100;
       ctx.drawImage(a,a.videoWidth*p,a.videoHeight*p,a.videoWidth*(1-2*p),a.videoHeight*(1-2*p),0,0,w,h);
       break;
     }

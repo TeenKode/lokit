@@ -23,3 +23,12 @@ calls.length=0;
 renderVideoFrame(ctx,video,video,'split',{},640,360);
 assert.equal(calls.filter(x=>Array.isArray(x)&&x[0]==='drawImage').length,2,'Split must draw both videos');
 console.log('Shared Canvas renderer: transformations, crop, split, watermark and output sizing — PASS');
+
+let cropArgs;
+const zeroContext={...ctx,drawImage(...args){cropArgs=args;}};
+renderVideoFrame(zeroContext,video,null,'crop',{crop:0},640,360);
+assert.deepEqual(cropArgs.slice(1,5),[0,0,1920,1080],'Zero crop keeps the complete source');
+let appliedFilter;
+const blurContext={...ctx,set filter(value){appliedFilter=value;}};
+renderVideoFrame(blurContext,video,null,'blur',{blur:0},640,360);
+assert.equal(appliedFilter,'blur(0px)','Zero blur is not replaced with the default');

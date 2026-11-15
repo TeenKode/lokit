@@ -31,3 +31,40 @@ localStorage.setItem('lokit:analytics:v1',JSON.stringify([
 assert.equal(a.summarizeLocal(7).kinds.find(e=>e.kind==='success').count,1);
 assert.equal(a.summarizeLocal(7).kinds.some(e=>e.kind==='error'),false);
 console.log('Local analytics: private, export, clear, history limit and time windows — PASS');
+
+const cryptoDescriptor=Object.getOwnPropertyDescriptor(globalThis,'crypto');
+Object.defineProperty(globalThis,'crypto',{configurable:true,value:undefined});
+try{
+ a.clearLocalEvents();
+ a.recordEvent('open','video-trim',null);
+ a.recordEvent('open','video-trim',42);
+ assert.equal(a.localEvents().length,2);
+ assert.match(a.localEvents()[0].id,/^local-/);
+}finally{
+ if(cryptoDescriptor)Object.defineProperty(globalThis,'crypto',cryptoDescriptor);else delete globalThis.crypto;
+}
+a.clearLocalEvents();
+a.recordOperation('video-trim','success',[{size:1024},{size:NaN},{size:-1}],{blob:{size:512}},100);
+assert.equal(a.summarizeLocal(7).tools[0].inputBytes,1024);
+const now=new Date().toISOString();
+localStorage.setItem('lokit:analytics:v1',JSON.stringify([
+ {ts:now,kind:'success',tool:'video-trim',durationMs:'125',inputBytes:'1024',outputBytes:'512'},
+ {ts:now,kind:'success',tool:'video-trim',durationMs:-5,inputBytes:-1,outputBytes:'invalid'},
+ {ts:[now],kind:'success',tool:'video-trim'},
+ {ts:2020,kind:'success',tool:'video-trim'},
+ {ts:null,kind:'success',tool:'video-trim'}
+]));
+assert.equal(a.localEvents().length,2);
+const normalized=a.summarizeLocal(7).tools[0];
+assert.equal(normalized.durationMs,125);
+assert.equal(normalized.inputBytes,1024);
+assert.equal(normalized.outputBytes,512);
+const descriptor=Object.getOwnPropertyDescriptor(globalThis,'localStorage');
+Object.defineProperty(globalThis,'localStorage',{configurable:true,get(){throw new DOMException('Blocked','SecurityError');}});
+try{
+ // Reload the module to cover its one-time legacy storage cleanup too.
+ const blocked=await import('./.tmp-modules/analytics.js?blocked');
+ assert.doesNotThrow(()=>blocked.recordEvent('view'));
+ assert.deepEqual(blocked.localEvents(),[]);
+}finally{Object.defineProperty(globalThis,'localStorage',descriptor);}
+console.log('PASS analytics: disabled storage/crypto, malformed timestamps, metadata and numeric aggregation');

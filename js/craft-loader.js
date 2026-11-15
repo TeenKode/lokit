@@ -127,15 +127,15 @@ async function prepareAssets({
   const cache=await cacheStorage.open(cacheNameFor(app));
   try{await storageManager?.persist?.();}catch{/* Storage permission is optional. */}
   const manifestURL=new URL('lokit-assets.json',root);
-  let raw;
+  const old=await cache.match(manifestURL.href);
+  let raw,downloaded=true;
   try{
     raw=await fetchComplete(manifestURL.href,{fetcher,signal});
     if(raw.count>2*1024*1024)throw new Error('Список файлов слишком большой.');
     checkAbort(signal);
-    await cache.put(manifestURL.href,blobResponse(raw));
   }catch(error){
     if(signal?.aborted)throw error;
-    const old=await cache.match(manifestURL.href);
+    downloaded=false;
     if(!old?.ok)throw new Error('Невозможно загрузить список файлов: '+showError(error));
     raw={chunks:[await old.arrayBuffer()]};
   }
@@ -143,6 +143,18 @@ async function prepareAssets({
   try{manifest=JSON.parse(await new Blob(raw.chunks).text());}
   catch{throw new Error('Невозможно прочитать список файлов.');}
   const {assets,total}=checkedAssets(manifest,app,version,root);
+  if(downloaded){
+    let previous;
+    try{previous=old?.ok?await old.json():null;}catch{/* Unreadable metadata cannot identify saved assets. */}
+    if(JSON.stringify(previous)!==JSON.stringify(manifest)){
+      // URLs stay constant between releases. Never mix old JS/WASM with a new
+      // validated manifest, even when an asset happens to have the same size.
+      const keys=await cache.keys();
+      await Promise.all(keys.map(key=>cache.delete(key)));
+    }
+    checkAbort(signal);
+    await cache.put(manifestURL.href,blobResponse(raw));
+  }
   const current=new Map();
   let completed=0,completedFiles=0,reused=0;
   function report(stage,file){
